@@ -87,7 +87,12 @@
   gap: 3px;
   width: 100%;
 }
-.ceai-button__icon,
+.ceai-button__icon {
+  width: 12px;
+  height: 12px;
+  display: block;
+  flex: 0 0 auto;
+}
 .ceai-button__spinner {
   width: 9px;
   height: 9px;

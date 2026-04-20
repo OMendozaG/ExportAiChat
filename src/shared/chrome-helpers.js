@@ -1,6 +1,7 @@
 /*
- * Wrappers de Promesa sobre APIs callback de Chrome.
- * Evita repetir boilerplate de runtime.lastError en toda la extensión.
+ * Promise wrappers around callback-based Chrome APIs.
+ * Missing APIs are handled defensively so pages without extension APIs
+ * do not crash shared logic that only needs default settings.
  */
 (() => {
   const root = globalThis.ChatExportAi;
@@ -27,10 +28,15 @@
   function storageGet(keys) {
     return new Promise((resolve, reject) => {
       try {
-        ensureChromeApi(["storage", "local", "get"]);
-        chrome.storage.local.get(keys, (result) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
+        const chromeRoot = getChromeRoot();
+        if (!chromeRoot?.storage?.local?.get) {
+          resolve({});
+          return;
+        }
+
+        chromeRoot.storage.local.get(keys, (result) => {
+          if (chromeRoot.runtime?.lastError) {
+            reject(new Error(chromeRoot.runtime.lastError.message));
             return;
           }
           resolve(result || {});
@@ -44,10 +50,15 @@
   function storageSet(value) {
     return new Promise((resolve, reject) => {
       try {
-        ensureChromeApi(["storage", "local", "set"]);
-        chrome.storage.local.set(value, () => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
+        const chromeRoot = getChromeRoot();
+        if (!chromeRoot?.storage?.local?.set) {
+          resolve(false);
+          return;
+        }
+
+        chromeRoot.storage.local.set(value, () => {
+          if (chromeRoot.runtime?.lastError) {
+            reject(new Error(chromeRoot.runtime.lastError.message));
             return;
           }
           resolve(true);
@@ -61,10 +72,11 @@
   function runtimeSendMessage(message) {
     return new Promise((resolve, reject) => {
       try {
+        const chromeRoot = getChromeRoot();
         ensureChromeApi(["runtime", "sendMessage"]);
-        chrome.runtime.sendMessage(message, (response) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
+        chromeRoot.runtime.sendMessage(message, (response) => {
+          if (chromeRoot.runtime?.lastError) {
+            reject(new Error(chromeRoot.runtime.lastError.message));
             return;
           }
           resolve(response);
@@ -78,10 +90,11 @@
   function tabsQuery(queryInfo) {
     return new Promise((resolve, reject) => {
       try {
+        const chromeRoot = getChromeRoot();
         ensureChromeApi(["tabs", "query"]);
-        chrome.tabs.query(queryInfo, (tabs) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
+        chromeRoot.tabs.query(queryInfo, (tabs) => {
+          if (chromeRoot.runtime?.lastError) {
+            reject(new Error(chromeRoot.runtime.lastError.message));
             return;
           }
           resolve(tabs || []);
@@ -95,10 +108,11 @@
   function tabsSendMessage(tabId, message) {
     return new Promise((resolve, reject) => {
       try {
+        const chromeRoot = getChromeRoot();
         ensureChromeApi(["tabs", "sendMessage"]);
-        chrome.tabs.sendMessage(tabId, message, (response) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
+        chromeRoot.tabs.sendMessage(tabId, message, (response) => {
+          if (chromeRoot.runtime?.lastError) {
+            reject(new Error(chromeRoot.runtime.lastError.message));
             return;
           }
           resolve(response);

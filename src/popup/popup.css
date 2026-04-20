@@ -91,6 +91,10 @@ h1 {
   background: var(--panel-bg);
 }
 
+.summary-card[hidden] {
+  display: none !important;
+}
+
 .summary-row {
   display: grid;
   grid-template-columns: 88px 1fr;
@@ -115,6 +119,10 @@ h1 {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+}
+
+.actions[hidden] {
+  display: none !important;
 }
 
 .actions button {

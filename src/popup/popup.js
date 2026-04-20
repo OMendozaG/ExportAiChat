@@ -88,6 +88,7 @@
 
   async function loadStatus() {
     setActionsVisible(false);
+    setSummaryVisible(false);
     setButtonsEnabled(false);
     const settings = await root.storage.getSettings();
     root.appTheme.applyThemeDocument(settings.appTheme);

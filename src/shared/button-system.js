@@ -88,8 +88,8 @@
   width: 100%;
 }
 .ceai-button__icon {
-  width: 12px;
-  height: 12px;
+  width: 20px;
+  height: 20px;
   display: block;
   flex: 0 0 auto;
 }

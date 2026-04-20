@@ -33,6 +33,7 @@ The TXT export is designed as a readable chat log:
 - Optional metadata export
 - Optional visible reasoning or thinking export when the provider exposes it in the page
 - Optional message date and time export when the provider exposes it in the page
+- Optional message ids starting at 1 across TXT, HTML, and PDF exports
 - Optional metadata for provider/chat summary and conversation start, end, and duration when message dates are available
 - Optional user attachment file names and assistant attachment/URL references in exports
 - ChatGPT attachment tile detection, including attachment-only user turns
@@ -52,6 +53,7 @@ The TXT export is designed as a readable chat log:
 - PDF rendering now injects HTML directly into the debug target instead of navigating to a `data:` URL, to reduce renderer failures
 - Reset defaults now asks for confirmation before overwriting the current settings
 - Shared Chrome API helpers no longer throw path-based missing-API errors
+- Current builds load a dedicated `extension-bridge.js` wrapper for Chrome APIs, while the legacy helper path is kept as a harmless shim for stale tabs
 - Local-first export flow with no server-side processing
 
 ## Export Options
@@ -84,6 +86,7 @@ The settings page supports:
 - `PC / User` metadata disabled by default
 - Popup provider/chat/message summary with total messages and H/AI counts
 - Message time export toggle
+- Message id export toggle
 - Conversation start, end, and duration metadata toggles when message dates exist
 - Thinking or reasoning export toggle
 - User attachment and assistant reference toggles

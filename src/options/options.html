@@ -65,6 +65,11 @@
             <input id="includeMessageTime" name="includeMessageTime" type="checkbox">
             <span>Include the message date and time when the provider can extract it</span>
           </label>
+
+          <label class="field checkbox-field">
+            <input id="includeMessageId" name="includeMessageId" type="checkbox">
+            <span>Include a message id starting at 1 in TXT, HTML and PDF exports</span>
+          </label>
         </section>
 
         <section class="card">
@@ -368,7 +373,7 @@
   <script src="../shared/namespace.js"></script>
   <script src="../shared/constants.js"></script>
   <script src="../shared/default-settings.js"></script>
-  <script src="../shared/chrome-helpers.js"></script>
+  <script src="../shared/extension-bridge.js"></script>
   <script src="../shared/storage.js"></script>
   <script src="../shared/app-theme.js"></script>
   <script src="../shared/button-system.js"></script>

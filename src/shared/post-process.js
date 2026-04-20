@@ -347,6 +347,7 @@
 
         return {
           id: message.id || `msg-${index + 1}`,
+          messageNumber: index + 1,
           role: message.role || ROLES.UNKNOWN,
           speakerLabel: resolveSpeakerLabel(message, names, settings),
           timeLabel: resolveMessageTimeLabel(message, settings),

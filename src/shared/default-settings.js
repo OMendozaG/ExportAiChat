@@ -63,6 +63,9 @@
       // Include the message time when the provider can extract it reliably.
       includeMessageTime: false,
 
+      // Include message ids starting at 1 in TXT, HTML and PDF exports.
+      includeMessageId: false,
+
       // Include user attachment file names in exports when the provider exposes them.
       showUserAttachmentNames: true,
 

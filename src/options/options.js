@@ -39,6 +39,7 @@
   const includeThinkingCheckbox = document.getElementById("includeThinking");
   const includeThinkingDurationCheckbox = document.getElementById("includeThinkingDuration");
   const includeMessageTimeCheckbox = document.getElementById("includeMessageTime");
+  const includeMessageIdCheckbox = document.getElementById("includeMessageId");
   const showUserAttachmentNamesCheckbox = document.getElementById("showUserAttachmentNames");
   const showAssistantReferencesCheckbox = document.getElementById("showAssistantReferences");
   const showHeaderExportButtonChatgptCheckbox = document.getElementById("showHeaderExportButtonChatgpt");
@@ -132,6 +133,7 @@
     includeThinkingCheckbox.checked = Boolean(settings.includeThinking);
     includeThinkingDurationCheckbox.checked = Boolean(settings.includeThinkingDuration);
     includeMessageTimeCheckbox.checked = Boolean(settings.includeMessageTime);
+    includeMessageIdCheckbox.checked = Boolean(settings.includeMessageId);
     showUserAttachmentNamesCheckbox.checked = Boolean(settings.showUserAttachmentNames);
     showAssistantReferencesCheckbox.checked = Boolean(settings.showAssistantReferences);
     showHeaderExportButtonChatgptCheckbox.checked = Boolean(
@@ -187,6 +189,7 @@
       includeThinking: includeThinkingCheckbox.checked,
       includeThinkingDuration: includeThinkingDurationCheckbox.checked,
       includeMessageTime: includeMessageTimeCheckbox.checked,
+      includeMessageId: includeMessageIdCheckbox.checked,
       showUserAttachmentNames: showUserAttachmentNamesCheckbox.checked,
       showAssistantReferences: showAssistantReferencesCheckbox.checked,
       showHeaderExportButton: showHeaderExportButtonChatgptCheckbox.checked,

@@ -126,14 +126,27 @@
     return fileName.normalize ? fileName.normalize("NFC") : fileName;
   }
 
-  function rolePrefix(message) {
+  function messageIdPrefix(message, settings) {
+    if (!settings?.includeMessageId) {
+      return "";
+    }
+
+    const numericId = Number(message?.messageNumber);
+    if (!Number.isFinite(numericId) || numericId < 1) {
+      return "";
+    }
+
+    return `#${Math.round(numericId)} `;
+  }
+
+  function rolePrefix(message, settings) {
     let prefix = `<${message.speakerLabel}>`;
 
     if (message.timeLabel) {
       prefix += ` [${message.timeLabel}]`;
     }
 
-    return prefix;
+    return `${messageIdPrefix(message, settings)}${prefix}`;
   }
 
   function continuationPrefix(prefix, settings, isFirstLine) {
@@ -175,7 +188,7 @@
   }
 
   function buildTextMessageBlock(message, settings) {
-    const prefix = rolePrefix(message);
+    const prefix = rolePrefix(message, settings);
     const messageLines = String(message.text || "").split("\n");
     const outputLines = [];
 
@@ -243,14 +256,18 @@
     ].join("\n");
   }
 
-  function buildMessageHeader(message) {
+  function buildMessageHeader(message, settings) {
     const escapeHtml = root.sanitize.escapeHtml;
     const speaker = escapeHtml(message.speakerLabel || "Unknown");
     const timeLabel = escapeHtml(message.timeLabel || "");
+    const messageId = escapeHtml(messageIdPrefix(message, settings).trim());
 
     return [
       "  <div class=\"ceai-message-head\">",
-      `    <h2>${speaker}</h2>`,
+      "    <div class=\"ceai-message-head-main\">",
+      messageId ? `      <span class=\"ceai-message-id\">${messageId}</span>` : "",
+      `      <h2>${speaker}</h2>`,
+      "    </div>",
       timeLabel ? `    <span class=\"ceai-message-time\">${timeLabel}</span>` : "",
       "  </div>"
     ].filter(Boolean).join("\n");
@@ -259,7 +276,7 @@
   function messageHtml(message, settings) {
     const escapeHtml = root.sanitize.escapeHtml;
     const roleClass = `role-${escapeHtml(message.role || "unknown")}`;
-    const headerMarkup = buildMessageHeader(message);
+    const headerMarkup = buildMessageHeader(message, settings);
 
     if (settings.textFormatting === root.constants.TEXT_FORMATTING.CLEAN) {
       return [
@@ -278,14 +295,14 @@
     ].join("\n");
   }
 
-  function messagePdfHtml(message) {
+  function messagePdfHtml(message, settings) {
     const escapeHtml = root.sanitize.escapeHtml;
     const roleClass = `role-${escapeHtml(message.role || "unknown")}`;
     const text = escapeHtml(message.text || "");
 
     return [
       `<section class="ceai-message ${roleClass}">`,
-      buildMessageHeader(message),
+      buildMessageHeader(message, settings),
       `  <pre>${text}</pre>`,
       "</section>"
     ].join("\n");
@@ -312,7 +329,9 @@
       ".ceai-meta dd { margin: 0; color: #0f172a; word-break: break-word; }",
       ".ceai-message { padding: 16px; margin-bottom: 12px; }",
       ".ceai-message-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }",
+      ".ceai-message-head-main { display: flex; align-items: center; gap: 10px; min-width: 0; }",
       ".ceai-message h2 { margin: 0; font-size: 1rem; }",
+      ".ceai-message-id { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; padding: 0.2rem 0.55rem; border-radius: 999px; background: #e7eefc; color: #1d4ed8; font-size: 0.78rem; font-weight: 700; line-height: 1; }",
       ".ceai-message-time { color: #64748b; font-size: 0.82rem; white-space: nowrap; }",
       ".ceai-message.role-human { border-left: 6px solid #2166f3; }",
       ".ceai-message.role-assistant { border-left: 6px solid #0f9d58; }",
@@ -348,7 +367,9 @@
       ".ceai-meta dd { margin: 0; word-break: break-word; }",
       ".ceai-message { padding: 12px 14px; margin: 0 0 10px; break-inside: auto; page-break-inside: auto; }",
       ".ceai-message-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }",
+      ".ceai-message-head-main { display: flex; align-items: center; gap: 8px; min-width: 0; }",
       ".ceai-message h2 { margin: 0; font-size: 14px; }",
+      ".ceai-message-id { display: inline-flex; align-items: center; justify-content: center; min-width: 38px; padding: 0.15rem 0.45rem; border-radius: 999px; background: #e7eefc; color: #1d4ed8; font-size: 10px; font-weight: 700; line-height: 1; }",
       ".ceai-message-time { color: #667085; font-size: 11px; white-space: nowrap; }",
       ".ceai-message.role-human { border-left: 5px solid #2563eb; }",
       ".ceai-message.role-assistant { border-left: 5px solid #16a34a; }",
@@ -385,8 +406,9 @@
 
   function toPdfDocument(conversation) {
     const escapeHtml = root.sanitize.escapeHtml;
+    const settings = conversation.settings || root.defaults.settings;
     const messageMarkup = (conversation.messages || [])
-      .map((message) => messagePdfHtml(message))
+      .map((message) => messagePdfHtml(message, settings))
       .join("\n");
 
     return [

@@ -376,7 +376,7 @@
 
     // Fallback for non-markdown assistant replies (for example media-only turns)
     // while ignoring elements nested inside the thinking container.
-    const mediaNode = Array.from(turnNode.querySelectorAll("img, video, canvas, svg, figure, picture"))
+    const mediaNode = Array.from(turnNode.querySelectorAll("img, video, canvas, figure, picture"))
       .find((node) => !node.closest(".ds-think-content"));
     if (mediaNode) {
       return mediaNode.closest("figure, picture, div") || mediaNode;
@@ -385,6 +385,64 @@
     // If there is no answer content outside thinking, avoid duplicating
     // the thinking note as a separate assistant message.
     return null;
+  }
+
+  function parsePositiveNumber(value) {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : 0;
+  }
+
+  function isLikelyDecorativeSvg(svgNode) {
+    if (!svgNode || String(svgNode.tagName || "").toLowerCase() !== "svg") {
+      return false;
+    }
+
+    const label = normalizeText(
+      svgNode.getAttribute?.("aria-label")
+      || svgNode.getAttribute?.("title")
+      || svgNode.querySelector?.("title")?.textContent
+      || svgNode.querySelector?.("desc")?.textContent
+    );
+    if (label) {
+      return false;
+    }
+
+    const inlineText = normalizeText(svgNode.textContent);
+    if (inlineText) {
+      return false;
+    }
+
+    const width = parsePositiveNumber(svgNode.getAttribute?.("width"));
+    const height = parsePositiveNumber(svgNode.getAttribute?.("height"));
+    const viewBox = String(svgNode.getAttribute?.("viewBox") || "").trim();
+    const viewBoxParts = viewBox.split(/\s+/).map((part) => Number(part));
+    const viewBoxWidth = Number.isFinite(viewBoxParts[2]) ? Math.abs(viewBoxParts[2]) : 0;
+    const viewBoxHeight = Number.isFinite(viewBoxParts[3]) ? Math.abs(viewBoxParts[3]) : 0;
+
+    // Keep clearly large SVG illustrations and discard tiny icon-like vectors.
+    const largestDimension = Math.max(width, height, viewBoxWidth, viewBoxHeight);
+    if (largestDimension >= 120) {
+      return false;
+    }
+
+    return true;
+  }
+
+  function prepareContentRootForSanitize(contentRoot) {
+    const clone = contentRoot?.cloneNode?.(true);
+    if (!clone) {
+      return contentRoot;
+    }
+
+    // Drop decorative SVG icons (citation/action glyphs) that would otherwise
+    // become repeated "[SVG: non-textual content]" placeholders.
+    Array.from(clone.querySelectorAll("svg")).forEach((svgNode) => {
+      if (isLikelyDecorativeSvg(svgNode)) {
+        svgNode.remove();
+      }
+    });
+
+    return clone;
   }
 
   function hasAssistantRenderableContent(turnNode) {
@@ -629,7 +687,8 @@
           continue;
         }
 
-        const sanitized = root.sanitize.sanitizeMessageNode(contentRoot, {
+        const sanitizeRoot = prepareContentRootForSanitize(contentRoot);
+        const sanitized = root.sanitize.sanitizeMessageNode(sanitizeRoot, {
           mediaHandling: settings.mediaHandling
         });
         const references = shouldExtractAssistantReferences
@@ -660,7 +719,8 @@
       }
 
       const contentRoot = pickUserContentRoot(turnNode);
-      const sanitized = root.sanitize.sanitizeMessageNode(contentRoot, {
+      const sanitizeRoot = prepareContentRootForSanitize(contentRoot);
+      const sanitized = root.sanitize.sanitizeMessageNode(sanitizeRoot, {
         mediaHandling: settings.mediaHandling
       });
       const textContent = normalizeText((sanitized.safeHtml || "").replace(/<[^>]*>/g, " "));

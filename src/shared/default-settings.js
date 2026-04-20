@@ -225,7 +225,10 @@
       }
 
       if (incoming.showAssistantWebReferences === undefined) {
-        next.showAssistantWebReferences = Boolean(incoming.showAssistantReferences);
+        // Keep web links disabled by default even for legacy migrations.
+        // Legacy toggle controlled mixed reference kinds, but URL visibility
+        // is now explicit and defaults to off.
+        next.showAssistantWebReferences = false;
       }
     }
 

@@ -70,6 +70,7 @@ The settings page supports:
 - Inline ChatGPT header button toggle
 
 Supported file naming keywords:
+- `<ChatTitle>`
 - `<ChatName>`
 - `<ChatFolder>`
 - `<Model>`
@@ -77,8 +78,24 @@ Supported file naming keywords:
 - `<Date>`
 - `<Time>`
 
+Supported direct date and time tokens:
+- `YY`
+- `YYYY`
+- `M`
+- `MM`
+- `MMM`
+- `MMMM`
+- `D`
+- `DD`
+- `H`
+- `HH`
+- `m`
+- `mm`
+- `s`
+- `ss`
+
 Default file name template:
-- `<ChatName>`
+- `YY.MM.DD <ChatTitle>`
 
 ## Privacy Model
 

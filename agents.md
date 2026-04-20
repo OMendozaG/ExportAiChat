@@ -99,6 +99,7 @@ When DeepSeek, Grok, Claude, Gemini, or other providers are added later, request
 
 ## Delivery Workflow
 Every new feature or bug fix should end with its own commit once the change is in a stable state.
+After every functional change or bug fix, update `README.md` so the public documentation stays aligned with the current behavior before finishing the task.
 
 Before finishing work, use this order:
 1. sync,

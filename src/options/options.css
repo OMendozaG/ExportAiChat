@@ -274,13 +274,11 @@ body {
 .actions button::after {
   content: "";
   position: absolute;
-  left: -1px;
-  right: -1px;
-  bottom: -5px;
-  height: 5px;
-  border-radius: 0 0 12px 12px;
+  inset: 0;
+  border-radius: inherit;
   background: var(--button-base);
   z-index: -1;
+  transform: translateY(4px);
 }
 
 .actions button.secondary {
@@ -297,8 +295,7 @@ body {
 }
 
 .actions button:hover::after {
-  bottom: -4px;
-  height: 4px;
+  transform: translateY(3px);
 }
 
 .actions button:active {
@@ -306,8 +303,7 @@ body {
 }
 
 .actions button:active::after {
-  bottom: -1px;
-  height: 1px;
+  transform: translateY(0);
 }
 
 .status {

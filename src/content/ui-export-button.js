@@ -122,27 +122,23 @@
 #${MENU_ID} button::after {
   content: "";
   position: absolute;
-  left: -1px;
-  right: -1px;
-  bottom: -5px;
-  height: 5px;
-  border-radius: 0 0 10px 10px;
+  inset: 0;
+  border-radius: inherit;
   background: var(--ceai-menu-button-base);
   z-index: -1;
+  transform: translateY(4px);
 }
 #${MENU_ID} button:hover {
   transform: translateY(1px);
 }
 #${MENU_ID} button:hover::after {
-  bottom: -4px;
-  height: 4px;
+  transform: translateY(3px);
 }
 #${MENU_ID} button:active {
   transform: translateY(4px);
 }
 #${MENU_ID} button:active::after {
-  bottom: -1px;
-  height: 1px;
+  transform: translateY(0);
 }
 #${MENU_ID} button[hidden] {
   display: none !important;

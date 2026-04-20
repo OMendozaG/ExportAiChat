@@ -51,7 +51,7 @@
     // Shared metadata labels used in all export formats.
     METADATA_LABELS: {
       EXPORTED_AT: "Date",
-      DEVICE_USER: "PC / User",
+      DEVICE_USER: "PC/User",
       FOLDER: "Chat Folder",
       TITLE: "Chat Title",
       MODEL: "Chat Model",

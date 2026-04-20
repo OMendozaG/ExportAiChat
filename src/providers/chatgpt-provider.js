@@ -11,6 +11,8 @@
   const THINKING_SECONDS_REGEX = /(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s)\b/i;
   const SHARE_LABEL_REGEX = /\b(?:share|compartir)\b/i;
   const TIME_TEXT_REGEX = /\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|A\.M\.|P\.M\.)?\b/i;
+  const CONVERSATION_PATH_REGEX = /\/c\/([^/?#]+)/i;
+  const PROJECT_PATH_REGEX = /(\/g\/[^/]+)\/c\/[^/?#]+/i;
 
   function hostnameFromUrl(url) {
     try {
@@ -132,7 +134,89 @@
     return Boolean(element?.closest("nav, aside, [role='navigation'], dialog"));
   }
 
+  function getCurrentConversationId() {
+    const match = location.pathname.match(CONVERSATION_PATH_REGEX);
+    return match ? match[1] : "";
+  }
+
+  function getCurrentProjectPath() {
+    const match = location.pathname.match(PROJECT_PATH_REGEX);
+    return match ? `${match[1]}/project` : "";
+  }
+
+  function extractSidebarItemText(container) {
+    if (!container) {
+      return "";
+    }
+
+    // ChatGPT tends to keep the human-visible name in a truncate wrapper or a title attribute.
+    const textNodes = Array.from(container.querySelectorAll("[title], [dir='auto'], .truncate"));
+
+    for (const node of textNodes) {
+      const titleText = normalizeText(node.getAttribute?.("title"));
+      if (titleText) {
+        return titleText;
+      }
+
+      const nodeText = normalizeText(node.textContent);
+      if (nodeText) {
+        return nodeText;
+      }
+    }
+
+    return normalizeText(container.textContent);
+  }
+
+  function cleanConversationAriaLabel(value) {
+    return normalizeText(value)
+      .replace(/,\s*chat\s+en\s+el\s+proyecto\s+.+$/i, "")
+      .replace(/,\s*chat\s+in\s+the\s+project\s+.+$/i, "")
+      .replace(/,\s*chat\s+in\s+project\s+.+$/i, "")
+      .trim();
+  }
+
+  function extractFolderFromConversationAriaLabel(value) {
+    const raw = normalizeText(value);
+    const match = raw.match(/,\s*chat\s+en\s+el\s+proyecto\s+(.+)$/i)
+      || raw.match(/,\s*chat\s+in\s+the\s+project\s+(.+)$/i)
+      || raw.match(/,\s*chat\s+in\s+project\s+(.+)$/i);
+
+    return match ? normalizeText(match[1]) : "";
+  }
+
+  function findConversationSidebarLink(conversationId) {
+    if (!conversationId) {
+      return null;
+    }
+
+    const links = Array.from(document.querySelectorAll('a[data-sidebar-item][href], aside a[href], nav a[href]'));
+    return links.find((link) => {
+      const href = normalizeText(link.getAttribute("href"));
+      return href.includes(`/c/${conversationId}`);
+    }) || null;
+  }
+
+  function extractConversationTitleFromSidebar() {
+    const link = findConversationSidebarLink(getCurrentConversationId());
+
+    if (!link) {
+      return "";
+    }
+
+    const text = extractSidebarItemText(link);
+    if (text) {
+      return text;
+    }
+
+    return cleanConversationAriaLabel(link.getAttribute("aria-label"));
+  }
+
   function extractConversationTitle() {
+    const sidebarTitle = extractConversationTitleFromSidebar();
+    if (sidebarTitle) {
+      return sidebarTitle;
+    }
+
     const folderName = extractConversationFolder();
     const titleSelectors = [
       'main [data-testid*="conversation-title"]',
@@ -172,19 +256,33 @@
   }
 
   function extractConversationFolder() {
-    const folderSelectors = [
-      'nav [aria-current="page"]',
-      'aside [aria-current="page"]',
-      'nav a[href*="/c/"][aria-current="page"]',
-      'aside a[href*="/c/"][aria-current="page"]'
-    ];
+    const projectPath = getCurrentProjectPath();
 
-    for (const selector of folderSelectors) {
-      const element = document.querySelector(selector);
-      const text = normalizeText(element?.textContent);
+    if (!projectPath) {
+      return "";
+    }
 
+    // The project folder sits on its own /project entry, separate from the chat item.
+    const links = Array.from(document.querySelectorAll('a[data-sidebar-item][href], aside a[href], nav a[href]'));
+
+    for (const link of links) {
+      const href = normalizeText(link.getAttribute("href"));
+      if (href !== projectPath) {
+        continue;
+      }
+
+      const text = extractSidebarItemText(link);
       if (text) {
         return text;
+      }
+    }
+
+    // Fallback for localized ChatGPT builds where only the conversation aria-label exposes the project name.
+    const conversationLink = findConversationSidebarLink(getCurrentConversationId());
+    if (conversationLink) {
+      const folderFromAria = extractFolderFromConversationAriaLabel(conversationLink.getAttribute("aria-label"));
+      if (folderFromAria) {
+        return folderFromAria;
       }
     }
 

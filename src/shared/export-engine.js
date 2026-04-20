@@ -487,12 +487,16 @@
     const leadingReferencesMarkup = buildReferenceBlockHtml(message.leadingReferenceLines, "ceai-reference-block--leading");
     const trailingReferencesMarkup = buildReferenceBlockHtml(message.trailingReferenceLines, "ceai-reference-block--trailing");
     const textMarkup = message.text ? `  <pre>${text}</pre>` : "";
+    const richMarkup = message.safeHtml ? `  <div class="ceai-rich">${message.safeHtml || ""}</div>` : "";
+    const bodyMarkup = settings.textFormatting === root.constants.TEXT_FORMATTING.CLEAN
+      ? textMarkup
+      : (richMarkup || textMarkup);
 
     return [
       `<section class="ceai-message ${roleClass}">`,
       buildMessageHeader(message, settings),
       leadingReferencesMarkup,
-      textMarkup,
+      bodyMarkup,
       trailingReferencesMarkup,
       "</section>"
     ].filter(Boolean).join("\n");
@@ -533,12 +537,15 @@
       `.ceai-message.role-system { border-left: 6px solid ${roleColors.system}; }`,
       ".ceai-message pre { white-space: pre-wrap; margin: 0; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }",
       ".ceai-rich p { margin: 0 0 0.9em; }",
+      ".ceai-rich figure, .ceai-rich picture { display: block; max-width: 100%; margin: 0 0 0.9em; }",
+      ".ceai-rich img, .ceai-rich video, .ceai-rich canvas, .ceai-rich svg { display: block; max-width: 100%; width: auto !important; height: auto !important; max-height: 70vh; object-fit: contain; border-radius: 12px; }",
+      ".ceai-rich iframe { max-width: 100%; width: 100%; }",
       ".ceai-rich blockquote { margin: 0.7em 0; padding: 0.45em 0.8em; border-left: 3px solid #8a94a6; background: #f8fafc; }",
       ".ceai-rich hr { border: 0; border-top: 1px dashed #9ba4b3; margin: 1em 0; }",
       ".ceai-rich code { background: #eef1f6; padding: 0.08em 0.3em; border-radius: 4px; }",
       ".ceai-rich pre { background: #f8fafc; color: #111827; border: 1px solid #d6d9e0; padding: 12px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; }",
       ".ceai-rich a { color: #1d4ed8; }",
-      "@media print { html, body { background: #ffffff !important; } main { max-width: none; padding: 0; } .ceai-header, .ceai-meta, .ceai-message { box-shadow: none; background: #ffffff !important; } .ceai-message { break-inside: auto; page-break-inside: auto; } .ceai-rich pre, .ceai-message pre { overflow: visible; } }"
+      "@media print { html, body { background: #ffffff !important; } main { max-width: none; padding: 0; } .ceai-header, .ceai-meta, .ceai-message { box-shadow: none; background: #ffffff !important; } .ceai-message { break-inside: auto; page-break-inside: auto; } .ceai-rich pre, .ceai-message pre { overflow: visible; } .ceai-rich img, .ceai-rich video, .ceai-rich canvas, .ceai-rich svg { max-height: 60vh; } }"
     ].join("\n");
   }
 
@@ -574,7 +581,16 @@
       `.ceai-message.role-human { border-left: 5px solid ${roleColors.human}; }`,
       `.ceai-message.role-assistant { border-left: 5px solid ${roleColors.ai}; }`,
       `.ceai-message.role-system { border-left: 5px solid ${roleColors.system}; }`,
-      ".ceai-message pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: \"Segoe UI Emoji\", \"Apple Color Emoji\", \"Segoe UI\", Tahoma, sans-serif; line-height: 1.45; }"
+      ".ceai-message pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: \"Segoe UI Emoji\", \"Apple Color Emoji\", \"Segoe UI\", Tahoma, sans-serif; line-height: 1.45; }",
+      ".ceai-rich p { margin: 0 0 0.75em; }",
+      ".ceai-rich figure, .ceai-rich picture { display: block; max-width: 100%; margin: 0 0 0.75em; }",
+      ".ceai-rich img, .ceai-rich video, .ceai-rich canvas, .ceai-rich svg { display: block; max-width: 100%; width: auto !important; height: auto !important; max-height: 58vh; object-fit: contain; border-radius: 10px; }",
+      ".ceai-rich iframe { max-width: 100%; width: 100%; }",
+      ".ceai-rich blockquote { margin: 0.55em 0; padding: 0.4em 0.7em; border-left: 3px solid #8a94a6; background: #f8fafc; }",
+      ".ceai-rich hr { border: 0; border-top: 1px dashed #9ba4b3; margin: 0.8em 0; }",
+      ".ceai-rich code { background: #eef1f6; padding: 0.05em 0.24em; border-radius: 4px; }",
+      ".ceai-rich pre { background: #f8fafc; color: #111827; border: 1px solid #d6d9e0; padding: 10px; border-radius: 8px; overflow-wrap: anywhere; white-space: pre-wrap; }",
+      ".ceai-rich a { color: #1d4ed8; }"
     ].join("\n");
   }
 

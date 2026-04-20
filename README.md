@@ -51,6 +51,7 @@ The TXT export is designed as a readable chat log:
 - ChatGPT extraction now supports modern `conversation-turn` sections, including assistant image-only turns
 - MHT and PDF exports now inline chat images as data URLs when possible, so generated-image replies are preserved more reliably
 - ChatGPT extraction now prefers section-level turns over nested legacy placeholders so image-only assistant replies are not dropped
+- ChatGPT extraction now ignores generic assistant action chips like `More actions` / `Más acciones` to avoid noisy export lines
 - MHT export now forces rich media extraction for the current export and companion MHT generation, improving generated-image preservation
 - Claude extraction for user/assistant turns, title, model, and share-anchor integration
 - Gemini extraction for user/assistant turns, title, mode/model label, share-anchor integration, and uploaded-file labels
@@ -61,6 +62,7 @@ The TXT export is designed as a readable chat log:
 - Gemini inline button styling now applies a 30% smaller label size for better header fit
 - Grok extraction for user/assistant turns, visible thinking duration labels, and user file chip labels
 - Configurable AI/Human border colors for HTML, PDF, and MHT exports
+- Exported rich media now stays inside message containers with proportional scaling (no overflow/deformation) in HTML, MHT, and PDF
 - Configurable file naming templates
 - Persistent filename counters (`TotalCount`, `DayCount`, `ChatNameCount`) with configurable values and mapping view
 - Editable `ChatNameCount` associations with inline id editing, single delete, and clear-all reset

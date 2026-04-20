@@ -33,9 +33,11 @@ The TXT export is designed as a readable chat log:
 - Optional metadata export
 - Optional visible reasoning or thinking export when the provider exposes it in the page
 - Optional message date and time export when the provider exposes it in the page
+- Optional metadata for provider/message summary and conversation start, end, and duration when message dates are available
 - Configurable file naming templates
 - Optional inline `EXPORT...` action in the ChatGPT header
-- Theme-aware raised export buttons in the popup and inline export menu
+- Provider and message summary in the popup with the resolved download file name preview
+- Shared raised button component across popup, settings, and inline export menu
 - Refined line-art robot export icon with transparent background assets
 - Unicode-friendly file naming and a blank-line default TXT separator
 - Higher-contrast export button labels for better readability
@@ -66,7 +68,9 @@ The settings page supports:
 - Editable TXT message separator
 - Media handling rules
 - Metadata toggles
+- Popup provider/chat/message summary
 - Message time export toggle
+- Conversation start, end, and duration metadata toggles when message dates exist
 - Thinking or reasoning export toggle
 - Visible export format toggles
 - Auto naming toggle and file name template

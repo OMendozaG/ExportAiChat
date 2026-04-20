@@ -6,7 +6,14 @@
   const { MSG_GET_CHAT_STATUS, MSG_EXPORT_CHAT, EXPORT_FORMATS } = root.constants;
 
   const statusNode = document.getElementById("status");
+  const summaryNode = document.getElementById("summary");
   const actionsNode = document.getElementById("actions");
+  const summaryProviderNode = document.getElementById("summaryProvider");
+  const summaryChatNameNode = document.getElementById("summaryChatName");
+  const summaryMessagesNode = document.getElementById("summaryMessages");
+  const summaryUserMessagesNode = document.getElementById("summaryUserMessages");
+  const summaryLlmMessagesNode = document.getElementById("summaryLlmMessages");
+  const summaryFileNameNode = document.getElementById("summaryFileName");
 
   const exportPdfButton = document.getElementById("exportPdf");
   const exportTxtButton = document.getElementById("exportTxt");
@@ -24,6 +31,25 @@
 
   function setActionsVisible(visible) {
     actionsNode.hidden = !visible;
+  }
+
+  function setSummaryVisible(visible) {
+    summaryNode.hidden = !visible;
+  }
+
+  function setSummary(summary) {
+    if (!summary) {
+      setSummaryVisible(false);
+      return;
+    }
+
+    summaryProviderNode.textContent = summary.providerName || "-";
+    summaryChatNameNode.textContent = summary.chatPath || summary.chatTitle || "-";
+    summaryMessagesNode.textContent = String(summary.totalMessages || 0);
+    summaryUserMessagesNode.textContent = String(summary.userMessages || 0);
+    summaryLlmMessagesNode.textContent = String(summary.llmMessages || 0);
+    summaryFileNameNode.textContent = summary.fileNameBase || "-";
+    setSummaryVisible(true);
   }
 
   function setButtonsEnabled(enabled) {
@@ -69,12 +95,18 @@
     setButtonsEnabled(false);
     const settings = await root.storage.getSettings();
     root.appTheme.applyThemeDocument(settings.appTheme);
+    root.buttonSystem.ensureDocumentStyles(document);
     applyButtonVisibility(settings);
+    root.buttonSystem.decorateButton(exportPdfButton, { label: ".PDF", stacked: true });
+    root.buttonSystem.decorateButton(exportMhtButton, { label: ".MHT", stacked: true });
+    root.buttonSystem.decorateButton(exportHtmlButton, { label: ".HTML", stacked: true });
+    root.buttonSystem.decorateButton(exportTxtButton, { label: ".TXT", stacked: true });
 
     const tab = await queryActiveTab();
 
     if (!tab || typeof tab.id !== "number") {
       setStatus("Could not detect the active tab.");
+      setSummaryVisible(false);
       return;
     }
 
@@ -87,24 +119,29 @@
 
       if (!response || !response.supported) {
         setStatus("Current page is not supported yet (ChatGPT only).");
+        setSummaryVisible(false);
         return;
       }
 
       if (!response.isChatPage || !response.messageCount) {
         setStatus(`Provider: ${response.providerName}. Open a chat to export.`);
+        setSummaryVisible(false);
         return;
       }
 
       if (!visibleExportButtons(popupSettings)) {
         setStatus("No export formats are enabled in Settings.");
+        setSummary(response.summary || null);
         return;
       }
 
+      setSummary(response.summary || null);
       setStatus(`Provider: ${response.providerName}. Messages: ${response.messageCount}.`);
       setActionsVisible(true);
       setButtonsEnabled(true);
     } catch (_error) {
       setStatus("This tab does not have an active content script.");
+      setSummaryVisible(false);
     }
   }
 

@@ -1,16 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Chat Export AI icon">
-  <!-- Default fallback toolbar mark in the neutral Chrome-like light toolbar tone. -->
-  <g fill="none" stroke="#5F6368" stroke-linecap="round" stroke-linejoin="round" stroke-width="8">
-    <rect x="24" y="22" width="80" height="54" rx="18"/>
-    <path d="M64 58v28"/>
-    <path d="M52 74 64 86 76 74"/>
+  <g fill="none" stroke="#7C8E99" stroke-linecap="round" stroke-linejoin="round" stroke-width="10">
+    <rect x="12" y="14" width="104" height="72" rx="24"/>
+    <path d="M64 58v38"/>
+    <path d="M47 78 64 98 81 78"/>
   </g>
-  <g fill="none" stroke="#5F6368" stroke-width="6">
-    <circle cx="49" cy="45" r="8"/>
-    <circle cx="79" cy="45" r="8"/>
+  <g fill="none" stroke="#7C8E99" stroke-width="7">
+    <circle cx="44" cy="50" r="10.5"/>
+    <circle cx="84" cy="50" r="10.5"/>
   </g>
-  <g fill="#5F6368">
-    <circle cx="49" cy="45" r="2.75"/>
-    <circle cx="79" cy="45" r="2.75"/>
+  <g fill="#7C8E99">
+    <circle cx="44" cy="50" r="3.1"/>
+    <circle cx="84" cy="50" r="3.1"/>
   </g>
 </svg>

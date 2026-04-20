@@ -61,6 +61,11 @@
     return Boolean(provider && provider.isChatPage());
   }
 
+  function buildProcessedConversation(provider, settings) {
+    const rawConversation = provider.extractConversation(settings);
+    return root.postProcess.processConversation(rawConversation, settings, provider);
+  }
+
   async function requestFileDownload(payload) {
     const response = await root.chromeHelpers.runtimeSendMessage({
       type: MSG_DOWNLOAD_FILE,
@@ -194,8 +199,7 @@
       scheduleInlineUiRefresh();
       const settings = await root.storage.getSettings();
       const timeoutMs = settings.exportTimeoutSeconds * 1000;
-      const rawConversation = provider.extractConversation(settings);
-      const processedConversation = root.postProcess.processConversation(rawConversation, settings, provider);
+      const processedConversation = buildProcessedConversation(provider, settings);
       const exporter = root.exporters;
 
       if (!exporter) {
@@ -212,6 +216,8 @@
       let htmlDocument = "";
 
       if (format === EXPORT_FORMATS.TXT) {
+        filename = exporter.buildFileName(processedConversation, "txt");
+        root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
         const formatter = exporter.toIrcText || exporter.toChatText;
 
         if (typeof formatter !== "function") {
@@ -219,22 +225,24 @@
         }
 
         content = formatter(processedConversation);
-        filename = exporter.buildFileName(processedConversation, "txt");
       } else if (format === EXPORT_FORMATS.HTML) {
+        filename = exporter.buildFileName(processedConversation, "html");
+        root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
         htmlDocument = exporter.toHtmlDocument(processedConversation, settings);
         content = htmlDocument;
-        filename = exporter.buildFileName(processedConversation, "html");
         mimeType = "text/html;charset=utf-8";
       } else if (format === EXPORT_FORMATS.MHT) {
+        filename = exporter.buildFileName(processedConversation, "mht");
+        root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
         htmlDocument = exporter.toHtmlDocument(processedConversation, settings);
         content = exporter.toMhtDocument(htmlDocument, processedConversation);
-        filename = exporter.buildFileName(processedConversation, "mht");
         mimeType = "application/octet-stream";
       } else if (format === EXPORT_FORMATS.PDF) {
+        filename = exporter.buildFileName(processedConversation, "pdf");
+        root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
         htmlDocument = typeof exporter.toPdfDocument === "function"
           ? exporter.toPdfDocument(processedConversation, settings)
           : exporter.toHtmlDocument(processedConversation, settings);
-        filename = exporter.buildFileName(processedConversation, "pdf");
       } else {
         throw new Error("Unsupported format: " + format);
       }
@@ -277,11 +285,13 @@
         format !== EXPORT_FORMATS.MHT
       ) {
         const htmlDoc = htmlDocument || exporter.toHtmlDocument(processedConversation, settings);
+        const companionFilename = exporter.buildFileName(processedConversation, "mht");
+        root.postProcess.setResolvedFileNameMetadata(processedConversation, companionFilename);
         const mhtContent = exporter.toMhtDocument(htmlDoc, processedConversation);
 
         await withTimeout(
           requestFileDownload({
-            filename: exporter.buildFileName(processedConversation, "mht"),
+            filename: companionFilename,
             mimeType: "application/octet-stream",
             content: mhtContent,
             saveAs: settings.saveMode === "ask"
@@ -303,7 +313,7 @@
     }
   }
 
-  function getChatStatus() {
+  async function getChatStatus() {
     const provider = getActiveProvider();
 
     if (!provider) {
@@ -316,17 +326,30 @@
       };
     }
 
+    const settings = await root.storage.getSettings();
     const liveStatus = provider.getLiveStatus ? provider.getLiveStatus() : {
       isChatPage: provider.isChatPage(),
       messageCount: document.querySelectorAll("[data-message-author-role]").length
     };
+
+    let summary = null;
+
+    if (liveStatus.isChatPage && Number(liveStatus.messageCount || 0) > 0) {
+      try {
+        const processedConversation = buildProcessedConversation(provider, settings);
+        summary = processedConversation.summary || null;
+      } catch (_error) {
+        summary = null;
+      }
+    }
 
     return {
       supported: true,
       providerId: provider.id,
       providerName: provider.displayName,
       isChatPage: Boolean(liveStatus.isChatPage),
-      messageCount: Number(liveStatus.messageCount || 0)
+      messageCount: Number(summary?.totalMessages || liveStatus.messageCount || 0),
+      summary
     };
   }
 
@@ -337,8 +360,13 @@
       }
 
       if (message.type === MSG_GET_CHAT_STATUS) {
-        sendResponse(getChatStatus());
-        return false;
+        getChatStatus()
+          .then((status) => sendResponse(status))
+          .catch((error) => sendResponse({
+            supported: false,
+            error: error.message
+          }));
+        return true;
       }
 
       if (message.type === MSG_EXPORT_CHAT) {

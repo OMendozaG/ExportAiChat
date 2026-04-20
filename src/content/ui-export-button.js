@@ -23,6 +23,8 @@
       return;
     }
 
+    root.buttonSystem.ensureDocumentStyles(document);
+
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
@@ -60,10 +62,19 @@
   gap: 8px;
 }
 #${UI_ROOT_ID} .ceai-inline-btn:hover {
-  filter: saturate(1.04) brightness(1.02);
+  filter: saturate(1.05) brightness(1.05);
 }
-#${UI_ROOT_ID} .ceai-inline-btn.is-loading svg {
+#${UI_ROOT_ID} .ceai-inline-btn .ceai-inline-btn-spinner {
+  display: none;
+  width: 15px;
+  height: 15px;
+}
+#${UI_ROOT_ID} .ceai-inline-btn.is-loading .ceai-inline-btn-spinner {
+  display: block;
   animation: ceai-spin 0.85s linear infinite;
+}
+#${UI_ROOT_ID} .ceai-inline-btn.is-loading .ceai-inline-btn-label {
+  opacity: 0.7;
 }
 #${UI_ROOT_ID} .ceai-inline-btn[disabled] {
   opacity: 0.55;
@@ -73,12 +84,15 @@
   --ceai-menu-bg: #ffffff;
   --ceai-menu-border: #d0d7e2;
   --ceai-menu-shadow: rgba(15, 23, 42, 0.16);
-  --ceai-menu-button-bg: #eef4ff;
-  --ceai-menu-button-border: #c8dafd;
-  --ceai-menu-button-border-strong: #a9c6fd;
-  --ceai-menu-button-base: #86a9ea;
-  --ceai-menu-button-glow: rgba(120, 166, 255, 0.42);
-  --ceai-menu-button-text: #0d2342;
+  --ceai-btn-bg: #eef4ff;
+  --ceai-btn-border: #c8dafd;
+  --ceai-btn-border-strong: #8fb2ff;
+  --ceai-btn-base: #7895d2;
+  --ceai-btn-glow: rgba(111, 164, 255, 0.35);
+  --ceai-btn-text: #142544;
+  --ceai-btn-disabled-bg: #f3f7ff;
+  --ceai-btn-disabled-text: #51627d;
+  --ceai-btn-disabled-base: #c4d2ec;
   position: fixed;
   top: 0;
   left: 0;
@@ -98,73 +112,28 @@
   --ceai-menu-bg: rgba(19, 29, 43, 0.98);
   --ceai-menu-border: #2a3d57;
   --ceai-menu-shadow: rgba(2, 6, 23, 0.42);
-  --ceai-menu-button-bg: #dce9ff;
-  --ceai-menu-button-border: #bbd1fb;
-  --ceai-menu-button-border-strong: #d5e4ff;
-  --ceai-menu-button-base: #6c8fd1;
-  --ceai-menu-button-glow: rgba(195, 219, 255, 0.34);
-  --ceai-menu-button-text: #0b1830;
+  --ceai-btn-bg: #dce9ff;
+  --ceai-btn-border: #bbd1fb;
+  --ceai-btn-border-strong: #dce9ff;
+  --ceai-btn-base: #6f8dca;
+  --ceai-btn-glow: rgba(179, 202, 244, 0.32);
+  --ceai-btn-text: #132441;
+  --ceai-btn-disabled-bg: #edf4ff;
+  --ceai-btn-disabled-text: #52627b;
+  --ceai-btn-disabled-base: #bfcde7;
 }
 #${MENU_ID}.is-open {
   display: flex;
 }
-#${MENU_ID} button {
-  position: relative;
-  margin-bottom: 6px;
-  border: 0;
-  border-radius: 12px;
-  background: var(--ceai-menu-button-bg);
-  color: var(--ceai-menu-button-text);
+#${MENU_ID} .ceai-button {
   min-width: 64px;
   min-height: 56px;
   padding: 8px 12px;
-  cursor: pointer;
   font-size: 13px;
-  font-weight: 700;
   white-space: nowrap;
 }
-#${MENU_ID} button::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow:
-    inset 1px 0 0 var(--ceai-menu-button-border),
-    inset -1px 0 0 var(--ceai-menu-button-border),
-    inset 0 -1px 0 var(--ceai-menu-button-border);
-  pointer-events: none;
-}
-#${MENU_ID} button::after {
-  content: "";
-  position: absolute;
-  top: 6px;
-  right: 0;
-  bottom: -4px;
-  left: 0;
-  border-radius: inherit;
-  background: var(--ceai-menu-button-base);
-  z-index: -1;
-}
-#${MENU_ID} button:hover {
-  background: color-mix(in srgb, var(--ceai-menu-button-bg) 84%, white 16%);
-  box-shadow: 0 0 16px var(--ceai-menu-button-glow);
-  transform: translateY(1px);
-}
-#${MENU_ID} button:hover::before {
-  box-shadow:
-    inset 1px 0 0 var(--ceai-menu-button-border-strong),
-    inset -1px 0 0 var(--ceai-menu-button-border-strong),
-    inset 0 -1px 0 var(--ceai-menu-button-border-strong);
-}
-#${MENU_ID} button:active {
-  transform: translateY(4px);
-}
-#${MENU_ID} button[hidden] {
+#${MENU_ID} .ceai-button[hidden] {
   display: none !important;
-}
-#${MENU_ID} button[disabled] {
-  opacity: 0.55;
-  cursor: default;
 }
 @keyframes ceai-spin {
   from { transform: rotate(0deg); }
@@ -178,7 +147,10 @@
   function createActionButton(label, format, onExport) {
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = label;
+    root.buttonSystem.decorateButton(button, {
+      label,
+      stacked: true
+    });
     button.addEventListener("click", () => {
       void Promise.resolve(onExport(format)).catch(() => {});
     });
@@ -197,7 +169,7 @@
     mainButton.className = "ceai-inline-btn";
     mainButton.setAttribute("aria-label", "Export current chat");
     mainButton.title = "Export current chat";
-    mainButton.innerHTML = "<span class=\"ceai-inline-btn-label\">Export To...</span>";
+    mainButton.innerHTML = "<span class=\"ceai-inline-btn-label\">Export To...</span><span class=\"ceai-inline-btn-spinner\">" + spinnerIconMarkup() + "</span>";
 
     const menuNode = document.createElement("div");
     menuNode.id = MENU_ID;
@@ -334,9 +306,6 @@
     function setLoading(loading) {
       isLoading = Boolean(loading);
       mainButton.classList.toggle("is-loading", isLoading);
-      mainButton.innerHTML = isLoading
-        ? spinnerIconMarkup()
-        : "<span class=\"ceai-inline-btn-label\">Export To...</span>";
       mainButton.disabled = isLoading;
       formatButtons.forEach((button) => {
         button.disabled = isLoading || button.hidden;

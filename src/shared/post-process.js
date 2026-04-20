@@ -25,6 +25,32 @@
     return `${platform} / ${browser}`;
   }
 
+  function formatDateTime(timestampMs) {
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: "short",
+      timeStyle: "short"
+    }).format(new Date(timestampMs));
+  }
+
+  function formatDuration(durationMs) {
+    const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const parts = [];
+
+    if (hours) {
+      parts.push(`${hours}h`);
+    }
+
+    if (hours || minutes) {
+      parts.push(`${String(minutes).padStart(hours ? 2 : 1, "0")}m`);
+    }
+
+    parts.push(`${String(seconds).padStart(hours || minutes ? 2 : 1, "0")}s`);
+    return parts.join(" ");
+  }
+
   function resolveSpeakerLabel(message, names, settings) {
     let baseLabel = "Unknown";
 
@@ -55,61 +81,178 @@
     return String(message.timeLabel || "").trim();
   }
 
-  function buildMetadata(rawConversation, settings, provider, extractedAtIso) {
+  function countMessages(messages) {
+    const totalMessages = messages.length;
+    const userMessages = messages.filter((message) => message.role === ROLES.HUMAN).length;
+    const llmMessages = totalMessages - userMessages;
+
+    return {
+      totalMessages,
+      userMessages,
+      llmMessages
+    };
+  }
+
+  function buildChatPath(rawConversation) {
+    const title = rawConversation.title || "chat";
+    return rawConversation.folderName ? `${rawConversation.folderName}/${title}` : title;
+  }
+
+  function extractTimeline(messages) {
+    const timestamps = messages
+      .map((message) => Number(message.timeMs))
+      .filter((value) => Number.isFinite(value))
+      .sort((left, right) => left - right);
+
+    if (!timestamps.length) {
+      return {
+        hasTimeline: false,
+        startTimeMs: null,
+        endTimeMs: null,
+        durationMs: null,
+        startTimeLabel: "",
+        endTimeLabel: "",
+        durationLabel: ""
+      };
+    }
+
+    const startTimeMs = timestamps[0];
+    const endTimeMs = timestamps[timestamps.length - 1];
+    const durationMs = Math.max(0, endTimeMs - startTimeMs);
+
+    return {
+      hasTimeline: true,
+      startTimeMs,
+      endTimeMs,
+      durationMs,
+      startTimeLabel: formatDateTime(startTimeMs),
+      endTimeLabel: formatDateTime(endTimeMs),
+      durationLabel: formatDuration(durationMs)
+    };
+  }
+
+  function buildConversationSummary(rawConversation, processedMessages, provider) {
+    const counts = countMessages(processedMessages);
+    const timeline = extractTimeline(processedMessages);
+    const conversationLike = {
+      extractedAtIso: new Date().toISOString(),
+      title: rawConversation.title || "chat",
+      folderName: rawConversation.folderName || "",
+      modelName: rawConversation.modelName || provider?.displayName || "Unknown",
+      providerName: provider?.displayName || "Unknown Provider",
+      settings: rawConversation.settings || null
+    };
+
+    const fileNameBase = typeof root.exporters?.resolveFileBaseName === "function"
+      ? root.exporters.resolveFileBaseName(conversationLike)
+      : (rawConversation.title || "chat");
+
+    return {
+      providerName: provider?.displayName || "Unknown Provider",
+      chatTitle: rawConversation.title || "chat",
+      chatPath: buildChatPath(rawConversation),
+      fileNameBase,
+      fileName: fileNameBase,
+      ...counts,
+      ...timeline
+    };
+  }
+
+  function pushMetadata(items, label, value) {
+    if (value === null || value === undefined || value === "") {
+      return;
+    }
+
+    items.push({ label, value: String(value) });
+  }
+
+  function buildMetadata(rawConversation, summary, settings, provider, extractedAtIso) {
     const items = [];
     const extractedAt = new Date(extractedAtIso);
 
     if (settings.metadataExportedAt) {
-      items.push({
-        label: METADATA_LABELS.EXPORTED_AT,
-        value: new Intl.DateTimeFormat(undefined, {
-          dateStyle: "short",
-          timeStyle: "short"
-        }).format(extractedAt)
-      });
+      pushMetadata(items, METADATA_LABELS.EXPORTED_AT, new Intl.DateTimeFormat(undefined, {
+        dateStyle: "short",
+        timeStyle: "short"
+      }).format(extractedAt));
     }
 
     if (settings.metadataDeviceUser) {
-      items.push({
-        label: METADATA_LABELS.DEVICE_USER,
-        value: getBrowserLabel()
-      });
+      pushMetadata(items, METADATA_LABELS.DEVICE_USER, getBrowserLabel());
     }
 
     if (settings.metadataFolder) {
-      items.push({
-        label: METADATA_LABELS.FOLDER,
-        value: rawConversation.folderName || ""
-      });
+      pushMetadata(items, METADATA_LABELS.FOLDER, rawConversation.folderName || "");
     }
 
     if (settings.metadataTitle) {
-      items.push({
-        label: METADATA_LABELS.TITLE,
-        value: rawConversation.title || "chat"
-      });
+      pushMetadata(items, METADATA_LABELS.TITLE, rawConversation.title || "chat");
     }
 
     if (settings.metadataModel) {
-      items.push({
-        label: METADATA_LABELS.MODEL,
-        value: rawConversation.modelName || provider?.displayName || "Unknown"
-      });
+      pushMetadata(items, METADATA_LABELS.MODEL, rawConversation.modelName || provider?.displayName || "Unknown");
     }
 
     if (settings.metadataUrl) {
-      items.push({
-        label: METADATA_LABELS.URL,
-        value: rawConversation.sourceUrl || location.href
-      });
+      pushMetadata(items, METADATA_LABELS.URL, rawConversation.sourceUrl || location.href);
     }
 
-    return items.filter((item) => item.value);
+    if (settings.metadataConversationSummary) {
+      pushMetadata(items, METADATA_LABELS.PROVIDER, summary.providerName);
+      pushMetadata(items, METADATA_LABELS.CHAT_NAME, summary.chatPath);
+      pushMetadata(items, METADATA_LABELS.MESSAGE_TOTAL, summary.totalMessages);
+      pushMetadata(items, METADATA_LABELS.MESSAGE_USER, summary.userMessages);
+      pushMetadata(items, METADATA_LABELS.MESSAGE_LLM, summary.llmMessages);
+      pushMetadata(items, METADATA_LABELS.FILE_NAME, summary.fileName);
+    }
+
+    if (settings.metadataStartTime && summary.hasTimeline) {
+      pushMetadata(items, METADATA_LABELS.START_TIME, summary.startTimeLabel);
+    }
+
+    if (settings.metadataEndTime && summary.hasTimeline) {
+      pushMetadata(items, METADATA_LABELS.END_TIME, summary.endTimeLabel);
+    }
+
+    if (settings.metadataDuration && summary.hasTimeline) {
+      pushMetadata(items, METADATA_LABELS.DURATION, summary.durationLabel);
+    }
+
+    return items;
+  }
+
+  function upsertMetadata(metadata, label, value) {
+    const existingIndex = metadata.findIndex((item) => item.label === label);
+    const nextItem = { label, value: String(value) };
+
+    if (existingIndex >= 0) {
+      metadata[existingIndex] = nextItem;
+      return;
+    }
+
+    metadata.push(nextItem);
+  }
+
+  function setResolvedFileNameMetadata(conversation, filename) {
+    if (!conversation || !filename) {
+      return conversation;
+    }
+
+    conversation.summary = conversation.summary || {};
+    conversation.summary.fileName = filename;
+
+    if (conversation.settings?.metadataConversationSummary) {
+      upsertMetadata(conversation.metadata || (conversation.metadata = []), METADATA_LABELS.FILE_NAME, filename);
+    }
+
+    return conversation;
   }
 
   function processConversation(rawConversation, settings, provider) {
     const names = resolveNames(settings, provider);
     const extractedAtIso = new Date().toISOString();
+
+    rawConversation.settings = settings;
 
     const processedMessages = (rawConversation.messages || [])
       .map((message, index) => {
@@ -123,6 +266,7 @@
           role: message.role || ROLES.UNKNOWN,
           speakerLabel: resolveSpeakerLabel(message, names, settings),
           timeLabel: resolveMessageTimeLabel(message, settings),
+          timeMs: Number.isFinite(Number(message.timeMs)) ? Number(message.timeMs) : null,
           safeHtml,
           text,
           hasMedia: Boolean(message.hasMedia),
@@ -131,6 +275,8 @@
         };
       })
       .filter((message) => message.text || message.safeHtml);
+
+    const summary = buildConversationSummary(rawConversation, processedMessages, provider);
 
     return {
       providerId: rawConversation.providerId,
@@ -141,7 +287,8 @@
       modelName: rawConversation.modelName || provider?.displayName || "Unknown",
       extractedAtIso,
       settings,
-      metadata: buildMetadata(rawConversation, settings, provider, extractedAtIso),
+      metadata: buildMetadata(rawConversation, summary, settings, provider, extractedAtIso),
+      summary,
       names,
       hasMedia: processedMessages.some((message) => message.hasMedia),
       messages: processedMessages
@@ -149,6 +296,7 @@
   }
 
   root.postProcess = {
-    processConversation
+    processConversation,
+    setResolvedFileNameMetadata
   };
 })();

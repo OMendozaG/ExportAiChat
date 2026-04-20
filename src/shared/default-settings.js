@@ -46,6 +46,10 @@
       metadataTitle: true,
       metadataModel: true,
       metadataUrl: false,
+      metadataConversationSummary: true,
+      metadataStartTime: false,
+      metadataEndTime: false,
+      metadataDuration: false,
 
       // Include visible reasoning/thinking blocks when the provider exposes them.
       includeThinking: true,

@@ -19,6 +19,33 @@
 
     <p id="status" class="status">Checking current page...</p>
 
+    <section id="summary" class="summary-card" hidden>
+      <div class="summary-row">
+        <span class="summary-label">Provider</span>
+        <span id="summaryProvider" class="summary-value"></span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">Chat Name</span>
+        <span id="summaryChatName" class="summary-value"></span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">Messages</span>
+        <span id="summaryMessages" class="summary-value"></span>
+      </div>
+      <div class="summary-row summary-breakdown">
+        <span class="summary-label">User</span>
+        <span id="summaryUserMessages" class="summary-value"></span>
+      </div>
+      <div class="summary-row summary-breakdown">
+        <span class="summary-label">LLM</span>
+        <span id="summaryLlmMessages" class="summary-value"></span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">File Name</span>
+        <span id="summaryFileName" class="summary-value"></span>
+      </div>
+    </section>
+
     <section id="actions" class="actions" hidden>
       <button id="exportPdf" type="button">.PDF</button>
       <button id="exportMht" type="button">.MHT</button>
@@ -33,6 +60,7 @@
   <script src="../shared/chrome-helpers.js"></script>
   <script src="../shared/storage.js"></script>
   <script src="../shared/app-theme.js"></script>
+  <script src="../shared/button-system.js"></script>
   <script src="./popup.js"></script>
 </body>
 </html>

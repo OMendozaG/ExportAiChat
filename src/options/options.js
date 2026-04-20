@@ -29,6 +29,10 @@
   const metadataTitleCheckbox = document.getElementById("metadataTitle");
   const metadataModelCheckbox = document.getElementById("metadataModel");
   const metadataUrlCheckbox = document.getElementById("metadataUrl");
+  const metadataConversationSummaryCheckbox = document.getElementById("metadataConversationSummary");
+  const metadataStartTimeCheckbox = document.getElementById("metadataStartTime");
+  const metadataEndTimeCheckbox = document.getElementById("metadataEndTime");
+  const metadataDurationCheckbox = document.getElementById("metadataDuration");
   const includeThinkingCheckbox = document.getElementById("includeThinking");
   const includeThinkingDurationCheckbox = document.getElementById("includeThinkingDuration");
   const includeMessageTimeCheckbox = document.getElementById("includeMessageTime");
@@ -109,6 +113,10 @@
     metadataTitleCheckbox.checked = Boolean(settings.metadataTitle);
     metadataModelCheckbox.checked = Boolean(settings.metadataModel);
     metadataUrlCheckbox.checked = Boolean(settings.metadataUrl);
+    metadataConversationSummaryCheckbox.checked = Boolean(settings.metadataConversationSummary);
+    metadataStartTimeCheckbox.checked = Boolean(settings.metadataStartTime);
+    metadataEndTimeCheckbox.checked = Boolean(settings.metadataEndTime);
+    metadataDurationCheckbox.checked = Boolean(settings.metadataDuration);
     includeThinkingCheckbox.checked = Boolean(settings.includeThinking);
     includeThinkingDurationCheckbox.checked = Boolean(settings.includeThinkingDuration);
     includeMessageTimeCheckbox.checked = Boolean(settings.includeMessageTime);
@@ -154,6 +162,10 @@
       metadataTitle: metadataTitleCheckbox.checked,
       metadataModel: metadataModelCheckbox.checked,
       metadataUrl: metadataUrlCheckbox.checked,
+      metadataConversationSummary: metadataConversationSummaryCheckbox.checked,
+      metadataStartTime: metadataStartTimeCheckbox.checked,
+      metadataEndTime: metadataEndTimeCheckbox.checked,
+      metadataDuration: metadataDurationCheckbox.checked,
       includeThinking: includeThinkingCheckbox.checked,
       includeThinkingDuration: includeThinkingDurationCheckbox.checked,
       includeMessageTime: includeMessageTimeCheckbox.checked,
@@ -170,7 +182,12 @@
   async function loadSettings() {
     const settings = await root.storage.getSettings();
     root.appTheme.applyThemeDocument(settings.appTheme);
+    root.buttonSystem.ensureDocumentStyles(document);
     applySettingsToForm(settings);
+    root.buttonSystem.decorateButton(resetButton, {
+      label: "Reset defaults",
+      secondary: true
+    });
     showStatus("Settings loaded.");
   }
 

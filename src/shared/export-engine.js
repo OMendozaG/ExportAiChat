@@ -438,6 +438,7 @@
 
   root.exporters = {
     buildFileName,
+    resolveFileBaseName,
     toIrcText: toChatText,
     toChatText,
     toHtmlDocument,

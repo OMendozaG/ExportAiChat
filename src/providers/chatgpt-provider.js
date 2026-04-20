@@ -59,16 +59,11 @@
     }).format(date);
   }
 
-  function normalizeTimeLabel(value) {
+  function extractTimeData(value) {
     const raw = normalizeText(value);
 
     if (!raw) {
-      return "";
-    }
-
-    const directMatch = raw.match(TIME_TEXT_REGEX);
-    if (directMatch) {
-      return normalizeText(directMatch[0]);
+      return { label: "", timestampMs: null };
     }
 
     if (/^\d{10,13}$/.test(raw)) {
@@ -77,16 +72,31 @@
       const parsed = new Date(timestamp);
 
       if (!Number.isNaN(parsed.getTime())) {
-        return formatTimeFromDate(parsed);
+        return {
+          label: formatTimeFromDate(parsed),
+          timestampMs: parsed.getTime()
+        };
       }
     }
 
     const parsedTime = Date.parse(raw);
-    if (Number.isNaN(parsedTime)) {
-      return "";
+    if (!Number.isNaN(parsedTime)) {
+      const parsed = new Date(parsedTime);
+      return {
+        label: formatTimeFromDate(parsed),
+        timestampMs: parsed.getTime()
+      };
     }
 
-    return formatTimeFromDate(new Date(parsedTime));
+    const directMatch = raw.match(TIME_TEXT_REGEX);
+    if (directMatch) {
+      return {
+        label: normalizeText(directMatch[0]),
+        timestampMs: null
+      };
+    }
+
+    return { label: "", timestampMs: null };
   }
 
   function pickMessageContentRoot(messageNode, rawRole) {
@@ -149,18 +159,23 @@
       return "";
     }
 
-    // ChatGPT tends to keep the human-visible name in a truncate wrapper or a title attribute.
-    const textNodes = Array.from(container.querySelectorAll("[title], [dir='auto'], .truncate"));
+    // Prefer visible text nodes first so project conversations do not fall back
+    // to broader aria/title strings that can include the folder label again.
+    const textNodes = Array.from(container.querySelectorAll("[dir='auto'], .truncate, span, div"));
 
     for (const node of textNodes) {
-      const titleText = normalizeText(node.getAttribute?.("title"));
-      if (titleText) {
-        return titleText;
-      }
-
       const nodeText = normalizeText(node.textContent);
       if (nodeText) {
         return nodeText;
+      }
+    }
+
+    const titledNodes = Array.from(container.querySelectorAll("[title]"));
+
+    for (const node of titledNodes) {
+      const titleText = normalizeText(node.getAttribute?.("title"));
+      if (titleText) {
+        return titleText;
       }
     }
 
@@ -362,7 +377,7 @@
     return null;
   }
 
-  function extractMessageTimeLabel(messageNode) {
+  function extractMessageTimeData(messageNode) {
     const candidateNodes = Array.from(
       messageNode.querySelectorAll("time, [datetime], [data-time], [data-timestamp], [title], [aria-label]")
     );
@@ -377,23 +392,26 @@
       ];
 
       for (const candidate of attributeCandidates) {
-        const timeLabel = normalizeTimeLabel(candidate);
+        const timeData = extractTimeData(candidate);
 
-        if (timeLabel) {
-          return timeLabel;
+        if (timeData.label) {
+          return timeData;
         }
       }
 
-      const textLabel = normalizeTimeLabel(node.textContent);
-      if (textLabel) {
-        return textLabel;
+      const textData = extractTimeData(node.textContent);
+      if (textData.label) {
+        return textData;
       }
     }
 
-    return "";
+    return {
+      label: "",
+      timestampMs: null
+    };
   }
 
-  function extractThinkingMessage(messageNode, settings, messageId, timeLabel) {
+  function extractThinkingMessage(messageNode, settings, messageId, timeLabel, timeMs) {
     if (!settings.includeThinking) {
       return null;
     }
@@ -440,6 +458,7 @@
       safeHtml: stripped ? sanitized.safeHtml : `<p>${root.sanitize.escapeHtml(indicatorText)}</p>`,
       hasMedia: Boolean(sanitized.hasMedia),
       timeLabel,
+      timeMs,
       isThinking: true,
       thinkingSeconds: secondsMatch ? secondsMatch[1] : null
     };
@@ -460,9 +479,11 @@
       }
       seenIds.add(messageId);
 
-      const timeLabel = extractMessageTimeLabel(node);
+      const timeData = extractMessageTimeData(node);
+      const timeLabel = timeData.label;
+      const timeMs = timeData.timestampMs;
       const thinkingMessage = rawRole === "assistant"
-        ? extractThinkingMessage(node, settings, messageId, timeLabel)
+        ? extractThinkingMessage(node, settings, messageId, timeLabel, timeMs)
         : null;
 
       if (thinkingMessage) {
@@ -484,7 +505,8 @@
         role: mapRole(rawRole),
         safeHtml: sanitized.safeHtml,
         hasMedia: sanitized.hasMedia,
-        timeLabel
+        timeLabel,
+        timeMs
       });
     }
 

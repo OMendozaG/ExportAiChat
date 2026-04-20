@@ -8,15 +8,6 @@
   --card-border: #d6dfec;
   --field-bg: #ffffff;
   --field-border: #c7d0de;
-  --button-bg: #eef4ff;
-  --button-border: #c8dafd;
-  --button-border-strong: #a9c6fd;
-  --button-base: #86a9ea;
-  --button-glow: rgba(120, 166, 255, 0.42);
-  --button-text: #0d2342;
-  --secondary-bg: #8b98ab;
-  --secondary-base: #667388;
-  --secondary-border: #7a8799;
   --tab-bg: #ffffff;
   --tab-border: #c7d0de;
   --tab-text: #0f172a;
@@ -38,15 +29,6 @@
     --card-border: #233247;
     --field-bg: #111b2a;
     --field-border: #2a3d57;
-    --button-bg: #dce9ff;
-    --button-border: #bbd1fb;
-    --button-border-strong: #d5e4ff;
-    --button-base: #6c8fd1;
-    --button-glow: rgba(195, 219, 255, 0.34);
-    --button-text: #0b1830;
-    --secondary-bg: #7d8da6;
-    --secondary-base: #5c6b82;
-    --secondary-border: #72819a;
     --tab-bg: #162131;
     --tab-border: #2a3d57;
     --tab-text: #dbe6f4;
@@ -68,15 +50,6 @@
   --card-border: #233247;
   --field-bg: #111b2a;
   --field-border: #2a3d57;
-  --button-bg: #dce9ff;
-  --button-border: #bbd1fb;
-  --button-border-strong: #d5e4ff;
-  --button-base: #6c8fd1;
-  --button-glow: rgba(195, 219, 255, 0.34);
-  --button-text: #0b1830;
-  --secondary-bg: #7d8da6;
-  --secondary-base: #5c6b82;
-  --secondary-border: #72819a;
   --tab-bg: #162131;
   --tab-border: #2a3d57;
   --tab-text: #dbe6f4;
@@ -99,6 +72,27 @@ body {
   max-width: 900px;
   margin: 0 auto;
   padding: 22px;
+  --ceai-btn-bg: #eef4ff;
+  --ceai-btn-border: #c8dafd;
+  --ceai-btn-border-strong: #8fb2ff;
+  --ceai-btn-base: #7895d2;
+  --ceai-btn-glow: rgba(111, 164, 255, 0.35);
+  --ceai-btn-text: #142544;
+  --ceai-btn-disabled-bg: #f3f7ff;
+  --ceai-btn-disabled-text: #51627d;
+  --ceai-btn-disabled-base: #c4d2ec;
+}
+
+:root[data-resolved-theme="dark"] .options-page {
+  --ceai-btn-bg: #dce9ff;
+  --ceai-btn-border: #bbd1fb;
+  --ceai-btn-border-strong: #dce9ff;
+  --ceai-btn-base: #6f8dca;
+  --ceai-btn-glow: rgba(179, 202, 244, 0.32);
+  --ceai-btn-text: #132441;
+  --ceai-btn-disabled-bg: #edf4ff;
+  --ceai-btn-disabled-text: #52627b;
+  --ceai-btn-disabled-base: #bfcde7;
 }
 
 .title-row {
@@ -265,84 +259,8 @@ body {
 }
 
 .actions button {
-  position: relative;
-  margin-bottom: 6px;
-  border: 0;
-  border-radius: 12px;
   padding: 10px 14px;
   font-size: 0.92rem;
-  font-weight: 700;
-  cursor: pointer;
-  background: var(--button-bg);
-  color: var(--button-text);
-}
-
-.actions button::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow:
-    inset 1px 0 0 var(--button-border),
-    inset -1px 0 0 var(--button-border),
-    inset 0 -1px 0 var(--button-border);
-  pointer-events: none;
-}
-
-.actions button::after {
-  content: "";
-  position: absolute;
-  top: 6px;
-  right: 0;
-  bottom: -4px;
-  left: 0;
-  border-radius: inherit;
-  background: var(--button-base);
-  z-index: -1;
-}
-
-.actions button.secondary {
-  background: var(--secondary-bg);
-}
-
-.actions button.secondary::after {
-  background: var(--secondary-base);
-}
-
-.actions button.secondary::before {
-  box-shadow:
-    inset 1px 0 0 var(--secondary-border),
-    inset -1px 0 0 var(--secondary-border),
-    inset 0 -1px 0 var(--secondary-border);
-}
-
-.actions button:hover {
-  background: color-mix(in srgb, var(--button-bg) 84%, white 16%);
-  box-shadow: 0 0 16px var(--button-glow);
-  transform: translateY(1px);
-}
-
-.actions button:hover::before {
-  box-shadow:
-    inset 1px 0 0 var(--button-border-strong),
-    inset -1px 0 0 var(--button-border-strong),
-    inset 0 -1px 0 var(--button-border-strong);
-}
-
-.actions button.secondary:hover {
-  background: color-mix(in srgb, var(--secondary-bg) 84%, white 16%);
-  box-shadow: 0 0 16px rgba(168, 184, 214, 0.25);
-}
-
-.actions button.secondary:hover::before {
-  box-shadow:
-    inset 1px 0 0 color-mix(in srgb, var(--secondary-border) 70%, white 30%),
-    inset -1px 0 0 color-mix(in srgb, var(--secondary-border) 70%, white 30%),
-    inset 0 -1px 0 color-mix(in srgb, var(--secondary-border) 70%, white 30%);
-}
-
-.actions button:active {
-  transform: translateY(4px);
 }
 
 .status {

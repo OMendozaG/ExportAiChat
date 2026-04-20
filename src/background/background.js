@@ -10,6 +10,12 @@
   const DEFAULT_EXPORT_TIMEOUT_MS = 20000;
   const MAX_EXPORT_TIMEOUT_MS = 20000;
   const ACTION_ICON_PATHS = {
+    default: {
+      16: "src/assets/robot-download-16.png",
+      32: "src/assets/robot-download-32.png",
+      48: "src/assets/robot-download-48.png",
+      128: "src/assets/robot-download-128.png"
+    },
     light: {
       16: "src/assets/robot-download-light-16.png",
       32: "src/assets/robot-download-light-32.png",
@@ -279,17 +285,15 @@
       );
 
       await withTimeout(
-        sendDebuggerCommand(target, "Page.navigate", {
-          url: textToDataUrl(payload.html, "text/html;charset=utf-8")
-        }),
+        (async () => {
+          const loadEventPromise = waitForDebuggerEvent(target, "Page.loadEventFired");
+          await sendDebuggerCommand(target, "Page.navigate", {
+            url: textToDataUrl(payload.html, "text/html;charset=utf-8")
+          });
+          await loadEventPromise;
+        })(),
         timeoutMs,
         "Timed out while navigating the PDF renderer."
-      );
-
-      await withTimeout(
-        waitForDebuggerEvent(target, "Page.loadEventFired"),
-        timeoutMs,
-        "Timed out while waiting for the PDF page to finish loading."
       );
 
       await withTimeout(
@@ -367,7 +371,11 @@
   }
 
   function normalizeActionTheme(theme) {
-    return theme === "dark" ? "dark" : "light";
+    if (theme === "dark" || theme === "light") {
+      return theme;
+    }
+
+    return "default";
   }
 
   function setActionIconTheme(theme) {
@@ -389,11 +397,11 @@
   }
 
   chrome.runtime.onInstalled.addListener(() => {
-    void setActionIconTheme("light").catch(() => {});
+    void setActionIconTheme("default").catch(() => {});
   });
 
   chrome.runtime.onStartup.addListener(() => {
-    void setActionIconTheme("light").catch(() => {});
+    void setActionIconTheme("default").catch(() => {});
   });
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

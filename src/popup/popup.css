@@ -6,12 +6,6 @@
   --muted: #475569;
   --panel-bg: #ffffff;
   --panel-border: #d6dfec;
-  --button-bg: #eef4ff;
-  --button-border: #c8dafd;
-  --button-border-strong: #a9c6fd;
-  --button-base: #86a9ea;
-  --button-glow: rgba(120, 166, 255, 0.42);
-  --button-text: #0d2342;
   --icon-bg: #ffffff;
   --icon-border: #d6dfec;
   --icon-text: #1f2937;
@@ -25,12 +19,6 @@
     --muted: #a8bad2;
     --panel-bg: #162131;
     --panel-border: #233247;
-    --button-bg: #dce9ff;
-    --button-border: #bbd1fb;
-    --button-border-strong: #d5e4ff;
-    --button-base: #6c8fd1;
-    --button-glow: rgba(195, 219, 255, 0.34);
-    --button-text: #0b1830;
     --icon-bg: #1b2738;
     --icon-border: #2a3d57;
     --icon-text: #e5edf8;
@@ -44,12 +32,6 @@
   --muted: #a8bad2;
   --panel-bg: #162131;
   --panel-border: #233247;
-  --button-bg: #dce9ff;
-  --button-border: #bbd1fb;
-  --button-border-strong: #d5e4ff;
-  --button-base: #6c8fd1;
-  --button-glow: rgba(195, 219, 255, 0.34);
-  --button-text: #0b1830;
   --icon-bg: #1b2738;
   --icon-border: #2a3d57;
   --icon-text: #e5edf8;
@@ -65,6 +47,27 @@ body {
 .popup {
   width: 332px;
   padding: 14px;
+  --ceai-btn-bg: #eef4ff;
+  --ceai-btn-border: #c8dafd;
+  --ceai-btn-border-strong: #8fb2ff;
+  --ceai-btn-base: #7895d2;
+  --ceai-btn-glow: rgba(111, 164, 255, 0.35);
+  --ceai-btn-text: #142544;
+  --ceai-btn-disabled-bg: #f3f7ff;
+  --ceai-btn-disabled-text: #51627d;
+  --ceai-btn-disabled-base: #c4d2ec;
+}
+
+:root[data-resolved-theme="dark"] .popup {
+  --ceai-btn-bg: #dce9ff;
+  --ceai-btn-border: #bbd1fb;
+  --ceai-btn-border-strong: #dce9ff;
+  --ceai-btn-base: #6f8dca;
+  --ceai-btn-glow: rgba(179, 202, 244, 0.32);
+  --ceai-btn-text: #132441;
+  --ceai-btn-disabled-bg: #edf4ff;
+  --ceai-btn-disabled-text: #52627b;
+  --ceai-btn-disabled-base: #bfcde7;
 }
 
 .title-row {
@@ -86,93 +89,49 @@ h1 {
   color: var(--muted);
 }
 
+.summary-card {
+  margin: 0 0 12px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+}
+
+.summary-row {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 10px;
+  padding: 5px 0;
+}
+
+.summary-breakdown {
+  padding-left: 14px;
+  grid-template-columns: 74px 1fr;
+}
+
+.summary-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.summary-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-word;
+}
+
 .actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
   gap: 8px;
 }
 
 .actions button {
-  position: relative;
-  flex: 1 1 70px;
-  min-height: 60px;
-  margin-bottom: 6px;
-  border: 0;
-  border-radius: 14px;
-  background: var(--button-bg);
-  color: var(--button-text);
-  padding: 8px 6px;
+  min-height: 70px;
+  padding: 10px 6px;
   font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: transform 120ms ease, filter 120ms ease;
-}
-
-.actions button::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow:
-    inset 1px 0 0 var(--button-border),
-    inset -1px 0 0 var(--button-border),
-    inset 0 -1px 0 var(--button-border);
-  pointer-events: none;
-}
-
-.actions button::after {
-  content: "";
-  position: absolute;
-  top: 6px;
-  right: 0;
-  bottom: -4px;
-  left: 0;
-  border-radius: inherit;
-  background: var(--button-base);
-  z-index: -1;
-}
-
-.actions button:hover {
-  background: color-mix(in srgb, var(--button-bg) 84%, white 16%);
-  box-shadow: 0 0 16px var(--button-glow);
-  filter: none;
-  transform: translateY(1px);
-}
-
-.actions button:hover::before {
-  box-shadow:
-    inset 1px 0 0 var(--button-border-strong),
-    inset -1px 0 0 var(--button-border-strong),
-    inset 0 -1px 0 var(--button-border-strong);
-}
-
-.actions button:active {
-  transform: translateY(4px);
-}
-
-.actions button.is-loading {
-  color: transparent;
-}
-
-.actions button.is-loading::before {
-  content: "";
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  left: 50%;
-  top: 50%;
-  margin-left: -8px;
-  margin-top: -8px;
-  border-radius: 999px;
-  border: 2px solid rgba(20, 50, 95, 0.2);
-  border-top-color: var(--button-text);
-  animation: ceai-popup-spin 0.85s linear infinite;
-}
-
-.actions button[disabled] {
-  opacity: 0.7;
-  cursor: default;
 }
 
 .icon-button {
@@ -189,16 +148,11 @@ h1 {
 }
 
 .icon-button:hover {
-  filter: brightness(1.03);
+  filter: brightness(1.06);
 }
 
 .icon-button svg {
   width: 16px;
   height: 16px;
   fill: currentColor;
-}
-
-@keyframes ceai-popup-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }

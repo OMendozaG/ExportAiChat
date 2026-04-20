@@ -55,7 +55,16 @@
       FOLDER: "Chat Folder",
       TITLE: "Chat Title",
       MODEL: "Chat Model",
-      URL: "Chat URL"
+      URL: "Chat URL",
+      PROVIDER: "Provider",
+      CHAT_NAME: "Chat Name",
+      MESSAGE_TOTAL: "Messages",
+      MESSAGE_USER: "User Messages",
+      MESSAGE_LLM: "LLM Messages",
+      FILE_NAME: "File Name",
+      START_TIME: "Start Time",
+      END_TIME: "End Time",
+      DURATION: "Duration"
     },
 
     // Estilo global para quotes y divisores en el postprocesado común.

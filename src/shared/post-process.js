@@ -25,8 +25,26 @@
     return `${platform} / ${browser}`;
   }
 
+  function getPreferredLocales() {
+    if (Array.isArray(navigator.languages) && navigator.languages.length) {
+      return navigator.languages;
+    }
+
+    if (navigator.language) {
+      return [navigator.language];
+    }
+
+    return undefined;
+  }
+
+  function formatShortDate(timestampMs) {
+    return new Intl.DateTimeFormat(getPreferredLocales(), {
+      dateStyle: "short"
+    }).format(new Date(timestampMs));
+  }
+
   function formatDateTime(timestampMs) {
-    return new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat(getPreferredLocales(), {
       dateStyle: "short",
       timeStyle: "short"
     }).format(new Date(timestampMs));
@@ -234,9 +252,7 @@
     const extractedAt = new Date(extractedAtIso);
 
     if (settings.metadataExportedAt) {
-      pushMetadata(items, METADATA_LABELS.EXPORTED_AT, new Intl.DateTimeFormat(undefined, {
-        dateStyle: "short"
-      }).format(extractedAt));
+      pushMetadata(items, METADATA_LABELS.EXPORTED_AT, formatShortDate(extractedAt));
     }
 
     if (settings.metadataDeviceUser) {

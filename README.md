@@ -86,6 +86,7 @@ The settings page supports:
 - Separate metadata toggles for provider, chat name, and message summary
 - `Provider` metadata disabled by default
 - `PC/User` metadata disabled by default
+- Metadata `Date` and conversation timeline labels follow the browser/system locale short date format
 - Popup provider/chat/message summary with total messages and H/AI counts
 - Message time export toggle
 - Message id export toggle

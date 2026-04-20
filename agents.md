@@ -45,7 +45,7 @@ Settings must support relevant shared behavior, including:
 - multiline continuation style,
 - editable TXT message separator,
 - visible export format buttons,
-- inline ChatGPT header button toggle,
+- provider-specific in-page export button toggles,
 - auto naming and editable file name template,
 - save mode: auto-save or ask for location.
 
@@ -77,8 +77,13 @@ Do not inject random floating controls into the page layout.
 
 For ChatGPT:
 - if inline integration is enabled, the entry point should live in the header area near the share action,
-- the button label should stay stable as `EXPORT...`,
+- the trigger should be a stable export icon button,
 - its export menu should render as an absolute or fixed overlay so it is not clipped by the host page layout.
+
+When a new provider is added:
+- add a dedicated integration checkbox for that provider in Settings, defaulting to `true`,
+- decide where the in-page export button belongs in that provider UI,
+- implement that anchor location in the provider adapter.
 
 ## Provider Onboarding Flow
 When adding a new provider:
@@ -88,6 +93,7 @@ When adding a new provider:
 4. Implement a new adapter under `src/providers/`.
 5. Return normalized raw conversation data to the shared post-processing layer.
 6. Do not make exporters depend on provider-specific DOM details.
+7. Add the provider to the integration settings so its in-page button can be enabled or disabled independently.
 
 When DeepSeek, Grok, Claude, Gemini, or other providers are added later, request their URL limits explicitly before wiring the manifest and provider matcher.
 

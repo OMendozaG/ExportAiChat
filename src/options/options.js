@@ -5,6 +5,7 @@
 (() => {
   const root = globalThis.ChatExportAi;
   const { AI_NAME_MODE } = root.constants;
+  const { MAX_EXPORT_TIMEOUT_SECONDS } = root.constants;
 
   const form = document.getElementById("settingsForm");
   const statusNode = document.getElementById("status");
@@ -28,7 +29,8 @@
   const metadataUrlCheckbox = document.getElementById("metadataUrl");
   const includeThinkingCheckbox = document.getElementById("includeThinking");
   const includeMessageTimeCheckbox = document.getElementById("includeMessageTime");
-  const showHeaderExportButtonCheckbox = document.getElementById("showHeaderExportButton");
+  const showHeaderExportButtonChatgptCheckbox = document.getElementById("showHeaderExportButtonChatgpt");
+  const exportTimeoutSecondsInput = document.getElementById("exportTimeoutSeconds");
   const showExportPdfCheckbox = document.getElementById("showExportPdf");
   const showExportMhtCheckbox = document.getElementById("showExportMht");
   const showExportHtmlCheckbox = document.getElementById("showExportHtml");
@@ -79,6 +81,12 @@
     });
   }
 
+  function clampTimeoutSeconds(value) {
+    const numericValue = Number(value);
+    const safeValue = Number.isFinite(numericValue) ? numericValue : MAX_EXPORT_TIMEOUT_SECONDS;
+    return Math.min(MAX_EXPORT_TIMEOUT_SECONDS, Math.max(1, Math.round(safeValue)));
+  }
+
   function applySettingsToForm(settings) {
     humanNameInput.value = settings.humanName || "";
     aiCustomNameInput.value = settings.aiCustomName || "";
@@ -98,7 +106,10 @@
     metadataUrlCheckbox.checked = Boolean(settings.metadataUrl);
     includeThinkingCheckbox.checked = Boolean(settings.includeThinking);
     includeMessageTimeCheckbox.checked = Boolean(settings.includeMessageTime);
-    showHeaderExportButtonCheckbox.checked = Boolean(settings.showHeaderExportButton);
+    showHeaderExportButtonChatgptCheckbox.checked = Boolean(
+      settings.showHeaderExportButtonChatgpt ?? settings.showHeaderExportButton
+    );
+    exportTimeoutSecondsInput.value = String(clampTimeoutSeconds(settings.exportTimeoutSeconds));
     showExportPdfCheckbox.checked = Boolean(settings.showExportPdf);
     showExportMhtCheckbox.checked = Boolean(settings.showExportMht);
     showExportHtmlCheckbox.checked = Boolean(settings.showExportHtml);
@@ -137,7 +148,9 @@
       metadataUrl: metadataUrlCheckbox.checked,
       includeThinking: includeThinkingCheckbox.checked,
       includeMessageTime: includeMessageTimeCheckbox.checked,
-      showHeaderExportButton: showHeaderExportButtonCheckbox.checked,
+      showHeaderExportButton: showHeaderExportButtonChatgptCheckbox.checked,
+      showHeaderExportButtonChatgpt: showHeaderExportButtonChatgptCheckbox.checked,
+      exportTimeoutSeconds: clampTimeoutSeconds(exportTimeoutSecondsInput.value),
       showExportPdf: showExportPdfCheckbox.checked,
       showExportMht: showExportMhtCheckbox.checked,
       showExportHtml: showExportHtmlCheckbox.checked,
@@ -192,6 +205,9 @@
   });
 
   autoFileNameCheckbox.addEventListener("change", updateFileNameFieldState);
+  exportTimeoutSecondsInput.addEventListener("change", () => {
+    exportTimeoutSecondsInput.value = String(clampTimeoutSeconds(exportTimeoutSecondsInput.value));
+  });
   tabButtons.forEach((button) => {
     button.addEventListener("click", () => {
       activateTab(button.dataset.tab);

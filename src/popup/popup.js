@@ -16,6 +16,7 @@
 
   let activeTabId = null;
   let popupSettings = null;
+  let exportInProgress = false;
 
   function setStatus(message) {
     statusNode.textContent = message;
@@ -27,7 +28,13 @@
 
   function setButtonsEnabled(enabled) {
     [exportPdfButton, exportMhtButton, exportHtmlButton, exportTxtButton].forEach((button) => {
-      button.disabled = !enabled || button.hidden;
+      button.disabled = !enabled || button.hidden || exportInProgress;
+    });
+  }
+
+  function setLoadingButton(activeButton) {
+    [exportPdfButton, exportMhtButton, exportHtmlButton, exportTxtButton].forEach((button) => {
+      button.classList.toggle("is-loading", button === activeButton && exportInProgress);
     });
   }
 
@@ -99,12 +106,19 @@
     }
   }
 
-  async function runExport(format) {
+  async function runExport(format, buttonNode) {
     if (activeTabId === null) {
       setStatus("No active tab selected.");
       return;
     }
 
+    if (exportInProgress) {
+      setStatus("An export is already in progress.");
+      return;
+    }
+
+    exportInProgress = true;
+    setLoadingButton(buttonNode);
     setButtonsEnabled(false);
     setStatus(`Exporting ${format.toUpperCase()}...`);
 
@@ -122,14 +136,16 @@
     } catch (error) {
       setStatus(`Error: ${error.message}`);
     } finally {
+      exportInProgress = false;
+      setLoadingButton(null);
       setButtonsEnabled(true);
     }
   }
 
-  exportPdfButton.addEventListener("click", () => runExport(EXPORT_FORMATS.PDF));
-  exportMhtButton.addEventListener("click", () => runExport(EXPORT_FORMATS.MHT));
-  exportHtmlButton.addEventListener("click", () => runExport(EXPORT_FORMATS.HTML));
-  exportTxtButton.addEventListener("click", () => runExport(EXPORT_FORMATS.TXT));
+  exportPdfButton.addEventListener("click", () => runExport(EXPORT_FORMATS.PDF, exportPdfButton));
+  exportMhtButton.addEventListener("click", () => runExport(EXPORT_FORMATS.MHT, exportMhtButton));
+  exportHtmlButton.addEventListener("click", () => runExport(EXPORT_FORMATS.HTML, exportHtmlButton));
+  exportTxtButton.addEventListener("click", () => runExport(EXPORT_FORMATS.TXT, exportTxtButton));
 
   openOptionsButton.addEventListener("click", () => {
     chrome.runtime.openOptionsPage();

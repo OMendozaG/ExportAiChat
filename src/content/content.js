@@ -21,6 +21,32 @@
   let domObserver = null;
   let cachedInlineUiSettings = null;
 
+  function getProviderButtonSetting(settings, providerId) {
+    if (providerId === "chatgpt") {
+      return Boolean(settings.showHeaderExportButtonChatgpt ?? settings.showHeaderExportButton);
+    }
+
+    return Boolean(settings.showHeaderExportButton);
+  }
+
+  function withTimeout(promise, timeoutMs, timeoutMessage) {
+    return new Promise((resolve, reject) => {
+      const timerId = window.setTimeout(() => {
+        reject(new Error(timeoutMessage));
+      }, timeoutMs);
+
+      Promise.resolve(promise)
+        .then((value) => {
+          window.clearTimeout(timerId);
+          resolve(value);
+        })
+        .catch((error) => {
+          window.clearTimeout(timerId);
+          reject(error);
+        });
+    });
+  }
+
   function resolveProvider() {
     activeProvider = root.providers.findProviderForUrl(location.href);
     return activeProvider;
@@ -80,8 +106,8 @@
     cachedInlineUiSettings = settings;
 
     if (
-      !settings.showHeaderExportButton ||
       !provider ||
+      !getProviderButtonSetting(settings, provider.id) ||
       typeof provider.findInlineActionAnchor !== "function" ||
       !provider.isChatPage() ||
       !liveStatus?.messageCount
@@ -126,12 +152,15 @@
     const ui = ensureInlineUi();
 
     if (ui) {
-      ui.setEnabled(false);
+      ui.setLoading(true);
     }
 
     try {
       await exportCurrentChat(format);
     } finally {
+      if (ui) {
+        ui.setLoading(false);
+      }
       scheduleInlineUiRefresh();
     }
   }
@@ -156,6 +185,7 @@
     try {
       scheduleInlineUiRefresh();
       const settings = await root.storage.getSettings();
+      const timeoutMs = settings.exportTimeoutSeconds * 1000;
       const rawConversation = provider.extractConversation(settings);
       const processedConversation = root.postProcess.processConversation(rawConversation, settings, provider);
       const exporter = root.exporters;
@@ -200,25 +230,34 @@
       }
 
       if (format === EXPORT_FORMATS.PDF) {
-        const response = await root.chromeHelpers.runtimeSendMessage({
-          type: MSG_RENDER_HTML_TO_PDF,
-          payload: {
-            filename,
-            html: htmlDocument,
-            saveAs: settings.saveMode === "ask"
-          }
-        });
+        const response = await withTimeout(
+          root.chromeHelpers.runtimeSendMessage({
+            type: MSG_RENDER_HTML_TO_PDF,
+            payload: {
+              filename,
+              html: htmlDocument,
+              saveAs: settings.saveMode === "ask",
+              timeoutMs
+            }
+          }),
+          timeoutMs + 1000,
+          `The PDF export exceeded the ${settings.exportTimeoutSeconds}s timeout.`
+        );
 
         if (!response || !response.ok) {
           throw new Error(response?.error || "Unknown PDF render error.");
         }
       } else {
-        await requestFileDownload({
-          filename,
-          mimeType,
-          content,
-          saveAs: settings.saveMode === "ask"
-        });
+        await withTimeout(
+          requestFileDownload({
+            filename,
+            mimeType,
+            content,
+            saveAs: settings.saveMode === "ask"
+          }),
+          timeoutMs,
+          `The ${format.toUpperCase()} export exceeded the ${settings.exportTimeoutSeconds}s timeout.`
+        );
       }
 
       if (
@@ -230,12 +269,16 @@
         const htmlDoc = htmlDocument || exporter.toHtmlDocument(processedConversation, settings);
         const mhtContent = exporter.toMhtDocument(htmlDoc, processedConversation);
 
-        await requestFileDownload({
-          filename: exporter.buildFileName(processedConversation, "mht"),
-          mimeType: "message/rfc822;charset=utf-8",
-          content: mhtContent,
-          saveAs: settings.saveMode === "ask"
-        });
+        await withTimeout(
+          requestFileDownload({
+            filename: exporter.buildFileName(processedConversation, "mht"),
+            mimeType: "message/rfc822;charset=utf-8",
+            content: mhtContent,
+            saveAs: settings.saveMode === "ask"
+          }),
+          timeoutMs,
+          `The companion MHT export exceeded the ${settings.exportTimeoutSeconds}s timeout.`
+        );
       }
 
       return {

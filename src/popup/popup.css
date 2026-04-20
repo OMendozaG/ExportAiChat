@@ -47,11 +47,31 @@ h1 {
   font-size: 12px;
   cursor: pointer;
   white-space: nowrap;
+  position: relative;
 }
 
 .actions button:hover,
 .icon-button:hover {
   background: #0849af;
+}
+
+.actions button.is-loading {
+  color: transparent;
+}
+
+.actions button.is-loading::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 50%;
+  top: 50%;
+  margin-left: -8px;
+  margin-top: -8px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  border-top-color: #ffffff;
+  animation: ceai-popup-spin 0.85s linear infinite;
 }
 
 .icon-button {
@@ -71,4 +91,9 @@ h1 {
   width: 16px;
   height: 16px;
   fill: currentColor;
+}
+
+@keyframes ceai-popup-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

@@ -123,6 +123,13 @@ body {
   font-size: 0.9rem;
 }
 
+.field-help {
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
 .field code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }

@@ -6,6 +6,8 @@
   const MSG_CAPTURE_TAB_MHTML = "CHAT_EXPORT_AI_CAPTURE_TAB_MHTML";
   const MSG_RENDER_HTML_TO_PDF = "CHAT_EXPORT_AI_RENDER_HTML_TO_PDF";
   const DEBUGGER_VERSION = "1.3";
+  const DEFAULT_EXPORT_TIMEOUT_MS = 20000;
+  const MAX_EXPORT_TIMEOUT_MS = 20000;
 
   function bytesToBase64(bytes) {
     let binary = "";
@@ -82,38 +84,30 @@
     });
   }
 
-  function waitForTabComplete(tabId) {
+  function normalizeTimeoutMs(value) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      return DEFAULT_EXPORT_TIMEOUT_MS;
+    }
+
+    return Math.min(MAX_EXPORT_TIMEOUT_MS, Math.max(1000, Math.round(numericValue)));
+  }
+
+  function withTimeout(promise, timeoutMs, message) {
     return new Promise((resolve, reject) => {
-      chrome.tabs.get(tabId, (tab) => {
-        const initialError = chrome.runtime.lastError;
+      const timerId = setTimeout(() => {
+        reject(new Error(message));
+      }, timeoutMs);
 
-        if (initialError) {
-          reject(new Error(initialError.message));
-          return;
-        }
-
-        if (tab?.status === "complete") {
-          resolve();
-          return;
-        }
-
-        const timeoutId = setTimeout(() => {
-          chrome.tabs.onUpdated.removeListener(handleUpdated);
-          reject(new Error("Timed out while waiting for the PDF tab to load."));
-        }, 15000);
-
-        function handleUpdated(updatedTabId, changeInfo) {
-          if (updatedTabId !== tabId || changeInfo.status !== "complete") {
-            return;
-          }
-
-          clearTimeout(timeoutId);
-          chrome.tabs.onUpdated.removeListener(handleUpdated);
-          resolve();
-        }
-
-        chrome.tabs.onUpdated.addListener(handleUpdated);
-      });
+      Promise.resolve(promise)
+        .then((value) => {
+          clearTimeout(timerId);
+          resolve(value);
+        })
+        .catch((error) => {
+          clearTimeout(timerId);
+          reject(error);
+        });
     });
   }
 
@@ -194,40 +188,69 @@
       throw new Error("Missing HTML or filename for PDF rendering.");
     }
 
+    const timeoutMs = normalizeTimeoutMs(payload.timeoutMs);
     const tab = await createInactiveTab("about:blank");
     const target = { tabId: tab.id };
     let debuggerAttached = false;
 
     try {
-      await attachDebugger(target);
+      await withTimeout(
+        attachDebugger(target),
+        timeoutMs,
+        "Timed out while attaching the PDF renderer."
+      );
       debuggerAttached = true;
 
-      await sendDebuggerCommand(target, "Page.enable");
-      const frameTree = await sendDebuggerCommand(target, "Page.getFrameTree");
+      await withTimeout(
+        sendDebuggerCommand(target, "Page.enable"),
+        timeoutMs,
+        "Timed out while preparing the PDF page."
+      );
+      const frameTree = await withTimeout(
+        sendDebuggerCommand(target, "Page.getFrameTree"),
+        timeoutMs,
+        "Timed out while resolving the PDF frame."
+      );
       const frameId = frameTree?.frameTree?.frame?.id;
 
       if (!frameId) {
         throw new Error("Could not resolve the PDF frame id.");
       }
 
-      await sendDebuggerCommand(target, "Page.setDocumentContent", {
-        frameId,
-        html: payload.html
-      });
+      await withTimeout(
+        sendDebuggerCommand(target, "Page.setDocumentContent", {
+          frameId,
+          html: payload.html
+        }),
+        timeoutMs,
+        "Timed out while sending HTML to the PDF renderer."
+      );
 
-      await waitForPdfDocumentReady(target);
+      await withTimeout(
+        waitForPdfDocumentReady(target),
+        timeoutMs,
+        "Timed out while waiting for the PDF document to be ready."
+      );
 
-      const result = await sendDebuggerCommand(target, "Page.printToPDF", {
-        printBackground: false,
-        preferCSSPageSize: true,
-        displayHeaderFooter: false
-      });
+      const result = await withTimeout(
+        sendDebuggerCommand(target, "Page.printToPDF", {
+          printBackground: false,
+          preferCSSPageSize: true,
+          displayHeaderFooter: false
+        }),
+        timeoutMs,
+        "Timed out while rendering the PDF."
+      );
 
       if (!result?.data) {
         throw new Error("Chrome did not return PDF data.");
       }
 
-      return downloadByUrl("data:application/pdf;base64," + result.data, payload.filename, payload.saveAs);
+      return withTimeout(
+        downloadByUrl("data:application/pdf;base64," + result.data, payload.filename, payload.saveAs),
+        timeoutMs,
+        "Timed out while saving the PDF download."
+      );
     } finally {
       if (debuggerAttached) {
         await detachDebugger(target);

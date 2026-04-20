@@ -8,6 +8,9 @@
     // Clave única para guardar configuración persistente.
     SETTINGS_STORAGE_KEY: "chatExportAi.settings.v1",
 
+    // Hard cap for export timeout while the PDF pipeline is still conservative.
+    MAX_EXPORT_TIMEOUT_SECONDS: 20,
+
     // Contrato de mensajes entre content/popup/background.
     MSG_DOWNLOAD_FILE: "CHAT_EXPORT_AI_DOWNLOAD_FILE",
     MSG_RENDER_HTML_TO_PDF: "CHAT_EXPORT_AI_RENDER_HTML_TO_PDF",

@@ -21,6 +21,15 @@
     ].join("");
   }
 
+  function spinnerIconMarkup() {
+    return [
+      "<svg viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\">",
+      "  <circle cx=\"12\" cy=\"12\" r=\"8\" fill=\"none\" stroke=\"rgba(255,255,255,0.28)\" stroke-width=\"3\"></circle>",
+      "  <path d=\"M12 4a8 8 0 0 1 8 8\" fill=\"none\" stroke=\"#ffffff\" stroke-linecap=\"round\" stroke-width=\"3\"></path>",
+      "</svg>"
+    ].join("");
+  }
+
   function ensureStyles() {
     if (document.getElementById(STYLE_ID)) {
       return;
@@ -58,6 +67,9 @@
 }
 #${UI_ROOT_ID} .ceai-inline-btn:hover {
   filter: saturate(1.04) brightness(1.02);
+}
+#${UI_ROOT_ID} .ceai-inline-btn.is-loading svg {
+  animation: ceai-spin 0.85s linear infinite;
 }
 #${UI_ROOT_ID} .ceai-inline-btn[disabled] {
   opacity: 0.55;
@@ -104,6 +116,10 @@
   opacity: 0.55;
   cursor: default;
 }
+@keyframes ceai-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 `;
 
     document.documentElement.appendChild(style);
@@ -141,6 +157,7 @@
     const exportHtml = createActionButton(".HTML", root.constants.EXPORT_FORMATS.HTML, onExport);
     const exportTxt = createActionButton(".TXT", root.constants.EXPORT_FORMATS.TXT, onExport);
     const formatButtons = [exportPdf, exportMht, exportHtml, exportTxt];
+    let isLoading = false;
 
     menuNode.appendChild(exportPdf);
     menuNode.appendChild(exportMht);
@@ -212,12 +229,26 @@
     }
 
     function setEnabled(enabled) {
-      mainButton.disabled = !enabled;
+      mainButton.disabled = !enabled || isLoading;
       formatButtons.forEach((button) => {
-        button.disabled = !enabled || button.hidden;
+        button.disabled = !enabled || button.hidden || isLoading;
       });
 
       if (!enabled) {
+        closeMenu();
+      }
+    }
+
+    function setLoading(loading) {
+      isLoading = Boolean(loading);
+      mainButton.classList.toggle("is-loading", isLoading);
+      mainButton.innerHTML = isLoading ? spinnerIconMarkup() : robotButtonIconMarkup();
+      mainButton.disabled = isLoading;
+      formatButtons.forEach((button) => {
+        button.disabled = isLoading || button.hidden;
+      });
+
+      if (isLoading) {
         closeMenu();
       }
     }
@@ -261,6 +292,7 @@
       hasVisibleFormats,
       setVisible,
       setEnabled,
+      setLoading,
       closeMenu,
       destroy
     };

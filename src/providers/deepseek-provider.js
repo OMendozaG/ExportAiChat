@@ -10,6 +10,12 @@
   const THINKING_SECONDS_REGEX = /(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s|segundos?|seg)\b/i;
   const THINKING_LABEL_REGEX = /\b(?:pens[oó]\s+durante|thinking|reasoning)\b/i;
   const SHARE_LABEL_REGEX = /\b(?:share|compartir)\b/i;
+  const SHARE_ICON_PATH_MARKERS = [
+    // DeepSeek "share" glyph markers captured from the provided HTML logs.
+    "M7.95889 1.52285",
+    "7.95888 0.826234",
+    "L15.1317 7.18358"
+  ];
 
   function normalizeText(value) {
     const rawValue = String(value || "").replace(/\s+/g, " ").trim();
@@ -30,6 +36,71 @@
 
   function isVisibleElement(element) {
     return Boolean(element && element.getClientRects && element.getClientRects().length);
+  }
+
+  function isInConversationTurn(element) {
+    return Boolean(element && element.closest && element.closest("[data-virtual-list-item-key]"));
+  }
+
+  function normalizeRect(rect) {
+    return {
+      top: Number(rect?.top || 0),
+      right: Number(rect?.right || 0),
+      left: Number(rect?.left || 0),
+      width: Number(rect?.width || 0),
+      height: Number(rect?.height || 0)
+    };
+  }
+
+  function getHeaderLeftBoundary() {
+    // Keep the heuristic adaptable: on narrow viewports, allow controls closer to the left.
+    if (window.innerWidth <= 960) {
+      return window.innerWidth * 0.08;
+    }
+
+    return window.innerWidth * 0.2;
+  }
+
+  function isLikelyTopHeaderControl(element) {
+    if (!isVisibleElement(element) || isInConversationTurn(element)) {
+      return false;
+    }
+
+    const rect = normalizeRect(element.getBoundingClientRect());
+
+    if (rect.top < -8 || rect.top > 320 || rect.width < 18 || rect.height < 18) {
+      return false;
+    }
+
+    if (rect.left < getHeaderLeftBoundary()) {
+      return false;
+    }
+
+    return true;
+  }
+
+  function hasShareIconGlyph(element) {
+    const pathNodes = Array.from(element.querySelectorAll("svg path[d]"));
+
+    for (const pathNode of pathNodes) {
+      const pathValue = normalizeText(pathNode.getAttribute("d"));
+
+      if (!pathValue) {
+        continue;
+      }
+
+      if (SHARE_ICON_PATH_MARKERS.some((marker) => pathValue.includes(marker))) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function collectTopHeaderControls() {
+    const candidates = Array.from(document.querySelectorAll("button, [role='button'], a[role='button']"));
+
+    return candidates.filter((candidate) => isLikelyTopHeaderControl(candidate));
   }
 
   function isChatPage() {
@@ -301,20 +372,15 @@
   }
 
   function findInlineActionAnchor() {
-    const candidates = Array.from(document.querySelectorAll("button, [role='button'], a"));
+    const candidates = collectTopHeaderControls();
 
     for (const candidate of candidates) {
-      if (!isVisibleElement(candidate)) {
-        continue;
-      }
-
-      const label = normalizeText(candidate.getAttribute("aria-label") || candidate.textContent);
+      const label = normalizeText(
+        candidate.getAttribute("aria-label")
+        || candidate.getAttribute("title")
+        || candidate.textContent
+      );
       if (!label || !SHARE_LABEL_REGEX.test(label)) {
-        continue;
-      }
-
-      const rect = candidate.getBoundingClientRect();
-      if (rect.top > 320) {
         continue;
       }
 
@@ -322,6 +388,91 @@
         container: candidate.parentElement,
         referenceNode: candidate
       };
+    }
+
+    // Fallback: DeepSeek sometimes renders share as an icon-only control.
+    const shareIconButtons = candidates.filter((candidate) => hasShareIconGlyph(candidate));
+    if (shareIconButtons.length) {
+      const sortedByTopThenRight = shareIconButtons.sort((left, right) => {
+        const leftRect = normalizeRect(left.getBoundingClientRect());
+        const rightRect = normalizeRect(right.getBoundingClientRect());
+
+        if (Math.abs(leftRect.top - rightRect.top) > 6) {
+          return leftRect.top - rightRect.top;
+        }
+
+        return rightRect.right - leftRect.right;
+      });
+
+      const shareButton = sortedByTopThenRight[0];
+
+      return {
+        container: shareButton.parentElement,
+        referenceNode: shareButton
+      };
+    }
+
+    // Last fallback: locate the top action row and attach after its right-most control.
+    const groups = new Map();
+
+    for (const candidate of candidates) {
+      const parent = candidate.parentElement;
+
+      if (!parent || isInConversationTurn(parent) || !isVisibleElement(parent)) {
+        continue;
+      }
+
+      const existing = groups.get(parent) || [];
+      existing.push(candidate);
+      groups.set(parent, existing);
+    }
+
+    let bestGroup = null;
+    let bestScore = -Infinity;
+
+    groups.forEach((buttons, container) => {
+      if (buttons.length < 2) {
+        return;
+      }
+
+      const containerRect = normalizeRect(container.getBoundingClientRect());
+      if (containerRect.top < -8 || containerRect.top > 340 || containerRect.left < getHeaderLeftBoundary()) {
+        return;
+      }
+
+      const rightMostButton = buttons.reduce((currentBest, candidate) => {
+        if (!currentBest) {
+          return candidate;
+        }
+
+        const bestRect = normalizeRect(currentBest.getBoundingClientRect());
+        const nextRect = normalizeRect(candidate.getBoundingClientRect());
+        return nextRect.right > bestRect.right ? candidate : currentBest;
+      }, null);
+
+      if (!rightMostButton) {
+        return;
+      }
+
+      // Prefer richer action rows near the top-right.
+      const rightMostRect = normalizeRect(rightMostButton.getBoundingClientRect());
+      const score = (
+        buttons.length * 10
+        + rightMostRect.right * 0.01
+        - containerRect.top * 0.05
+      );
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestGroup = {
+          container,
+          referenceNode: rightMostButton
+        };
+      }
+    });
+
+    if (bestGroup) {
+      return bestGroup;
     }
 
     return null;

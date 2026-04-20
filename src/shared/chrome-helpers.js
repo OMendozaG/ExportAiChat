@@ -1,28 +1,21 @@
 /*
  * Promise wrappers around callback-based Chrome APIs.
- * Missing APIs are handled defensively so pages without extension APIs
- * do not crash shared logic that only needs default settings.
+ * They degrade gracefully when a shared script runs without extension APIs.
  */
 (() => {
   const root = globalThis.ChatExportAi;
 
   function getChromeRoot() {
-    return globalThis.chrome && typeof globalThis.chrome === "object"
-      ? globalThis.chrome
-      : null;
-  }
+    try {
+      if (!("chrome" in globalThis)) {
+        return null;
+      }
 
-  function getChromeApi(path) {
-    const chromeRoot = getChromeRoot();
-    return path.reduce((acc, key) => (acc ? acc[key] : undefined), chromeRoot);
-  }
-
-  function ensureChromeApi(path) {
-    const target = getChromeApi(path);
-    if (!target) {
+      const chromeRoot = globalThis.chrome;
+      return chromeRoot && typeof chromeRoot === "object" ? chromeRoot : null;
+    } catch (_error) {
       return null;
     }
-    return target;
   }
 
   function storageGet(keys) {
@@ -39,6 +32,7 @@
             reject(new Error(chromeRoot.runtime.lastError.message));
             return;
           }
+
           resolve(result || {});
         });
       } catch (error) {
@@ -61,6 +55,7 @@
             reject(new Error(chromeRoot.runtime.lastError.message));
             return;
           }
+
           resolve(true);
         });
       } catch (error) {
@@ -73,7 +68,7 @@
     return new Promise((resolve, reject) => {
       try {
         const chromeRoot = getChromeRoot();
-        if (!ensureChromeApi(["runtime", "sendMessage"])) {
+        if (!chromeRoot?.runtime?.sendMessage) {
           reject(new Error("Chrome runtime messaging is unavailable in this context."));
           return;
         }
@@ -83,6 +78,7 @@
             reject(new Error(chromeRoot.runtime.lastError.message));
             return;
           }
+
           resolve(response);
         });
       } catch (error) {
@@ -95,7 +91,7 @@
     return new Promise((resolve, reject) => {
       try {
         const chromeRoot = getChromeRoot();
-        if (!ensureChromeApi(["tabs", "query"])) {
+        if (!chromeRoot?.tabs?.query) {
           reject(new Error("Chrome tabs query is unavailable in this context."));
           return;
         }
@@ -105,6 +101,7 @@
             reject(new Error(chromeRoot.runtime.lastError.message));
             return;
           }
+
           resolve(tabs || []);
         });
       } catch (error) {
@@ -117,7 +114,7 @@
     return new Promise((resolve, reject) => {
       try {
         const chromeRoot = getChromeRoot();
-        if (!ensureChromeApi(["tabs", "sendMessage"])) {
+        if (!chromeRoot?.tabs?.sendMessage) {
           reject(new Error("Chrome tabs messaging is unavailable in this context."));
           return;
         }
@@ -127,6 +124,7 @@
             reject(new Error(chromeRoot.runtime.lastError.message));
             return;
           }
+
           resolve(response);
         });
       } catch (error) {

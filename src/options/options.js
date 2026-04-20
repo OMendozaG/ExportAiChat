@@ -244,6 +244,11 @@
   });
 
   resetButton.addEventListener("click", () => {
+    const confirmed = window.confirm("Reset all settings to their default values?");
+    if (!confirmed) {
+      return;
+    }
+
     resetSettings().catch((error) => {
       showStatus(`Error resetting settings: ${error.message}`, true);
     });

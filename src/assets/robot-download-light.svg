@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Chat Export AI icon light">
+  <!-- Light-on-dark UI variant. -->
+  <g fill="none" stroke="#dbe7ff" stroke-linecap="round" stroke-linejoin="round" stroke-width="8">
+    <rect x="24" y="22" width="80" height="54" rx="18"/>
+    <path d="M64 58v28"/>
+    <path d="M52 74 64 86 76 74"/>
+  </g>
+  <g fill="none" stroke="#dbe7ff" stroke-width="6">
+    <circle cx="49" cy="45" r="8"/>
+    <circle cx="79" cy="45" r="8"/>
+  </g>
+  <g fill="#dbe7ff">
+    <circle cx="49" cy="45" r="2.75"/>
+    <circle cx="79" cy="45" r="2.75"/>
+  </g>
+</svg>

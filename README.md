@@ -95,6 +95,7 @@ The settings page supports:
 - Metadata `Date` includes date and time in system locale format with full year
 - Conversation timeline labels follow the browser/system locale short date format
 - Global metadata toggle to remove the entire metadata section from all export formats
+- Metadata field toggles are visually grouped/indented under the global metadata toggle in Settings
 - Popup provider/chat/message summary with total messages and H/AI counts
 - Message time export toggle
 - Message id export toggle

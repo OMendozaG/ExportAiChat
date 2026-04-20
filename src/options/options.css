@@ -248,6 +248,12 @@ body {
   margin-top: 4px;
 }
 
+.metadata-dependent-group {
+  margin-left: 24px;
+  padding-left: 14px;
+  border-left: 2px solid var(--field-border);
+}
+
 .keyword-box {
   display: flex;
   flex-wrap: wrap;

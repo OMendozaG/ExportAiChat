@@ -49,6 +49,7 @@ The TXT export is designed as a readable chat log:
 - Higher-contrast export button labels for better readability
 - Defensive settings fallback when a shared script runs without extension storage APIs
 - Guarded runtime/storage listeners and caught inline refresh failures to avoid uncaught extension-context errors
+- PDF rendering now injects HTML directly into the debug target instead of navigating to a `data:` URL, to reduce renderer failures
 - Local-first export flow with no server-side processing
 
 ## Export Options

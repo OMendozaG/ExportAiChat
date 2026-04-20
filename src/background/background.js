@@ -234,29 +234,29 @@
     });
   }
 
-  function waitForDebuggerEvent(target, method) {
-    return new Promise((resolve) => {
-      const listener = (source, eventName, params) => {
-        if (source?.tabId !== target?.tabId || eventName !== method) {
-          return;
-        }
-
-        chrome.debugger.onEvent.removeListener(listener);
-        resolve(params || {});
-      };
-
-      chrome.debugger.onEvent.addListener(listener);
-    });
+  async function getMainFrameId(target) {
+    const frameTree = await sendDebuggerCommand(target, "Page.getFrameTree");
+    return frameTree?.frameTree?.frame?.id || null;
   }
 
   async function waitForPdfDocumentReady(target) {
-    await sendDebuggerCommand(target, "Runtime.enable");
     await sendDebuggerCommand(target, "Emulation.setEmulatedMedia", { media: "print" });
     await sendDebuggerCommand(target, "Runtime.evaluate", {
       expression: `(
         async () => {
-          await new Promise((resolve) => requestAnimationFrame(resolve));
-          return true;
+          if (document.fonts?.ready) {
+            try {
+              await document.fonts.ready;
+            } catch (_error) {}
+          }
+
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+          return {
+            readyState: document.readyState,
+            hasBody: Boolean(document.body),
+            textLength: document.body?.innerText?.length || 0
+          };
         }
       )()`,
       awaitPromise: true,
@@ -295,15 +295,28 @@
       );
 
       await withTimeout(
-        (async () => {
-          const loadEventPromise = waitForDebuggerEvent(target, "Page.loadEventFired");
-          await sendDebuggerCommand(target, "Page.navigate", {
-            url: textToDataUrl(payload.html, "text/html;charset=utf-8")
-          });
-          await loadEventPromise;
-        })(),
+        sendDebuggerCommand(target, "Runtime.enable"),
         timeoutMs,
-        "Timed out while navigating the PDF renderer."
+        "Timed out while enabling the PDF runtime."
+      );
+
+      const frameId = await withTimeout(
+        getMainFrameId(target),
+        timeoutMs,
+        "Timed out while locating the PDF frame."
+      );
+
+      if (!frameId) {
+        throw new Error("Could not resolve the PDF frame.");
+      }
+
+      await withTimeout(
+        sendDebuggerCommand(target, "Page.setDocumentContent", {
+          frameId,
+          html: String(payload.html || "")
+        }),
+        timeoutMs,
+        "Timed out while setting the PDF document content."
       );
 
       await withTimeout(
@@ -314,7 +327,7 @@
 
       const result = await withTimeout(
         sendDebuggerCommand(target, "Page.printToPDF", {
-          printBackground: false,
+          printBackground: true,
           preferCSSPageSize: true,
           displayHeaderFooter: false
         }),

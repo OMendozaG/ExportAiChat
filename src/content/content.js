@@ -207,6 +207,9 @@
     if (root.appTheme && typeof ui.setTheme === "function") {
       ui.setTheme(root.appTheme.resolveThemeMode(settings.appTheme));
     }
+    if (typeof ui.setProvider === "function") {
+      ui.setProvider(provider.id || "");
+    }
 
     ui.setVisibleFormats({
       showExportPdf: Boolean(settings.showExportPdf),

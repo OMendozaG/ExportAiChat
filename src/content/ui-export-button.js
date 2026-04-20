@@ -55,6 +55,22 @@
   white-space: nowrap;
   cursor: pointer;
 }
+#${UI_ROOT_ID} .ceai-inline-btn .ceai-inline-btn-label {
+  line-height: 1;
+}
+#${UI_ROOT_ID}[data-provider="deepseek"] .ceai-inline-btn,
+#${UI_ROOT_ID} .ceai-inline-btn[data-compact="true"] {
+  min-height: 30px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1;
+}
+#${UI_ROOT_ID}[data-provider="deepseek"] .ceai-inline-btn {
+  background: transparent;
+  border: 1px solid currentColor;
+  color: inherit;
+}
 #${UI_ROOT_ID} .ceai-inline-btn svg {
   width: 16px;
   height: 16px;
@@ -223,29 +239,54 @@
       menuNode.dataset.theme = themeMode === "dark" ? "dark" : "light";
     }
 
+    function setProvider(providerId) {
+      const normalizedProviderId = normalizeText(providerId).toLowerCase();
+      if (!normalizedProviderId) {
+        delete rootNode.dataset.provider;
+        return;
+      }
+
+      rootNode.dataset.provider = normalizedProviderId;
+    }
+
     function applyReferenceButtonStyle(referenceNode) {
       if (!referenceNode) {
         mainButton.style.cssText = "";
+        mainButton.removeAttribute("data-compact");
         return;
       }
 
       const computed = window.getComputedStyle(referenceNode);
       const referenceRect = referenceNode.getBoundingClientRect();
+      const width = Number(referenceRect.width) || 0;
+      const height = Number(referenceRect.height) || 0;
       const textLabel = normalizeText(
         referenceNode.getAttribute("aria-label")
         || referenceNode.getAttribute("title")
         || referenceNode.textContent
       );
       const hasIcon = Boolean(referenceNode.querySelector("svg"));
+      const paddingLeft = Number.parseFloat(computed.paddingLeft) || 0;
+      const paddingRight = Number.parseFloat(computed.paddingRight) || 0;
+      const borderRadius = String(computed.borderRadius || "").toLowerCase();
       const isIconOnlyReference = hasIcon && (!textLabel || textLabel.length <= 2);
-      const isCompactReference = referenceRect.width <= 44 || referenceRect.height <= 36;
+      const isCompactReference = width <= 64 || height <= 36;
+      const isCircularReference = borderRadius.includes("%");
+      const hasTinyHorizontalPadding = (paddingLeft + paddingRight) <= 6;
+      const looksIconButton = isIconOnlyReference || (
+        isCompactReference && (isCircularReference || hasTinyHorizontalPadding)
+      );
 
-      if (isIconOnlyReference || isCompactReference) {
-        // Keep base inline button styling when the anchor is an icon button
-        // so "Export To..." does not collapse/wrap into a square icon slot.
+      if (looksIconButton) {
+        // Keep base/compact styling when the anchor is icon-like so
+        // "Export To..." does not inherit circular icon-button dimensions.
         mainButton.style.cssText = "";
+        mainButton.dataset.compact = "true";
+        mainButton.style.color = computed.color || "";
+        mainButton.style.fontFamily = computed.fontFamily || "";
         return;
       }
+      mainButton.removeAttribute("data-compact");
 
       const properties = [
         "background",
@@ -399,6 +440,7 @@
     return {
       mount,
       setTheme,
+      setProvider,
       setVisibleFormats,
       setFormatStates,
       hasVisibleFormats,

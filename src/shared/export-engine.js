@@ -266,8 +266,7 @@
 
     return normalizeTemplateValue(template)
       .replace(/<HumanName>/gi, humanName)
-      .replace(/<AiName>/gi, aiName)
-      .replace(/<enter>/gi, "\n");
+      .replace(/<AiName>/gi, aiName);
   }
 
   function resolveTxtMessageHeader(message, settings, conversation) {
@@ -296,8 +295,7 @@
       lines.push(`- ${item.label}: ${item.value}`);
     }
 
-    lines.push("-----------");
-    return `${lines.join("\n")}\n`;
+    return lines.join("\n");
   }
 
   function buildTextMessageBlock(message, settings, conversation) {
@@ -350,7 +348,16 @@
 
     if (messageBlocks.length) {
       // Respect an explicit empty-string separator (no gap between message blocks).
-      sections.push(messageBlocks.join(separator));
+      const messageText = messageBlocks.join(separator);
+
+      // Keep metadata immediately followed by messages without an extra
+      // separator or blank line inserted by section joining.
+      if (metadataBlock && sections.length) {
+        const lastIndex = sections.length - 1;
+        sections[lastIndex] = `${sections[lastIndex]}\n${messageText}`;
+      } else {
+        sections.push(messageText);
+      }
     }
 
     return `${sections.join("\n\n").trimEnd()}\n`;

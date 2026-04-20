@@ -25,7 +25,7 @@
       // Continuation style for multiline TXT exports.
       multilineFormat: MULTILINE_FORMAT.NONE,
 
-      // Per-role TXT message headers, supports <HumanName>/<AiName>/<enter>.
+      // Per-role TXT message headers, supports <HumanName>/<AiName>.
       txtHumanMessageHeaderTemplate: "\n\n----- <HumanName>:\n\n",
       txtAiMessageHeaderTemplate: "\n\n----- <AiName>:\n\n",
 

@@ -115,7 +115,7 @@ The settings page supports:
 - Dedicated TXT section with multiline continuation style (default `No prefix`)
 - Editable TXT message separator
 - Editable TXT per-role message header templates for Human and AI messages
-- TXT template placeholders: `<HumanName>`, `<AiName>`, `<enter>`
+- TXT template placeholders: `<HumanName>`, `<AiName>`
 - TXT header placeholders resolve Human/AI names from the General tab settings
 - Default TXT headers use `----- <HumanName>:` and `----- <AiName>:` with the same surrounding line breaks
 - TXT speaker prefixes (`<Human>`, `<AI>`) are omitted when a TXT header template is present for that role

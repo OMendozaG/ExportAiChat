@@ -68,7 +68,7 @@
   function updateFileNameFieldState() {
     const isAutomatic = autoFileNameCheckbox.checked;
     fileNameTemplateInput.disabled = false;
-    fileNameTemplateInput.placeholder = isAutomatic ? "<ChatName>" : "chat";
+    fileNameTemplateInput.placeholder = isAutomatic ? "YY.MM.DD <ChatTitle>" : "chat";
   }
 
   function activateTab(tabId) {

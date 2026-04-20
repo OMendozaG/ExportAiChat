@@ -208,7 +208,7 @@
 
           <label class="field">
             <span>File name template</span>
-            <input id="fileNameTemplate" name="fileNameTemplate" type="text" maxlength="200" placeholder="<ChatName>">
+            <input id="fileNameTemplate" name="fileNameTemplate" type="text" maxlength="200" placeholder="YY.MM.DD <ChatTitle>">
           </label>
 
           <label class="field">
@@ -217,17 +217,36 @@
           </label>
 
           <p class="field-help">
-            Characters that are not valid in file names are replaced with this value when `<ChatName>`, `<ChatFolder>`, or the final file name contains them.
+            Characters that are not valid in file names are replaced with this value when `<ChatTitle>`, `<ChatName>`, `<ChatFolder>`, or the final file name contains them.
           </p>
 
           <div class="keyword-box">
             <strong>Keywords</strong>
+            <code>&lt;ChatTitle&gt;</code>
             <code>&lt;ChatName&gt;</code>
             <code>&lt;ChatFolder&gt;</code>
             <code>&lt;Model&gt;</code>
             <code>&lt;Provider&gt;</code>
             <code>&lt;Date&gt;</code>
             <code>&lt;Time&gt;</code>
+          </div>
+
+          <div class="keyword-box">
+            <strong>Date / Time tokens</strong>
+            <code>YY</code>
+            <code>YYYY</code>
+            <code>M</code>
+            <code>MM</code>
+            <code>MMM</code>
+            <code>MMMM</code>
+            <code>D</code>
+            <code>DD</code>
+            <code>H</code>
+            <code>HH</code>
+            <code>m</code>
+            <code>mm</code>
+            <code>s</code>
+            <code>ss</code>
           </div>
         </section>
       </section>

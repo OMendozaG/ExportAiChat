@@ -26,16 +26,61 @@
   function timestampParts(date) {
     const currentDate = date || new Date();
     const year = currentDate.getFullYear();
+    const shortYear = String(year).slice(-2);
+    const monthNumber = currentDate.getMonth() + 1;
     const month = String(currentDate.getMonth() + 1).padStart(2, "0");
+    const monthShort = new Intl.DateTimeFormat(undefined, { month: "short" }).format(currentDate);
+    const monthLong = new Intl.DateTimeFormat(undefined, { month: "long" }).format(currentDate);
+    const dayNumber = currentDate.getDate();
     const day = String(currentDate.getDate()).padStart(2, "0");
+    const hourNumber = currentDate.getHours();
     const hours = String(currentDate.getHours()).padStart(2, "0");
+    const minuteNumber = currentDate.getMinutes();
     const minutes = String(currentDate.getMinutes()).padStart(2, "0");
+    const secondNumber = currentDate.getSeconds();
     const seconds = String(currentDate.getSeconds()).padStart(2, "0");
 
     return {
+      YYYY: String(year),
+      YY: shortYear,
+      MMMM: monthLong,
+      MMM: monthShort,
+      MM: month,
+      M: String(monthNumber),
+      DD: day,
+      D: String(dayNumber),
+      HH: hours,
+      H: String(hourNumber),
+      mm: minutes,
+      m: String(minuteNumber),
+      ss: seconds,
+      s: String(secondNumber),
       date: `${year}-${month}-${day}`,
       time: `${hours}-${minutes}-${seconds}`
     };
+  }
+
+  function applyDateTokens(template, timeParts) {
+    const tokenMap = {
+      YYYY: timeParts.YYYY,
+      MMMM: timeParts.MMMM,
+      MMM: timeParts.MMM,
+      YY: timeParts.YY,
+      MM: timeParts.MM,
+      DD: timeParts.DD,
+      HH: timeParts.HH,
+      mm: timeParts.mm,
+      ss: timeParts.ss,
+      M: timeParts.M,
+      D: timeParts.D,
+      H: timeParts.H,
+      m: timeParts.m,
+      s: timeParts.s
+    };
+
+    return String(template).replace(/YYYY|MMMM|MMM|YY|MM|DD|HH|mm|ss|M|D|H|m|s/g, (token) => {
+      return tokenMap[token] ?? token;
+    });
   }
 
   function keywordValueMap(conversation) {
@@ -43,6 +88,7 @@
     const replacement = conversation.settings?.invalidFileNameReplacement;
 
     return {
+      "<ChatTitle>": compactName(conversation.title || "chat", replacement),
       "<ChatName>": compactName(conversation.title || "chat", replacement),
       "<ChatFolder>": compactName(conversation.folderName || "", replacement),
       "<Model>": compactName(conversation.modelName || "", replacement),
@@ -55,8 +101,9 @@
   function resolveFileBaseName(conversation) {
     const settings = conversation.settings || root.defaults.settings;
     const keywords = keywordValueMap(conversation);
+    const timeParts = timestampParts(new Date(conversation.extractedAtIso || Date.now()));
     const templateSource = settings.autoFileName
-      ? (settings.fileNameTemplate || "<ChatName>")
+      ? (settings.fileNameTemplate || "YY.MM.DD <ChatTitle>")
       : (settings.fileNameTemplate || "chat");
 
     let resolved = String(templateSource);
@@ -64,6 +111,8 @@
     for (const [keyword, value] of Object.entries(keywords)) {
       resolved = resolved.split(keyword).join(value);
     }
+
+    resolved = applyDateTokens(resolved, timeParts);
 
     resolved = compactName(resolved, settings.invalidFileNameReplacement);
 

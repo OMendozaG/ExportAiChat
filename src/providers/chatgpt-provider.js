@@ -11,7 +11,7 @@
   const THINKING_SECONDS_REGEX = /(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s|segundos?|seg)\b/i;
   const SHARE_LABEL_REGEX = /\b(?:share|compartir)\b/i;
   const SOURCES_LABEL_REGEX = /^(?:fuentes?|sources?)$/i;
-  const IGNORED_ASSISTANT_ACTION_LABEL_REGEX = /^(?:edit(?: image)?|editar(?: imagen)?|share(?: this image)?|compartir(?: esta imagen)?|copy(?: response)?|copiar(?: respuesta)?|like(?: this image)?|me gusta(?: esta imagen)?|dislike(?: this image)?|no me gusta(?: esta imagen)?|regenerate|regenerar|retry|reintentar|thumbs?\s*up|thumbs?\s*down|more actions?|m[aá]s acciones?|more options?|opciones?|change model|switch model|model switcher|cambiar de modelo|cambiar modelo|selector de modelo|seleccionar modelo)$/i;
+  const IGNORED_ASSISTANT_ACTION_LABEL_REGEX = /^(?:edit(?: image)?|editar(?: imagen)?|share(?: this image)?|compartir(?: esta imagen)?|copy(?: response)?|copiar(?: respuesta)?|like(?: this image)?|me gusta(?: esta imagen)?|dislike(?: this image)?|no me gusta(?: esta imagen)?|regenerate|regenerar|retry|reintentar|thumbs?\s*up|thumbs?\s*down|more actions?|m[aá]s acciones?|more options?|opciones?)$/i;
   const TIME_TEXT_REGEX = /\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|A\.M\.|P\.M\.)?\b/i;
   const CONVERSATION_PATH_REGEX = /\/c\/([^/?#]+)/i;
   const PROJECT_PATH_REGEX = /(\/g\/[^/]+)\/c\/[^/?#]+/i;
@@ -216,6 +216,10 @@
     return /\.[a-z0-9]{2,8}(?:\b|$)/i.test(label);
   }
 
+  function isLikelyUrlLabel(label) {
+    return /^(?:https?:\/\/|www\.)/i.test(label);
+  }
+
   function extractVisibleFileTileLabel(node) {
     const candidates = [
       node.getAttribute("aria-label"),
@@ -269,7 +273,8 @@
         continue;
       }
 
-      if (isLikelyAttachmentLabel(label) || /\s/.test(label) || /[A-Za-zÀ-ÿ]/.test(label)) {
+      // Keep only content-bearing reference labels (file/url like) to avoid UI action text.
+      if (isLikelyAttachmentLabel(label) || isLikelyUrlLabel(label)) {
         return label;
       }
     }
@@ -384,7 +389,7 @@
       }
 
       return {
-        kind: isLikelyAttachmentLabel(label) ? "attachment" : "reference",
+        kind: isLikelyAttachmentLabel(label) ? "attachment" : "url",
         label,
         url: ""
       };

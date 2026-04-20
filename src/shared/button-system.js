@@ -77,13 +77,13 @@
 .ceai-button.is-loading .ceai-button__content {
   opacity: 0;
 }
-.ceai-button.is-success .ceai-button__content {
-  opacity: 0;
-}
 .ceai-button.is-loading .ceai-button__spinner {
   opacity: 1;
 }
-.ceai-button.is-success .ceai-button__check {
+.ceai-button:not(.ceai-button--stacked).is-success .ceai-button__content {
+  opacity: 0;
+}
+.ceai-button:not(.ceai-button--stacked).is-success .ceai-button__check {
   opacity: 1;
 }
 .ceai-button__content {
@@ -101,11 +101,27 @@
   gap: 3px;
   width: 100%;
 }
+.ceai-button__icon-wrap {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+}
 .ceai-button__icon {
   width: 20px;
   height: 20px;
   display: block;
   flex: 0 0 auto;
+}
+.ceai-button__icon--success {
+  display: none;
+}
+.ceai-button.is-success .ceai-button__icon--download {
+  display: none;
+}
+.ceai-button.is-success .ceai-button__icon--success {
+  display: block;
 }
 .ceai-button__check {
   width: 16px;
@@ -172,7 +188,7 @@
 
   function buildContentMarkup(label, stacked) {
     return stacked
-      ? `<span class="ceai-button__content ceai-button__stack">${downloadGlyphMarkup()}<span class="ceai-button__label">${label}</span></span>${spinnerMarkup()}${checkGlyphMarkup()}`
+      ? `<span class="ceai-button__content ceai-button__stack"><span class="ceai-button__icon-wrap">${downloadGlyphMarkup("ceai-button__icon ceai-button__icon--download")}${checkGlyphMarkup("ceai-button__icon ceai-button__icon--success")}</span><span class="ceai-button__label">${label}</span></span>${spinnerMarkup()}`
       : `<span class="ceai-button__content"><span class="ceai-button__label">${label}</span></span>${spinnerMarkup()}${checkGlyphMarkup()}`;
   }
 

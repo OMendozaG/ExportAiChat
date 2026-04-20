@@ -22,6 +22,12 @@
   let popupSettings = null;
   let exportInProgress = false;
   const exportButtons = [exportPdfButton, exportMhtButton, exportHtmlButton, exportTxtButton];
+  const exportButtonByFormat = {
+    [EXPORT_FORMATS.PDF]: exportPdfButton,
+    [EXPORT_FORMATS.MHT]: exportMhtButton,
+    [EXPORT_FORMATS.HTML]: exportHtmlButton,
+    [EXPORT_FORMATS.TXT]: exportTxtButton
+  };
 
   function setStatus(message) {
     const text = String(message || "").trim();
@@ -58,6 +64,13 @@
   function setOnlyButtonState(activeButton, state) {
     exportButtons.forEach((button) => {
       root.buttonSystem.setButtonState(button, button === activeButton ? state : "idle");
+    });
+  }
+
+  function applyExportStates(stateByFormat) {
+    Object.entries(exportButtonByFormat).forEach(([format, button]) => {
+      const isSuccess = Boolean(stateByFormat && stateByFormat[format]);
+      root.buttonSystem.setButtonState(button, isSuccess ? "success" : "idle");
     });
   }
 
@@ -125,7 +138,7 @@
       setActionsVisible(false);
       setStatus("This tab does not contain a LLM Chat.");
       setSummaryVisible(false);
-      setOnlyButtonState(null, "idle");
+      applyExportStates(null);
       return;
     }
 
@@ -133,7 +146,7 @@
       setActionsVisible(false);
       setStatus("This tab does not contain a LLM Chat.");
       setSummaryVisible(false);
-      setOnlyButtonState(null, "idle");
+      applyExportStates(null);
       return;
     }
 
@@ -141,20 +154,20 @@
       setStatus("No export formats are enabled in Settings.");
       setActionsVisible(false);
       setSummary(response.summary || null);
-      setOnlyButtonState(null, "idle");
+      applyExportStates(response.exportStates || null);
       return;
     }
 
       setSummary(response.summary || null);
       setStatus("");
       setActionsVisible(true);
-      setOnlyButtonState(null, "idle");
+      applyExportStates(response.exportStates || null);
       setButtonsEnabled(true);
     } catch (_error) {
       setActionsVisible(false);
       setStatus("This tab does not contain a LLM Chat.");
       setSummaryVisible(false);
-      setOnlyButtonState(null, "idle");
+      applyExportStates(null);
     }
   }
 
@@ -184,7 +197,12 @@
         throw new Error(response?.error || "Export error.");
       }
 
-      setOnlyButtonState(buttonNode, "success");
+      const exportStates = response.result?.exportStates;
+      if (exportStates && typeof exportStates === "object") {
+        applyExportStates(exportStates);
+      } else {
+        setOnlyButtonState(buttonNode, "success");
+      }
       setStatus("");
     } catch (error) {
       setOnlyButtonState(buttonNode, "idle");

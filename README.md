@@ -38,6 +38,7 @@ The TXT export is designed as a readable chat log:
 - Optional user attachment file names and assistant attachment/URL references in exports
 - ChatGPT user file tiles and assistant inline file/reference chips are extracted explicitly instead of relying only on sanitized rich text
 - ChatGPT attachment tile detection, including attachment-only user turns
+- Broader ChatGPT thinking/reasoning block detection, including localized labels and timing extraction
 - Configurable file naming templates
 - Auto-save overwrite vs add-count conflict policy
 - Optional inline `EXPORT...` action in the ChatGPT header
@@ -47,6 +48,7 @@ The TXT export is designed as a readable chat log:
 - Download format icons sized consistently at 20px
 - Button-level export feedback with loading and success states
 - Shared export buttons keep spinner and success check centered and visible in both the popup and the inline page menu
+- Per-format success state stays visible after export and resets to download when the conversation gets new messages
 - Refined line-art robot export icon with transparent background assets
 - Unicode-friendly file naming and a blank-line default TXT separator
 - Higher-contrast export button labels for better readability

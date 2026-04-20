@@ -20,6 +20,7 @@
   let inlineUiRefreshTimer = null;
   let domObserver = null;
   let cachedInlineUiSettings = null;
+  const exportSnapshotsByConversation = new Map();
 
   function getProviderButtonSetting(settings, providerId) {
     if (providerId === "chatgpt") {
@@ -77,6 +78,45 @@
     }
 
     return response;
+  }
+
+  function allFormats() {
+    return Object.values(EXPORT_FORMATS);
+  }
+
+  function getConversationKey(provider) {
+    return `${provider?.id || "unknown"}:${location.pathname}`;
+  }
+
+  function getLiveMessageCount(provider) {
+    if (!provider) {
+      return 0;
+    }
+
+    const liveStatus = provider.getLiveStatus ? provider.getLiveStatus() : null;
+    return Number(liveStatus?.messageCount || 0);
+  }
+
+  function getExportStates(provider, liveMessageCount) {
+    const key = getConversationKey(provider);
+    const snapshot = exportSnapshotsByConversation.get(key) || {};
+    const currentCount = Number(liveMessageCount || 0);
+    const next = {};
+
+    allFormats().forEach((format) => {
+      const savedCount = Number(snapshot[format]);
+      next[format] = Number.isFinite(savedCount) && currentCount > 0 && currentCount <= savedCount;
+    });
+
+    return next;
+  }
+
+  function markExportSuccess(provider, format, liveMessageCount) {
+    const key = getConversationKey(provider);
+    const current = exportSnapshotsByConversation.get(key) || {};
+    const safeCount = Math.max(0, Number(liveMessageCount || 0));
+    current[format] = safeCount;
+    exportSnapshotsByConversation.set(key, current);
   }
 
   function ensureInlineUi() {
@@ -158,6 +198,9 @@
     }
 
     ui.setVisible(true);
+    if (typeof ui.setFormatStates === "function") {
+      ui.setFormatStates(getExportStates(provider, Number(liveStatus?.messageCount || 0)));
+    }
     ui.setEnabled(!exportInProgress && Boolean(liveStatus?.messageCount));
   }
 
@@ -199,6 +242,7 @@
       scheduleInlineUiRefresh();
       const settings = await root.storage.getSettings();
       const timeoutMs = settings.exportTimeoutSeconds * 1000;
+      const liveMessageCountBeforeExport = getLiveMessageCount(provider);
       const processedConversation = buildProcessedConversation(provider, settings);
       const exporter = root.exporters;
 
@@ -304,11 +348,24 @@
         );
       }
 
+      markExportSuccess(
+        provider,
+        format,
+        liveMessageCountBeforeExport > 0 ? liveMessageCountBeforeExport : processedConversation.messages.length
+      );
+
+      const liveMessageCountAfterExport = getLiveMessageCount(provider);
+      const exportStates = getExportStates(
+        provider,
+        liveMessageCountAfterExport > 0 ? liveMessageCountAfterExport : liveMessageCountBeforeExport
+      );
+
       return {
         ok: true,
         format,
         messageCount: processedConversation.messages.length,
-        filename
+        filename,
+        exportStates
       };
     } finally {
       exportInProgress = false;
@@ -325,7 +382,8 @@
         providerId: null,
         providerName: null,
         isChatPage: false,
-        messageCount: 0
+        messageCount: 0,
+        exportStates: {}
       };
     }
 
@@ -352,7 +410,8 @@
       providerName: provider.displayName,
       isChatPage: Boolean(liveStatus.isChatPage),
       messageCount: Number(summary?.totalMessages || liveStatus.messageCount || 0),
-      summary
+      summary,
+      exportStates: getExportStates(provider, Number(liveStatus.messageCount || 0))
     };
   }
 

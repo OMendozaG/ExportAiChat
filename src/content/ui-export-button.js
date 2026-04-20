@@ -142,6 +142,7 @@
   function createActionButton(label, format, onExport) {
     const button = document.createElement("button");
     button.type = "button";
+    button.dataset.format = format;
     root.buttonSystem.decorateButton(button, {
       label,
       stacked: true
@@ -287,6 +288,14 @@
       }
     }
 
+    function setFormatStates(stateByFormat) {
+      formatButtons.forEach((button) => {
+        const format = button.dataset.format;
+        const shouldShowSuccess = Boolean(stateByFormat && stateByFormat[format]);
+        root.buttonSystem.setButtonState(button, shouldShowSuccess ? "success" : "idle");
+      });
+    }
+
     function setVisible(visible) {
       rootNode.hidden = !visible || !hasVisibleFormats();
       if (!visible) {
@@ -362,6 +371,7 @@
       mount,
       setTheme,
       setVisibleFormats,
+      setFormatStates,
       hasVisibleFormats,
       setVisible,
       setEnabled,

@@ -42,6 +42,7 @@ The TXT export is designed as a readable chat log:
 - Gemini extraction for user/assistant turns, title, mode/model label, share-anchor integration, and uploaded-file labels
 - DeepSeek extraction for user/assistant turns plus visible thinking duration labels from current DOM logs
 - DeepSeek inline header integration now places `Export To...` before Share, with non-wrapping row detection and icon-anchor styling fallback so it stays in the same header action row
+- DeepSeek inline button styling includes a compact, borderless mode with provider-specific spacing to avoid overlap with header share controls
 - Grok extraction for user/assistant turns, visible thinking duration labels, and user file chip labels
 - Configurable AI/Human border colors for HTML and PDF exports
 - Configurable file naming templates

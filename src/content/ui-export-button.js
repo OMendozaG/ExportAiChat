@@ -68,8 +68,11 @@
 }
 #${UI_ROOT_ID}[data-provider="deepseek"] .ceai-inline-btn {
   background: transparent;
-  border: 1px solid currentColor;
+  border: 0;
   color: inherit;
+}
+#${UI_ROOT_ID}[data-provider="deepseek"] {
+  margin-right: 60px;
 }
 #${UI_ROOT_ID} .ceai-inline-btn svg {
   width: 16px;

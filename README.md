@@ -52,6 +52,7 @@ The TXT export is designed as a readable chat log:
 - ChatGPT export now hydrates virtualized turn lists while collecting messages, reducing skipped messages in long chats
 - Thinking labels now export inline under the AI message header as `(<label>)` using provider wording (for example, `(Pensó por 18s)`), and no longer create standalone messages
 - TXT exports now keep the speaker prefix on the first real message line even when a thinking label is present above it, including attachment-only first messages
+- TXT thinking notes now always end with a line break and keep a blank line before the message body/attachments
 - DeepSeek thinking-only blocks no longer duplicate into separate assistant reply messages
 - MHT and PDF exports now inline chat images as data URLs when possible, so generated-image replies are preserved more reliably
 - ChatGPT extraction now prefers section-level turns over nested legacy placeholders so image-only assistant replies are not dropped

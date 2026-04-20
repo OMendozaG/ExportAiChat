@@ -333,6 +333,12 @@
       outputLines.push(line.trimEnd());
     }
 
+    if (thinkingNoteLines.length) {
+      // Keep a guaranteed line break after the closing ")" of the thinking note.
+      // This applies to every provider because thinking is normalized upstream.
+      outputLines.push("");
+    }
+
     for (let index = 0; index < contentLines.length; index += 1) {
       const line = contentLines[index];
       const linePrefix = continuationPrefix(prefix, settings, index === 0);

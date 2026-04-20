@@ -92,6 +92,8 @@ When adding a new provider:
 When DeepSeek, Grok, Claude, Gemini, or other providers are added later, request their URL limits explicitly before wiring the manifest and provider matcher.
 
 ## Delivery Workflow
+Every new feature or bug fix should end with its own commit once the change is in a stable state.
+
 Before finishing work, use this order:
 1. sync,
 2. commit,

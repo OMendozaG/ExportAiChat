@@ -61,6 +61,15 @@
     return window.innerWidth * 0.2;
   }
 
+  function getHeaderRightBoundary() {
+    // Focus on the main chat area controls (share/actions), not the sidebar or app shell.
+    if (window.innerWidth <= 960) {
+      return window.innerWidth * 0.46;
+    }
+
+    return window.innerWidth * 0.55;
+  }
+
   function isLikelyTopHeaderControl(element) {
     if (!isVisibleElement(element) || isInConversationTurn(element)) {
       return false;
@@ -76,7 +85,24 @@
       return false;
     }
 
+    if (rect.right < getHeaderRightBoundary()) {
+      return false;
+    }
+
     return true;
+  }
+
+  function scoreActionCandidate(element) {
+    const rect = normalizeRect(element.getBoundingClientRect());
+    const preferredTop = window.innerWidth <= 960 ? 84 : 112;
+    const topPenalty = Math.abs(rect.top - preferredTop);
+
+    return (
+      (rect.right * 0.022)
+      + (rect.width * 0.28)
+      + (rect.height * 0.18)
+      - (topPenalty * 0.55)
+    );
   }
 
   function hasShareIconGlyph(element) {
@@ -373,46 +399,48 @@
 
   function findInlineActionAnchor() {
     const candidates = collectTopHeaderControls();
+    const buildAnchor = (referenceNode) => {
+      if (!referenceNode) {
+        return null;
+      }
 
-    for (const candidate of candidates) {
+      return {
+        container: referenceNode.parentElement,
+        referenceNode,
+        // DeepSeek integration requirement: place export ahead of the share icon.
+        preferBefore: true
+      };
+    };
+    const pickBestCandidate = (list) => {
+      if (!list.length) {
+        return null;
+      }
+
+      const sorted = [...list].sort((left, right) => scoreActionCandidate(right) - scoreActionCandidate(left));
+      return sorted[0];
+    };
+
+    const shareByText = candidates.filter((candidate) => {
       const label = normalizeText(
         candidate.getAttribute("aria-label")
         || candidate.getAttribute("title")
         || candidate.textContent
       );
-      if (!label || !SHARE_LABEL_REGEX.test(label)) {
-        continue;
-      }
+      return Boolean(label && SHARE_LABEL_REGEX.test(label));
+    });
 
-      return {
-        container: candidate.parentElement,
-        referenceNode: candidate
-      };
+    const shareLabelButton = pickBestCandidate(shareByText);
+    if (shareLabelButton) {
+      return buildAnchor(shareLabelButton);
     }
 
-    // Fallback: DeepSeek sometimes renders share as an icon-only control.
-    const shareIconButtons = candidates.filter((candidate) => hasShareIconGlyph(candidate));
-    if (shareIconButtons.length) {
-      const sortedByTopThenRight = shareIconButtons.sort((left, right) => {
-        const leftRect = normalizeRect(left.getBoundingClientRect());
-        const rightRect = normalizeRect(right.getBoundingClientRect());
-
-        if (Math.abs(leftRect.top - rightRect.top) > 6) {
-          return leftRect.top - rightRect.top;
-        }
-
-        return rightRect.right - leftRect.right;
-      });
-
-      const shareButton = sortedByTopThenRight[0];
-
-      return {
-        container: shareButton.parentElement,
-        referenceNode: shareButton
-      };
+    // Fallback 1: DeepSeek often renders share as an icon-only control.
+    const shareIconButton = pickBestCandidate(candidates.filter((candidate) => hasShareIconGlyph(candidate)));
+    if (shareIconButton) {
+      return buildAnchor(shareIconButton);
     }
 
-    // Last fallback: locate the top action row and attach after its right-most control.
+    // Fallback 2: use the nearest top-right action row and attach before its first control.
     const groups = new Map();
 
     for (const candidate of candidates) {
@@ -436,37 +464,44 @@
       }
 
       const containerRect = normalizeRect(container.getBoundingClientRect());
-      if (containerRect.top < -8 || containerRect.top > 340 || containerRect.left < getHeaderLeftBoundary()) {
+      if (
+        containerRect.top < -8
+        || containerRect.top > 340
+        || containerRect.left < getHeaderLeftBoundary()
+        || containerRect.right < getHeaderRightBoundary()
+      ) {
         return;
       }
 
-      const rightMostButton = buttons.reduce((currentBest, candidate) => {
+      const leftMostButton = buttons.reduce((currentBest, candidate) => {
         if (!currentBest) {
           return candidate;
         }
 
         const bestRect = normalizeRect(currentBest.getBoundingClientRect());
         const nextRect = normalizeRect(candidate.getBoundingClientRect());
-        return nextRect.right > bestRect.right ? candidate : currentBest;
+        return nextRect.left < bestRect.left ? candidate : currentBest;
       }, null);
 
-      if (!rightMostButton) {
+      if (!leftMostButton) {
         return;
       }
 
-      // Prefer richer action rows near the top-right.
-      const rightMostRect = normalizeRect(rightMostButton.getBoundingClientRect());
+      // Prefer richer action rows in the chat title/header zone.
+      const leftMostRect = normalizeRect(leftMostButton.getBoundingClientRect());
       const score = (
         buttons.length * 10
-        + rightMostRect.right * 0.01
-        - containerRect.top * 0.05
+        + containerRect.right * 0.012
+        - Math.abs(containerRect.top - 112) * 0.3
+        + Math.max(0, leftMostRect.left - getHeaderLeftBoundary()) * 0.004
       );
 
       if (score > bestScore) {
         bestScore = score;
         bestGroup = {
           container,
-          referenceNode: rightMostButton
+          referenceNode: leftMostButton,
+          preferBefore: true
         };
       }
     });

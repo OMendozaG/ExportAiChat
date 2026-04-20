@@ -260,13 +260,18 @@
     function mount(anchor) {
       const referenceNode = anchor?.referenceNode || null;
       const container = referenceNode?.parentElement || anchor?.container || null;
+      const shouldInsertBefore = Boolean(anchor?.preferBefore && referenceNode);
 
       if (!container) {
         return false;
       }
 
       if (referenceNode && referenceNode.parentElement) {
-        if (rootNode.previousElementSibling !== referenceNode || rootNode.parentElement !== referenceNode.parentElement) {
+        if (rootNode.parentElement !== referenceNode.parentElement) {
+          referenceNode.insertAdjacentElement(shouldInsertBefore ? "beforebegin" : "afterend", rootNode);
+        } else if (shouldInsertBefore && rootNode.nextElementSibling !== referenceNode) {
+          referenceNode.insertAdjacentElement("beforebegin", rootNode);
+        } else if (!shouldInsertBefore && rootNode.previousElementSibling !== referenceNode) {
           referenceNode.insertAdjacentElement("afterend", rootNode);
         }
       } else if (rootNode.parentElement !== container) {

@@ -26,6 +26,7 @@
   const autosaveConflictActionSelect = document.getElementById("autosaveConflictAction");
   const mediaHandlingSelect = document.getElementById("mediaHandling");
   const companionMhtOnMediaCheckbox = document.getElementById("companionMhtOnMedia");
+  const includeExportTitleCheckbox = document.getElementById("includeExportTitle");
   const metadataEnabledCheckbox = document.getElementById("metadataEnabled");
   const metadataExportedAtCheckbox = document.getElementById("metadataExportedAt");
   const metadataDeviceUserCheckbox = document.getElementById("metadataDeviceUser");
@@ -145,6 +146,7 @@
     autosaveConflictActionSelect.value = settings.autosaveConflictAction || "overwrite";
     mediaHandlingSelect.value = settings.mediaHandling;
     companionMhtOnMediaCheckbox.checked = Boolean(settings.companionMhtOnMedia);
+    includeExportTitleCheckbox.checked = Boolean(settings.includeExportTitle ?? true);
     metadataEnabledCheckbox.checked = Boolean(settings.metadataEnabled ?? true);
     metadataExportedAtCheckbox.checked = Boolean(settings.metadataExportedAt);
     metadataDeviceUserCheckbox.checked = Boolean(settings.metadataDeviceUser);
@@ -207,6 +209,7 @@
       autosaveConflictAction: autosaveConflictActionSelect.value,
       mediaHandling: mediaHandlingSelect.value,
       companionMhtOnMedia: companionMhtOnMediaCheckbox.checked,
+      includeExportTitle: includeExportTitleCheckbox.checked,
       metadataEnabled: metadataEnabledCheckbox.checked,
       metadataExportedAt: metadataExportedAtCheckbox.checked,
       metadataDeviceUser: metadataDeviceUserCheckbox.checked,

@@ -191,6 +191,10 @@
     return String(rawValue).replace(/\r\n/g, "\n");
   }
 
+  function resolveExportTitle(conversation) {
+    return String(conversation.chatName || conversation.title || "chat").trim() || "chat";
+  }
+
   function buildMetadataText(conversation) {
     const metadata = conversation.metadata || [];
 
@@ -239,10 +243,15 @@
 
   function toChatText(conversation) {
     const settings = conversation.settings || root.defaults.settings;
+    const exportTitle = resolveExportTitle(conversation);
     const metadataBlock = buildMetadataText(conversation).trimEnd();
     const messageBlocks = (conversation.messages || []).map((message) => buildTextMessageBlock(message, settings));
     const separator = normalizeSeparator(settings);
     const sections = [];
+
+    if (settings.includeExportTitle) {
+      sections.push(exportTitle);
+    }
 
     if (metadataBlock) {
       sections.push(metadataBlock);
@@ -255,12 +264,17 @@
     return `${sections.join("\n\n").trimEnd()}\n`;
   }
 
-  function buildHtmlHeader(conversation) {
+  function buildHtmlHeader(conversation, settings) {
+    if (!settings?.includeExportTitle) {
+      return "";
+    }
+
     const escapeHtml = root.sanitize.escapeHtml;
+    const exportTitle = resolveExportTitle(conversation);
 
     return [
       "<header class=\"ceai-header\">",
-      `  <h1>${escapeHtml(conversation.title)}</h1>`,
+      `  <h1>${escapeHtml(exportTitle)}</h1>`,
       "</header>"
     ].join("\n");
   }
@@ -474,6 +488,8 @@
 
   function toHtmlDocument(conversation, settings) {
     const escapeHtml = root.sanitize.escapeHtml;
+    const exportTitle = resolveExportTitle(conversation);
+    const htmlDocumentTitle = settings?.includeExportTitle ? exportTitle : "Chat Export AI";
     const messageMarkup = (conversation.messages || [])
       .map((message) => messageHtml(message, settings))
       .join("\n");
@@ -484,12 +500,12 @@
       "<head>",
       "  <meta charset=\"utf-8\">",
       "  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
-      `  <title>${escapeHtml(conversation.title)}</title>`,
+      `  <title>${escapeHtml(htmlDocumentTitle)}</title>`,
       `  <style>${buildHtmlStyle(settings)}</style>`,
       "</head>",
       "<body>",
       "  <main>",
-      buildHtmlHeader(conversation),
+      buildHtmlHeader(conversation, settings),
       buildMetadataHtml(conversation),
       messageMarkup,
       "  </main>",
@@ -501,6 +517,8 @@
   function toPdfDocument(conversation) {
     const escapeHtml = root.sanitize.escapeHtml;
     const settings = conversation.settings || root.defaults.settings;
+    const exportTitle = resolveExportTitle(conversation);
+    const htmlDocumentTitle = settings.includeExportTitle ? exportTitle : "Chat Export AI";
     const messageMarkup = (conversation.messages || [])
       .map((message) => messagePdfHtml(message, settings))
       .join("\n");
@@ -511,12 +529,12 @@
       "<head>",
       "  <meta charset=\"utf-8\">",
       "  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
-      `  <title>${escapeHtml(conversation.title)}</title>`,
+      `  <title>${escapeHtml(htmlDocumentTitle)}</title>`,
       `  <style>${buildPdfHtmlStyle(settings)}</style>`,
       "</head>",
       "<body>",
       "  <main>",
-      buildHtmlHeader(conversation),
+      buildHtmlHeader(conversation, settings),
       buildMetadataHtml(conversation),
       messageMarkup,
       "  </main>",

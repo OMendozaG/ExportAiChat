@@ -42,6 +42,25 @@
     return btoa(binary);
   }
 
+  function base64ToBlob(base64, mimeType) {
+    const binary = atob(String(base64 || ""));
+    const chunkSize = 0x8000;
+    const chunks = [];
+
+    for (let offset = 0; offset < binary.length; offset += chunkSize) {
+      const slice = binary.slice(offset, offset + chunkSize);
+      const bytes = new Uint8Array(slice.length);
+
+      for (let index = 0; index < slice.length; index += 1) {
+        bytes[index] = slice.charCodeAt(index);
+      }
+
+      chunks.push(bytes);
+    }
+
+    return new Blob(chunks, { type: mimeType || "application/octet-stream" });
+  }
+
   function textToDataUrl(content, mimeType) {
     const safeMimeType = mimeType || "application/octet-stream";
     const bytes = new TextEncoder().encode(String(content || ""));
@@ -92,6 +111,28 @@
         }
       );
     });
+  }
+
+  async function downloadPdfData(base64Data, filename, saveAs = false, conflictAction = "overwrite") {
+    const pdfBlob = base64ToBlob(base64Data, "application/pdf");
+    const supportsBlobUrl = typeof URL !== "undefined" && typeof URL.createObjectURL === "function";
+
+    if (!supportsBlobUrl) {
+      return downloadByUrl(
+        "data:application/pdf;base64," + base64Data,
+        filename,
+        saveAs,
+        conflictAction
+      );
+    }
+
+    const blobUrl = URL.createObjectURL(pdfBlob);
+
+    try {
+      return await downloadByUrl(blobUrl, filename, saveAs, conflictAction);
+    } finally {
+      URL.revokeObjectURL(blobUrl);
+    }
   }
 
   function createInactiveTab(url) {
@@ -244,10 +285,15 @@
     await sendDebuggerCommand(target, "Runtime.evaluate", {
       expression: `(
         async () => {
-          if (document.fonts?.ready) {
+          if (document.fonts?.ready instanceof Promise) {
             try {
-              await document.fonts.ready;
-            } catch (_error) {}
+              await Promise.race([
+                document.fonts.ready.catch(() => null),
+                new Promise((resolve) => setTimeout(resolve, 1200))
+              ]);
+            } catch (_error) {
+              // Ignore font readiness errors and keep rendering.
+            }
           }
 
           await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -340,8 +386,8 @@
       }
 
       return withTimeout(
-        downloadByUrl(
-          "data:application/pdf;base64," + result.data,
+        downloadPdfData(
+          result.data,
           payload.filename,
           payload.saveAs,
           payload.conflictAction

@@ -31,6 +31,7 @@ The TXT export is designed as a readable chat log:
 - Configurable visible names for the human and the AI
 - Configurable text handling for markdown, quotes, separators, and multiline output
 - Optional metadata export
+- Optional export title header (Chat Name) above metadata/messages
 - Optional visible reasoning or thinking export when the provider exposes it in the page
 - Optional message date and time export when the provider exposes it in the page
 - Optional message ids starting at 1 across TXT, HTML, and PDF exports
@@ -89,6 +90,7 @@ The settings page supports:
 - Editable TXT message separator
 - Media handling rules
 - Metadata toggles
+- Export title toggle (default on) that prints `Chat Name` as the first line/header
 - Separate metadata toggles for provider, chat name, and message summary
 - `Provider` metadata disabled by default
 - `PC/User` metadata disabled by default

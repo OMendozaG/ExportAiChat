@@ -78,6 +78,7 @@ The settings page supports:
 - Media handling rules
 - Metadata toggles
 - Separate metadata toggles for provider, chat name, and message summary
+- `Provider` metadata disabled by default
 - `PC / User` metadata disabled by default
 - Popup provider/chat/message summary with total messages and H/AI counts
 - Message time export toggle

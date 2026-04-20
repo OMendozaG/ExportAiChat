@@ -47,7 +47,7 @@
       metadataTitle: true,
       metadataModel: true,
       metadataUrl: false,
-      metadataSummaryProvider: true,
+      metadataSummaryProvider: false,
       metadataSummaryChatName: true,
       metadataSummaryMessages: true,
       metadataStartTime: false,

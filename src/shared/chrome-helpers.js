@@ -20,7 +20,7 @@
   function ensureChromeApi(path) {
     const target = getChromeApi(path);
     if (!target) {
-      throw new Error(`Chrome API unavailable in this context: ${path.join(".")}`);
+      return null;
     }
     return target;
   }
@@ -73,7 +73,11 @@
     return new Promise((resolve, reject) => {
       try {
         const chromeRoot = getChromeRoot();
-        ensureChromeApi(["runtime", "sendMessage"]);
+        if (!ensureChromeApi(["runtime", "sendMessage"])) {
+          reject(new Error("Chrome runtime messaging is unavailable in this context."));
+          return;
+        }
+
         chromeRoot.runtime.sendMessage(message, (response) => {
           if (chromeRoot.runtime?.lastError) {
             reject(new Error(chromeRoot.runtime.lastError.message));
@@ -91,7 +95,11 @@
     return new Promise((resolve, reject) => {
       try {
         const chromeRoot = getChromeRoot();
-        ensureChromeApi(["tabs", "query"]);
+        if (!ensureChromeApi(["tabs", "query"])) {
+          reject(new Error("Chrome tabs query is unavailable in this context."));
+          return;
+        }
+
         chromeRoot.tabs.query(queryInfo, (tabs) => {
           if (chromeRoot.runtime?.lastError) {
             reject(new Error(chromeRoot.runtime.lastError.message));
@@ -109,7 +117,11 @@
     return new Promise((resolve, reject) => {
       try {
         const chromeRoot = getChromeRoot();
-        ensureChromeApi(["tabs", "sendMessage"]);
+        if (!ensureChromeApi(["tabs", "sendMessage"])) {
+          reject(new Error("Chrome tabs messaging is unavailable in this context."));
+          return;
+        }
+
         chromeRoot.tabs.sendMessage(tabId, message, (response) => {
           if (chromeRoot.runtime?.lastError) {
             reject(new Error(chromeRoot.runtime.lastError.message));

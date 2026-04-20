@@ -48,6 +48,7 @@ The TXT export is designed as a readable chat log:
 - Unicode-friendly file naming and a blank-line default TXT separator
 - Higher-contrast export button labels for better readability
 - Defensive settings fallback when a shared script runs without extension storage APIs
+- Guarded runtime/storage listeners and caught inline refresh failures to avoid uncaught extension-context errors
 - Local-first export flow with no server-side processing
 
 ## Export Options

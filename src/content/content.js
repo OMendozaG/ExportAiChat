@@ -100,7 +100,7 @@
 
     inlineUiRefreshTimer = window.setTimeout(() => {
       inlineUiRefreshTimer = null;
-      void refreshInlineUi();
+      refreshInlineUi().catch(() => {});
     }, 120);
   }
 
@@ -357,6 +357,10 @@
   }
 
   function setupRuntimeListener() {
+    if (!globalThis.chrome?.runtime?.onMessage?.addListener) {
+      return;
+    }
+
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (!message || typeof message !== "object") {
         return false;
@@ -385,6 +389,10 @@
   }
 
   function setupStorageListener() {
+    if (!globalThis.chrome?.storage?.onChanged?.addListener) {
+      return;
+    }
+
     chrome.storage.onChanged.addListener((_changes, areaName) => {
       if (areaName === "local") {
         cachedInlineUiSettings = null;

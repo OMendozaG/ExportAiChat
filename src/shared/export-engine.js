@@ -120,11 +120,13 @@
 
     resolved = compactName(resolved, settings.invalidFileNameReplacement);
 
-    return resolved || compactName(conversation.title || "chat", settings.invalidFileNameReplacement);
+    const normalizedResolved = resolved && resolved.normalize ? resolved.normalize("NFC") : resolved;
+    return normalizedResolved || compactName(conversation.title || "chat", settings.invalidFileNameReplacement);
   }
 
   function buildFileName(conversation, format) {
-    return `${resolveFileBaseName(conversation)}.${format}`;
+    const fileName = `${resolveFileBaseName(conversation)}.${format}`;
+    return fileName.normalize ? fileName.normalize("NFC") : fileName;
   }
 
   function rolePrefix(message) {

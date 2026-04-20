@@ -18,9 +18,9 @@
   function downloadGlyphMarkup() {
     return [
       '<svg viewBox="0 0 24 24" role="img" aria-hidden="true">',
-      '  <path d="M12 4.5v8.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>',
-      '  <path d="M8.2 10.8 12 14.9l3.8-4.1" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>',
-      '  <path d="M7 18.25h10" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path>',
+      '  <path d="M12 7.5v5.1" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.85"></path>',
+      '  <path d="M9.8 11.5 12 13.9l2.2-2.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.85"></path>',
+      '  <path d="M9.2 16.2h5.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.85"></path>',
       '</svg>'
     ].join("");
   }
@@ -57,23 +57,26 @@
 .ceai-button::before {
   content: "";
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  border-left: 1px solid var(--ceai-btn-border);
-  border-right: 1px solid var(--ceai-btn-border);
-  border-bottom: 1px solid var(--ceai-btn-border);
-  pointer-events: none;
-}
-.ceai-button::after {
-  content: "";
-  position: absolute;
-  top: 7px;
+  top: 6px;
   right: 0;
   bottom: -4px;
   left: 0;
   border-radius: inherit;
   background: var(--ceai-btn-base);
+  pointer-events: none;
   z-index: -1;
+}
+.ceai-button::after {
+  content: "";
+  position: absolute;
+  top: auto;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: calc(100% - 5px);
+  border-radius: inherit;
+  border-bottom: 1px solid var(--ceai-btn-border);
+  pointer-events: none;
 }
 .ceai-button:hover:not([disabled]) {
   background: color-mix(in srgb, var(--ceai-btn-bg) 82%, white 18%);
@@ -81,8 +84,9 @@
   transform: translateY(1px);
 }
 .ceai-button:hover:not([disabled])::before {
-  border-left-color: var(--ceai-btn-border-strong);
-  border-right-color: var(--ceai-btn-border-strong);
+  background: color-mix(in srgb, var(--ceai-btn-base) 88%, white 12%);
+}
+.ceai-button:hover:not([disabled])::after {
   border-bottom-color: var(--ceai-btn-border-strong);
 }
 .ceai-button:active:not([disabled]) {
@@ -97,12 +101,10 @@
   opacity: 1;
 }
 .ceai-button[disabled]::before {
-  border-left-color: color-mix(in srgb, var(--ceai-btn-border) 70%, white 30%);
-  border-right-color: color-mix(in srgb, var(--ceai-btn-border) 70%, white 30%);
-  border-bottom-color: color-mix(in srgb, var(--ceai-btn-border) 70%, white 30%);
+  background: var(--ceai-btn-disabled-base);
 }
 .ceai-button[disabled]::after {
-  background: var(--ceai-btn-disabled-base);
+  border-bottom-color: color-mix(in srgb, var(--ceai-btn-border) 65%, white 35%);
 }
 .ceai-button.is-loading {
   color: transparent !important;
@@ -125,13 +127,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
   width: 100%;
 }
 .ceai-button__icon,
 .ceai-button__spinner {
-  width: 14px;
-  height: 14px;
+  width: 11px;
+  height: 11px;
   display: block;
   flex: 0 0 auto;
 }
@@ -139,8 +141,8 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  margin-left: -7px;
-  margin-top: -7px;
+  margin-left: -5.5px;
+  margin-top: -5.5px;
   opacity: 0;
   animation: ceai-button-spin 0.85s linear infinite;
 }
@@ -150,6 +152,9 @@
 }
 .ceai-button--stacked .ceai-button__label {
   letter-spacing: 0.02em;
+}
+.ceai-button--stacked {
+  aspect-ratio: 1 / 1;
 }
 .ceai-button--secondary {
   --ceai-btn-bg: #d8e0ec;

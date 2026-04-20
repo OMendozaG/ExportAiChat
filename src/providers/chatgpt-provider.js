@@ -49,7 +49,8 @@
   }
 
   function normalizeText(value) {
-    return String(value || "").replace(/\s+/g, " ").trim();
+    const rawValue = String(value || "").replace(/\s+/g, " ").trim();
+    return rawValue.normalize ? rawValue.normalize("NFC") : rawValue;
   }
 
   function formatTimeFromDate(date) {
@@ -115,6 +116,89 @@
     }
 
     return messageNode;
+  }
+
+  function buildReferenceKey(item) {
+    return `${item.label || ""}::${item.url || ""}`.toLowerCase();
+  }
+
+  function dedupeReferences(items) {
+    const seen = new Set();
+    const unique = [];
+
+    for (const item of items) {
+      const key = buildReferenceKey(item);
+      if (!key || seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      unique.push(item);
+    }
+
+    return unique;
+  }
+
+  function normalizeReferenceLabel(value) {
+    const text = normalizeText(value);
+    return text.length > 180 ? text.slice(0, 177).trimEnd() + "..." : text;
+  }
+
+  function isLikelyAttachmentHref(href) {
+    return /\/files?\//i.test(href) || /download/i.test(href);
+  }
+
+  function extractUserAttachmentReferences(messageNode) {
+    const anchors = Array.from(messageNode.querySelectorAll("a[href], [download]"));
+    const items = anchors.map((node) => {
+      const href = normalizeText(node.getAttribute("href"));
+      const label = normalizeReferenceLabel(
+        node.getAttribute("download")
+        || node.getAttribute("aria-label")
+        || node.getAttribute("title")
+        || node.textContent
+      );
+
+      if (!label) {
+        return null;
+      }
+
+      if (!isLikelyAttachmentHref(href) && !/\.[a-z0-9]{2,8}\b/i.test(label)) {
+        return null;
+      }
+
+      return {
+        kind: "attachment",
+        label,
+        url: href || ""
+      };
+    }).filter(Boolean);
+
+    return dedupeReferences(items);
+  }
+
+  function extractAssistantReferences(messageNode, contentRoot) {
+    const anchors = Array.from((contentRoot || messageNode).querySelectorAll("a[href]"));
+    const items = anchors.map((node) => {
+      const href = normalizeText(node.getAttribute("href"));
+      const label = normalizeReferenceLabel(
+        node.getAttribute("aria-label")
+        || node.getAttribute("title")
+        || node.textContent
+      );
+
+      if (!href && !label) {
+        return null;
+      }
+
+      return {
+        kind: isLikelyAttachmentHref(href) ? "attachment" : "url",
+        label,
+        url: href || ""
+      };
+    }).filter(Boolean);
+
+    return dedupeReferences(items);
   }
 
   function findFirstVisibleMatch(selectors, regex, maxLength = 80) {
@@ -494,6 +578,12 @@
       const sanitized = root.sanitize.sanitizeMessageNode(contentRoot, {
         mediaHandling: settings.mediaHandling
       });
+      const userAttachments = rawRole === "user" && settings.showUserAttachmentNames
+        ? extractUserAttachmentReferences(node)
+        : [];
+      const assistantReferences = rawRole === "assistant" && settings.showAssistantReferences
+        ? extractAssistantReferences(node, contentRoot)
+        : [];
 
       const stripped = normalizeText((sanitized.safeHtml || "").replace(/<[^>]*>/g, " "));
       if (!stripped) {
@@ -506,7 +596,9 @@
         safeHtml: sanitized.safeHtml,
         hasMedia: sanitized.hasMedia,
         timeLabel,
-        timeMs
+        timeMs,
+        attachments: userAttachments,
+        references: assistantReferences
       });
     }
 

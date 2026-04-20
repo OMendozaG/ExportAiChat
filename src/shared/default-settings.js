@@ -60,6 +60,12 @@
       // Include the message time when the provider can extract it reliably.
       includeMessageTime: false,
 
+      // Include user attachment file names in exports when the provider exposes them.
+      showUserAttachmentNames: true,
+
+      // Include assistant attachment and URL references in exports when exposed.
+      showAssistantReferences: true,
+
       // Show the inline "Export To..." button in supported chat headers.
       showHeaderExportButton: true,
       showHeaderExportButtonChatgpt: true,

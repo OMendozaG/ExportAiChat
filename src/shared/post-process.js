@@ -51,6 +51,72 @@
     return parts.join(" ");
   }
 
+  function escapeReferenceLine(value) {
+    return root.sanitize.escapeHtml(String(value || ""));
+  }
+
+  function buildReferenceDescriptor(reference) {
+    const label = String(reference?.label || "").trim();
+    const url = String(reference?.url || "").trim();
+
+    if (label && url && label !== url) {
+      return `${label} - ${url}`;
+    }
+
+    return label || url;
+  }
+
+  function prependUserAttachmentLines(safeHtml, attachments) {
+    const hiddenAttachments = filterHiddenReferences(safeHtml, attachments);
+
+    if (!hiddenAttachments.length) {
+      return safeHtml;
+    }
+
+    const lines = hiddenAttachments
+      .map((attachment) => buildReferenceDescriptor(attachment))
+      .filter(Boolean)
+      .map((text) => `<p>[${escapeReferenceLine(text)}]</p>`)
+      .join("");
+
+    return `${lines}${safeHtml}`;
+  }
+
+  function appendAssistantReferenceLines(safeHtml, references) {
+    const hiddenReferences = filterHiddenReferences(safeHtml, references);
+
+    if (!hiddenReferences.length) {
+      return safeHtml;
+    }
+
+    const lines = hiddenReferences
+      .map((reference) => buildReferenceDescriptor(reference))
+      .filter(Boolean)
+      .map((text) => `<p>[${escapeReferenceLine(text)}]</p>`)
+      .join("");
+
+    return `${safeHtml}${lines}`;
+  }
+
+  function filterHiddenReferences(safeHtml, references) {
+    const haystack = String(safeHtml || "").toLowerCase();
+
+    return (references || []).filter((reference) => {
+      const label = String(reference?.label || "").trim().toLowerCase();
+      const url = String(reference?.url || "").trim().toLowerCase();
+
+      if (label && haystack.includes(label)) {
+        return false;
+      }
+
+      if (url && haystack.includes(url)) {
+        return false;
+      }
+
+      return Boolean(label || url);
+    });
+  }
+
   function resolveSpeakerLabel(message, names, settings) {
     let baseLabel = "Unknown";
 
@@ -201,8 +267,6 @@
       pushMetadata(items, METADATA_LABELS.PROVIDER, summary.providerName);
       pushMetadata(items, METADATA_LABELS.CHAT_NAME, summary.chatPath);
       pushMetadata(items, METADATA_LABELS.MESSAGE_TOTAL, summary.totalMessages);
-      pushMetadata(items, METADATA_LABELS.MESSAGE_USER, summary.userMessages);
-      pushMetadata(items, METADATA_LABELS.MESSAGE_LLM, summary.llmMessages);
       pushMetadata(items, METADATA_LABELS.FILE_NAME, summary.fileName);
     }
 
@@ -257,9 +321,12 @@
     const processedMessages = (rawConversation.messages || [])
       .map((message, index) => {
         const safeHtml = message.safeHtml || "";
+        const enrichedSafeHtml = message.role === ROLES.HUMAN
+          ? prependUserAttachmentLines(safeHtml, message.attachments)
+          : appendAssistantReferenceLines(safeHtml, message.references);
         const text = settings.textFormatting === TEXT_FORMATTING.MARKDOWN
-          ? root.textConverter.htmlToMarkdown(safeHtml, settings)
-          : root.textConverter.htmlToPlainText(safeHtml, settings);
+          ? root.textConverter.htmlToMarkdown(enrichedSafeHtml, settings)
+          : root.textConverter.htmlToPlainText(enrichedSafeHtml, settings);
 
         return {
           id: message.id || `msg-${index + 1}`,
@@ -267,7 +334,7 @@
           speakerLabel: resolveSpeakerLabel(message, names, settings),
           timeLabel: resolveMessageTimeLabel(message, settings),
           timeMs: Number.isFinite(Number(message.timeMs)) ? Number(message.timeMs) : null,
-          safeHtml,
+          safeHtml: enrichedSafeHtml,
           text,
           hasMedia: Boolean(message.hasMedia),
           isThinking: Boolean(message.isThinking),

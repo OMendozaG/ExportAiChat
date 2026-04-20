@@ -11,8 +11,6 @@
   const summaryProviderNode = document.getElementById("summaryProvider");
   const summaryChatNameNode = document.getElementById("summaryChatName");
   const summaryMessagesNode = document.getElementById("summaryMessages");
-  const summaryUserMessagesNode = document.getElementById("summaryUserMessages");
-  const summaryLlmMessagesNode = document.getElementById("summaryLlmMessages");
   const summaryFileNameNode = document.getElementById("summaryFileName");
 
   const exportPdfButton = document.getElementById("exportPdf");
@@ -46,8 +44,6 @@
     summaryProviderNode.textContent = summary.providerName || "-";
     summaryChatNameNode.textContent = summary.chatPath || summary.chatTitle || "-";
     summaryMessagesNode.textContent = String(summary.totalMessages || 0);
-    summaryUserMessagesNode.textContent = String(summary.userMessages || 0);
-    summaryLlmMessagesNode.textContent = String(summary.llmMessages || 0);
     summaryFileNameNode.textContent = summary.fileNameBase || "-";
     setSummaryVisible(true);
   }
@@ -124,13 +120,15 @@
       }
 
       if (!response.isChatPage || !response.messageCount) {
-        setStatus(`Provider: ${response.providerName}. Open a chat to export.`);
+        setActionsVisible(false);
+        setStatus("Open an active LLM conversation.");
         setSummaryVisible(false);
         return;
       }
 
       if (!visibleExportButtons(popupSettings)) {
         setStatus("No export formats are enabled in Settings.");
+        setActionsVisible(false);
         setSummary(response.summary || null);
         return;
       }

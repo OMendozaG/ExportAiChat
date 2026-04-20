@@ -103,7 +103,10 @@ The settings page supports:
 - Message id export toggle
 - Conversation start, end, and duration metadata toggles when message dates exist
 - Thinking or reasoning export toggle
-- User attachment and assistant reference toggles
+- User attachment and assistant reference toggles split into:
+- assistant references to user attachments (default on)
+- assistant-generated file attachments (default on)
+- assistant web links (default off)
 - Separate Chat Name summary path from Chat Title extraction
 - Visible export format toggles
 - Auto naming toggle and file name template

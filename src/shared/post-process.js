@@ -134,6 +134,53 @@
       .filter(Boolean);
   }
 
+  function referenceKey(reference) {
+    const label = String(reference?.label || "").trim().toLowerCase();
+    const url = String(reference?.url || "").trim().toLowerCase();
+    return `${label}::${url}`;
+  }
+
+  function collectKnownUserAttachmentKeys(messages) {
+    const keys = new Set();
+
+    for (const message of messages || []) {
+      if (message?.role !== ROLES.HUMAN || !Array.isArray(message.attachments)) {
+        continue;
+      }
+
+      for (const attachment of message.attachments) {
+        const key = referenceKey(attachment);
+        if (key !== "::") {
+          keys.add(key);
+        }
+      }
+    }
+
+    return keys;
+  }
+
+  function filterAssistantReferencesBySettings(references, knownUserAttachmentKeys, settings) {
+    const includeUserAttachmentRefs = Boolean(settings.showAssistantUserAttachmentReferences);
+    const includeGeneratedAttachmentRefs = Boolean(settings.showAssistantGeneratedAttachmentReferences);
+    const includeWebRefs = Boolean(settings.showAssistantWebReferences);
+
+    return (references || []).filter((reference) => {
+      const kind = String(reference?.kind || "").toLowerCase();
+      const key = referenceKey(reference);
+      const isKnownUserAttachment = knownUserAttachmentKeys.has(key);
+
+      if (kind === "url") {
+        return includeWebRefs;
+      }
+
+      if (isKnownUserAttachment) {
+        return includeUserAttachmentRefs;
+      }
+
+      return includeGeneratedAttachmentRefs;
+    });
+  }
+
   function resolveSpeakerLabel(message, names, settings) {
     let baseLabel = "Unknown";
 
@@ -341,6 +388,7 @@
 
     rawConversation.settings = settings;
 
+    const knownUserAttachmentKeys = collectKnownUserAttachmentKeys(rawConversation.messages || []);
     const processedMessages = (rawConversation.messages || [])
       .map((message, index) => {
         const safeHtml = message.safeHtml || "";
@@ -350,8 +398,11 @@
         const leadingReferenceLines = message.role === ROLES.HUMAN
           ? collectReferenceLines(message.attachments)
           : [];
+        const filteredAssistantReferences = message.role === ROLES.ASSISTANT
+          ? filterAssistantReferencesBySettings(message.references, knownUserAttachmentKeys, settings)
+          : [];
         const trailingReferenceLines = message.role === ROLES.ASSISTANT
-          ? collectHiddenReferenceLines(safeHtml, message.references)
+          ? collectHiddenReferenceLines(safeHtml, filteredAssistantReferences)
           : [];
 
         return {

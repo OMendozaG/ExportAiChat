@@ -770,6 +770,13 @@
     const seenIds = new Set();
     const messages = [];
 
+    const shouldExtractAssistantReferences = Boolean(
+      settings.showAssistantUserAttachmentReferences
+      || settings.showAssistantGeneratedAttachmentReferences
+      || settings.showAssistantWebReferences
+      || settings.showAssistantReferences
+    );
+
     for (let index = 0; index < rawNodes.length; index += 1) {
       const node = rawNodes[index];
       const rawRole = node.getAttribute("data-message-author-role") || "unknown";
@@ -801,7 +808,7 @@
       const userAttachments = rawRole === "user" && settings.showUserAttachmentNames
         ? extractUserAttachmentReferences(node)
         : [];
-      const assistantReferences = rawRole === "assistant" && settings.showAssistantReferences
+      const assistantReferences = rawRole === "assistant" && shouldExtractAssistantReferences
         ? dedupeReferences([
             ...extractAssistantReferences(node, contentRoot),
             ...extractAssistantButtonReferences(node, contentRoot)

@@ -44,7 +44,9 @@
   const includeMessageTimeCheckbox = document.getElementById("includeMessageTime");
   const includeMessageIdCheckbox = document.getElementById("includeMessageId");
   const showUserAttachmentNamesCheckbox = document.getElementById("showUserAttachmentNames");
-  const showAssistantReferencesCheckbox = document.getElementById("showAssistantReferences");
+  const showAssistantUserAttachmentReferencesCheckbox = document.getElementById("showAssistantUserAttachmentReferences");
+  const showAssistantGeneratedAttachmentReferencesCheckbox = document.getElementById("showAssistantGeneratedAttachmentReferences");
+  const showAssistantWebReferencesCheckbox = document.getElementById("showAssistantWebReferences");
   const showHeaderExportButtonChatgptCheckbox = document.getElementById("showHeaderExportButtonChatgpt");
   const exportTimeoutSecondsInput = document.getElementById("exportTimeoutSeconds");
   const showExportPdfCheckbox = document.getElementById("showExportPdf");
@@ -161,7 +163,9 @@
     includeMessageTimeCheckbox.checked = Boolean(settings.includeMessageTime);
     includeMessageIdCheckbox.checked = Boolean(settings.includeMessageId);
     showUserAttachmentNamesCheckbox.checked = Boolean(settings.showUserAttachmentNames);
-    showAssistantReferencesCheckbox.checked = Boolean(settings.showAssistantReferences);
+    showAssistantUserAttachmentReferencesCheckbox.checked = Boolean(settings.showAssistantUserAttachmentReferences);
+    showAssistantGeneratedAttachmentReferencesCheckbox.checked = Boolean(settings.showAssistantGeneratedAttachmentReferences);
+    showAssistantWebReferencesCheckbox.checked = Boolean(settings.showAssistantWebReferences);
     showHeaderExportButtonChatgptCheckbox.checked = Boolean(
       settings.showHeaderExportButtonChatgpt ?? settings.showHeaderExportButton
     );
@@ -221,7 +225,9 @@
       includeMessageTime: includeMessageTimeCheckbox.checked,
       includeMessageId: includeMessageIdCheckbox.checked,
       showUserAttachmentNames: showUserAttachmentNamesCheckbox.checked,
-      showAssistantReferences: showAssistantReferencesCheckbox.checked,
+      showAssistantUserAttachmentReferences: showAssistantUserAttachmentReferencesCheckbox.checked,
+      showAssistantGeneratedAttachmentReferences: showAssistantGeneratedAttachmentReferencesCheckbox.checked,
+      showAssistantWebReferences: showAssistantWebReferencesCheckbox.checked,
       showHeaderExportButton: showHeaderExportButtonChatgptCheckbox.checked,
       showHeaderExportButtonChatgpt: showHeaderExportButtonChatgptCheckbox.checked,
       exportTimeoutSeconds: clampTimeoutSeconds(exportTimeoutSecondsInput.value),

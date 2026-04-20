@@ -39,6 +39,7 @@ The TXT export is designed as a readable chat log:
 - ChatGPT user file tiles and assistant inline file/reference chips are extracted explicitly instead of relying only on sanitized rich text
 - ChatGPT attachment tile detection, including attachment-only user turns
 - Broader ChatGPT thinking/reasoning block detection, including localized labels and timing extraction
+- Configurable AI/Human border colors for HTML and PDF exports
 - Configurable file naming templates
 - Auto-save overwrite vs add-count conflict policy
 - Optional inline `EXPORT...` action in the ChatGPT header
@@ -83,6 +84,7 @@ The settings page supports:
 - Markdown or clean text formatting
 - Quote and divider style
 - Multiline continuation style
+- AI and Human border colors for HTML/PDF (default AI blue, Human orange)
 - Editable TXT message separator
 - Media handling rules
 - Metadata toggles

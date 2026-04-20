@@ -309,6 +309,24 @@
     ].filter(Boolean).join("\n");
   }
 
+  function normalizeRoleColor(value, fallback) {
+    const raw = String(value || "").trim();
+    if (/^#[0-9a-f]{3}$/i.test(raw) || /^#[0-9a-f]{6}$/i.test(raw)) {
+      return raw.toLowerCase();
+    }
+
+    return fallback;
+  }
+
+  function resolveRoleBorderColors(settings) {
+    const safeSettings = settings || root.defaults.settings;
+    return {
+      ai: normalizeRoleColor(safeSettings.htmlPdfAiBorderColor, "#2563eb"),
+      human: normalizeRoleColor(safeSettings.htmlPdfHumanBorderColor, "#f59e0b"),
+      system: "#7c3aed"
+    };
+  }
+
   function buildReferenceBlockHtml(lines, className) {
     const escapeHtml = root.sanitize.escapeHtml;
     if (!Array.isArray(lines) || !lines.length) {
@@ -374,7 +392,8 @@
     ].filter(Boolean).join("\n");
   }
 
-  function buildHtmlStyle() {
+  function buildHtmlStyle(settings) {
+    const roleColors = resolveRoleBorderColors(settings);
     return [
       "@page { size: A4; margin: 14mm; }",
       ":root { color-scheme: light; }",
@@ -403,9 +422,9 @@
       ".ceai-reference-block p { margin: 0 0 6px; color: #334155; font-size: 0.92rem; font-weight: 600; }",
       ".ceai-reference-block--trailing { margin-top: 10px; margin-bottom: 0; }",
       ".ceai-reference-block--trailing p:last-child, .ceai-reference-block--leading p:last-child { margin-bottom: 0; }",
-      ".ceai-message.role-human { border-left: 6px solid #2166f3; }",
-      ".ceai-message.role-assistant { border-left: 6px solid #0f9d58; }",
-      ".ceai-message.role-system { border-left: 6px solid #7c3aed; }",
+      `.ceai-message.role-human { border-left: 6px solid ${roleColors.human}; }`,
+      `.ceai-message.role-assistant { border-left: 6px solid ${roleColors.ai}; }`,
+      `.ceai-message.role-system { border-left: 6px solid ${roleColors.system}; }`,
       ".ceai-message pre { white-space: pre-wrap; margin: 0; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }",
       ".ceai-rich p { margin: 0 0 0.9em; }",
       ".ceai-rich blockquote { margin: 0.7em 0; padding: 0.45em 0.8em; border-left: 3px solid #8a94a6; background: #f8fafc; }",
@@ -417,7 +436,8 @@
     ].join("\n");
   }
 
-  function buildPdfHtmlStyle() {
+  function buildPdfHtmlStyle(settings) {
+    const roleColors = resolveRoleBorderColors(settings);
     return [
       "@page { size: A4; margin: 12mm; }",
       ":root { color-scheme: light; }",
@@ -445,9 +465,9 @@
       ".ceai-reference-block p { margin: 0 0 4px; color: #475467; font-size: 11px; font-weight: 600; }",
       ".ceai-reference-block--trailing { margin-top: 8px; margin-bottom: 0; }",
       ".ceai-reference-block--trailing p:last-child, .ceai-reference-block--leading p:last-child { margin-bottom: 0; }",
-      ".ceai-message.role-human { border-left: 5px solid #2563eb; }",
-      ".ceai-message.role-assistant { border-left: 5px solid #16a34a; }",
-      ".ceai-message.role-system { border-left: 5px solid #7c3aed; }",
+      `.ceai-message.role-human { border-left: 5px solid ${roleColors.human}; }`,
+      `.ceai-message.role-assistant { border-left: 5px solid ${roleColors.ai}; }`,
+      `.ceai-message.role-system { border-left: 5px solid ${roleColors.system}; }`,
       ".ceai-message pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: \"Segoe UI Emoji\", \"Apple Color Emoji\", \"Segoe UI\", Tahoma, sans-serif; line-height: 1.45; }"
     ].join("\n");
   }
@@ -465,7 +485,7 @@
       "  <meta charset=\"utf-8\">",
       "  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
       `  <title>${escapeHtml(conversation.title)}</title>`,
-      `  <style>${buildHtmlStyle()}</style>`,
+      `  <style>${buildHtmlStyle(settings)}</style>`,
       "</head>",
       "<body>",
       "  <main>",
@@ -492,7 +512,7 @@
       "  <meta charset=\"utf-8\">",
       "  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
       `  <title>${escapeHtml(conversation.title)}</title>`,
-      `  <style>${buildPdfHtmlStyle()}</style>`,
+      `  <style>${buildPdfHtmlStyle(settings)}</style>`,
       "</head>",
       "<body>",
       "  <main>",

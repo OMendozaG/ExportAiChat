@@ -28,6 +28,10 @@
       // Separator inserted between TXT message blocks.
       messageSeparator: "\n\n\n",
 
+      // Role border colors for HTML/PDF exports.
+      htmlPdfAiBorderColor: "#2563eb",
+      htmlPdfHumanBorderColor: "#f59e0b",
+
       // Automatic file naming and default naming template.
       autoFileName: true,
       fileNameTemplate: "YY.MM.DD <ChatName>",
@@ -94,6 +98,15 @@
     }
   };
 
+  function normalizeHexColor(value, fallback) {
+    const raw = String(value || "").trim();
+    if (/^#[0-9a-f]{3}$/i.test(raw) || /^#[0-9a-f]{6}$/i.test(raw)) {
+      return raw.toLowerCase();
+    }
+
+    return fallback;
+  }
+
   // Función de merge defensivo: rellena faltantes sin perder settings existentes.
   root.defaults.mergeSettings = (incoming) => {
     const next = { ...root.defaults.settings };
@@ -136,6 +149,14 @@
     next.exportTimeoutSeconds = Math.min(
       MAX_EXPORT_TIMEOUT_SECONDS,
       Math.max(1, Math.round(safeTimeout))
+    );
+    next.htmlPdfAiBorderColor = normalizeHexColor(
+      next.htmlPdfAiBorderColor,
+      root.defaults.settings.htmlPdfAiBorderColor
+    );
+    next.htmlPdfHumanBorderColor = normalizeHexColor(
+      next.htmlPdfHumanBorderColor,
+      root.defaults.settings.htmlPdfHumanBorderColor
     );
 
     return next;

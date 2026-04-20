@@ -16,6 +16,8 @@
   const textFormattingSelect = document.getElementById("textFormatting");
   const quoteDividerStyleSelect = document.getElementById("quoteDividerStyle");
   const multilineFormatSelect = document.getElementById("multilineFormat");
+  const htmlPdfAiBorderColorInput = document.getElementById("htmlPdfAiBorderColor");
+  const htmlPdfHumanBorderColorInput = document.getElementById("htmlPdfHumanBorderColor");
   const messageSeparatorTextarea = document.getElementById("messageSeparator");
   const appThemeSelect = document.getElementById("appTheme");
   const autoFileNameCheckbox = document.getElementById("autoFileName");
@@ -131,6 +133,8 @@
     textFormattingSelect.value = settings.textFormatting;
     quoteDividerStyleSelect.value = settings.quoteDividerStyle;
     multilineFormatSelect.value = settings.multilineFormat;
+    htmlPdfAiBorderColorInput.value = settings.htmlPdfAiBorderColor || "#2563eb";
+    htmlPdfHumanBorderColorInput.value = settings.htmlPdfHumanBorderColor || "#f59e0b";
     messageSeparatorTextarea.value = settings.messageSeparator || "";
     appThemeSelect.value = settings.appTheme || "auto";
     autoFileNameCheckbox.checked = Boolean(settings.autoFileName);
@@ -188,6 +192,8 @@
       textFormatting: textFormattingSelect.value,
       quoteDividerStyle: quoteDividerStyleSelect.value,
       multilineFormat: multilineFormatSelect.value,
+      htmlPdfAiBorderColor: htmlPdfAiBorderColorInput.value,
+      htmlPdfHumanBorderColor: htmlPdfHumanBorderColorInput.value,
       messageSeparator: messageSeparatorTextarea.value,
       appTheme: appThemeSelect.value,
       autoFileName: autoFileNameCheckbox.checked,

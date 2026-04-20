@@ -104,19 +104,16 @@
 
   function resolveFileBaseName(conversation) {
     const settings = conversation.settings || root.defaults.settings;
-    const keywords = keywordValueMap(conversation);
     const timeParts = timestampParts(new Date(conversation.extractedAtIso || Date.now()));
     const templateSource = settings.autoFileName
       ? (settings.fileNameTemplate || "YY.MM.DD <ChatTitle>")
       : (settings.fileNameTemplate || "chat");
-
-    let resolved = String(templateSource);
+    const keywords = keywordValueMap(conversation);
+    let resolved = applyDateTokens(String(templateSource), timeParts);
 
     for (const [keyword, value] of Object.entries(keywords)) {
       resolved = resolved.split(keyword).join(value);
     }
-
-    resolved = applyDateTokens(resolved, timeParts);
 
     resolved = compactName(resolved, settings.invalidFileNameReplacement);
 
@@ -170,9 +167,10 @@
     const lines = ["[Metadata]"];
 
     for (const item of metadata) {
-      lines.push(`${item.label}: ${item.value}`);
+      lines.push(`- ${item.label}: ${item.value}`);
     }
 
+    lines.push("-----------");
     return `${lines.join("\n")}\n`;
   }
 

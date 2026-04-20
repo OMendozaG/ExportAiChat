@@ -50,7 +50,7 @@
 
     // Shared metadata labels used in all export formats.
     METADATA_LABELS: {
-      EXPORTED_AT: "Date / Time",
+      EXPORTED_AT: "Date",
       DEVICE_USER: "PC / User",
       FOLDER: "Chat Folder",
       TITLE: "Chat Title",
@@ -59,9 +59,6 @@
       PROVIDER: "Provider",
       CHAT_NAME: "Chat Name",
       MESSAGE_TOTAL: "Messages",
-      MESSAGE_USER: "User Messages",
-      MESSAGE_LLM: "LLM Messages",
-      FILE_NAME: "File Name",
       START_TIME: "Start Time",
       END_TIME: "End Time",
       DURATION: "Duration"

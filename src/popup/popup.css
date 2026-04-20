@@ -47,27 +47,21 @@ body {
 .popup {
   width: 332px;
   padding: 14px;
-  --ceai-btn-bg: #f4f8ff;
-  --ceai-btn-border: #6d8bc8;
-  --ceai-btn-border-strong: #5877b5;
-  --ceai-btn-base: #6d8bc8;
-  --ceai-btn-glow: rgba(111, 164, 255, 0.28);
-  --ceai-btn-text: #142544;
-  --ceai-btn-disabled-bg: #f2f6fd;
-  --ceai-btn-disabled-text: #5b6980;
-  --ceai-btn-disabled-base: #bbc7db;
+  --ceai-btn-bg: #dcebff;
+  --ceai-btn-bg-hover: #cfe3ff;
+  --ceai-btn-bg-active: #bdd7ff;
+  --ceai-btn-text: #19365e;
+  --ceai-btn-disabled-bg: #e9eef6;
+  --ceai-btn-disabled-text: #728097;
 }
 
 :root[data-resolved-theme="dark"] .popup {
-  --ceai-btn-bg: #edf3ff;
-  --ceai-btn-border: #7a98d1;
-  --ceai-btn-border-strong: #6486c7;
-  --ceai-btn-base: #7a98d1;
-  --ceai-btn-glow: rgba(179, 202, 244, 0.28);
-  --ceai-btn-text: #132441;
-  --ceai-btn-disabled-bg: #ecf1f8;
-  --ceai-btn-disabled-text: #5a6678;
-  --ceai-btn-disabled-base: #bec8d8;
+  --ceai-btn-bg: #d6e7ff;
+  --ceai-btn-bg-hover: #c8defe;
+  --ceai-btn-bg-active: #bad4f8;
+  --ceai-btn-text: #163056;
+  --ceai-btn-disabled-bg: #e5ebf3;
+  --ceai-btn-disabled-text: #748296;
 }
 
 .title-row {
@@ -119,13 +113,13 @@ h1 {
 
 .actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
 .actions button {
   width: 100%;
-  min-height: 72px;
+  min-height: 68px;
   padding: 8px 6px;
   font-size: 12px;
 }

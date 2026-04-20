@@ -69,7 +69,7 @@ The settings page supports:
 - Editable TXT message separator
 - Media handling rules
 - Metadata toggles
-- Popup provider/chat/message summary with total messages and filename preview
+- Popup provider/chat/message summary with total messages and H/AI counts
 - Message time export toggle
 - Conversation start, end, and duration metadata toggles when message dates exist
 - Thinking or reasoning export toggle

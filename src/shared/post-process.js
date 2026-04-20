@@ -219,6 +219,7 @@
       chatPath: buildChatPath(rawConversation),
       fileNameBase,
       fileName: fileNameBase,
+      messagesDisplay: `${counts.totalMessages} (H: ${counts.userMessages} AI: ${counts.llmMessages})`,
       ...counts,
       ...timeline
     };
@@ -238,8 +239,7 @@
 
     if (settings.metadataExportedAt) {
       pushMetadata(items, METADATA_LABELS.EXPORTED_AT, new Intl.DateTimeFormat(undefined, {
-        dateStyle: "short",
-        timeStyle: "short"
+        dateStyle: "short"
       }).format(extractedAt));
     }
 
@@ -266,8 +266,7 @@
     if (settings.metadataConversationSummary) {
       pushMetadata(items, METADATA_LABELS.PROVIDER, summary.providerName);
       pushMetadata(items, METADATA_LABELS.CHAT_NAME, summary.chatPath);
-      pushMetadata(items, METADATA_LABELS.MESSAGE_TOTAL, summary.totalMessages);
-      pushMetadata(items, METADATA_LABELS.FILE_NAME, summary.fileName);
+      pushMetadata(items, METADATA_LABELS.MESSAGE_TOTAL, summary.messagesDisplay);
     }
 
     if (settings.metadataStartTime && summary.hasTimeline) {
@@ -304,10 +303,6 @@
 
     conversation.summary = conversation.summary || {};
     conversation.summary.fileName = filename;
-
-    if (conversation.settings?.metadataConversationSummary) {
-      upsertMetadata(conversation.metadata || (conversation.metadata = []), METADATA_LABELS.FILE_NAME, filename);
-    }
 
     return conversation;
   }

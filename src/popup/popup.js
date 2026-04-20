@@ -11,7 +11,6 @@
   const summaryProviderNode = document.getElementById("summaryProvider");
   const summaryChatNameNode = document.getElementById("summaryChatName");
   const summaryMessagesNode = document.getElementById("summaryMessages");
-  const summaryFileNameNode = document.getElementById("summaryFileName");
 
   const exportPdfButton = document.getElementById("exportPdf");
   const exportTxtButton = document.getElementById("exportTxt");
@@ -43,8 +42,7 @@
 
     summaryProviderNode.textContent = summary.providerName || "-";
     summaryChatNameNode.textContent = summary.chatPath || summary.chatTitle || "-";
-    summaryMessagesNode.textContent = String(summary.totalMessages || 0);
-    summaryFileNameNode.textContent = summary.fileNameBase || "-";
+    summaryMessagesNode.textContent = summary.messagesDisplay || String(summary.totalMessages || 0);
     setSummaryVisible(true);
   }
 
@@ -134,7 +132,7 @@
       }
 
       setSummary(response.summary || null);
-      setStatus(`Provider: ${response.providerName}. Messages: ${response.messageCount}.`);
+      setStatus(`Provider: ${response.providerName}. Messages: ${response.summary?.messagesDisplay || response.messageCount}.`);
       setActionsVisible(true);
       setButtonsEnabled(true);
     } catch (_error) {

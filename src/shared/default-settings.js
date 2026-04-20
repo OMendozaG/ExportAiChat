@@ -42,7 +42,7 @@
 
       // Shared metadata toggles for TXT, HTML, MHT and PDF exports.
       metadataExportedAt: true,
-      metadataDeviceUser: true,
+      metadataDeviceUser: false,
       metadataFolder: false,
       metadataTitle: true,
       metadataModel: true,

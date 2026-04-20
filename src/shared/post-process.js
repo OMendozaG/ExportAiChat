@@ -67,13 +67,13 @@
   }
 
   function prependUserAttachmentLines(safeHtml, attachments) {
-    const hiddenAttachments = filterHiddenReferences(safeHtml, attachments);
+    const visibleAttachments = dedupeVisibleReferences(attachments);
 
-    if (!hiddenAttachments.length) {
+    if (!visibleAttachments.length) {
       return safeHtml;
     }
 
-    const lines = hiddenAttachments
+    const lines = visibleAttachments
       .map((attachment) => buildReferenceDescriptor(attachment))
       .filter(Boolean)
       .map((text) => `<p>[${escapeReferenceLine(text)}]</p>`)
@@ -114,6 +114,20 @@
       }
 
       return Boolean(label || url);
+    });
+  }
+
+  function dedupeVisibleReferences(references) {
+    const seen = new Set();
+
+    return (references || []).filter((reference) => {
+      const descriptor = buildReferenceDescriptor(reference).toLowerCase();
+      if (!descriptor || seen.has(descriptor)) {
+        return false;
+      }
+
+      seen.add(descriptor);
+      return true;
     });
   }
 
@@ -160,8 +174,8 @@
   }
 
   function buildChatPath(rawConversation) {
-    const title = rawConversation.title || "chat";
-    return rawConversation.folderName ? `${rawConversation.folderName}/${title}` : title;
+    const chatName = rawConversation.chatName || rawConversation.title || "chat";
+    return rawConversation.folderName ? `${rawConversation.folderName}/${chatName}` : chatName;
   }
 
   function extractTimeline(messages) {
@@ -203,6 +217,7 @@
     const conversationLike = {
       extractedAtIso: new Date().toISOString(),
       title: rawConversation.title || "chat",
+      chatName: rawConversation.chatName || rawConversation.title || "chat",
       folderName: rawConversation.folderName || "",
       modelName: rawConversation.modelName || provider?.displayName || "Unknown",
       providerName: provider?.displayName || "Unknown Provider",
@@ -216,6 +231,7 @@
     return {
       providerName: provider?.displayName || "Unknown Provider",
       chatTitle: rawConversation.title || "chat",
+      chatName: rawConversation.chatName || rawConversation.title || "chat",
       chatPath: buildChatPath(rawConversation),
       fileNameBase,
       fileName: fileNameBase,
@@ -351,6 +367,7 @@
       providerName: provider?.displayName || "Unknown Provider",
       sourceUrl: rawConversation.sourceUrl || location.href,
       folderName: rawConversation.folderName || "",
+      chatName: rawConversation.chatName || rawConversation.title || "chat",
       title: rawConversation.title || "chat",
       modelName: rawConversation.modelName || provider?.displayName || "Unknown",
       extractedAtIso,

@@ -173,7 +173,15 @@
 
   function extractUserAttachmentTiles(messageNode) {
     const tileNodes = Array.from(
-      messageNode.querySelectorAll('[role="group"][aria-label], [class*="file-tile"][aria-label]')
+      messageNode.querySelectorAll(
+        [
+          '[role="group"][aria-label]',
+          '[class*="file-tile"][aria-label]',
+          '[data-default-action="true"] button[aria-label]',
+          '.font-semibold',
+          '[class*="font-semibold"]'
+        ].join(", ")
+      )
     );
 
     const items = tileNodes.map((node) => {
@@ -288,14 +296,24 @@
       return "";
     }
 
-    // Prefer visible text nodes first so project conversations do not fall back
-    // to broader aria/title strings that can include the folder label again.
     const textNodes = Array.from(container.querySelectorAll("[dir='auto'], .truncate, span, div"));
+    const candidateTexts = [];
 
     for (const node of textNodes) {
       const nodeText = normalizeText(node.textContent);
-      if (nodeText) {
-        return nodeText;
+      if (!nodeText || nodeText.length > 180) {
+        continue;
+      }
+
+      candidateTexts.push(nodeText);
+    }
+
+    const uniqueCandidates = Array.from(new Set(candidateTexts))
+      .sort((left, right) => left.length - right.length);
+
+    for (const candidate of uniqueCandidates) {
+      if (candidate) {
+        return candidate;
       }
     }
 
@@ -340,7 +358,7 @@
     }) || null;
   }
 
-  function extractConversationTitleFromSidebar() {
+  function extractConversationNameFromSidebar() {
     const link = findConversationSidebarLink(getCurrentConversationId());
 
     if (!link) {
@@ -356,11 +374,6 @@
   }
 
   function extractConversationTitle() {
-    const sidebarTitle = extractConversationTitleFromSidebar();
-    if (sidebarTitle) {
-      return sidebarTitle;
-    }
-
     const folderName = extractConversationFolder();
     const titleSelectors = [
       'main [data-testid*="conversation-title"]',
@@ -396,7 +409,16 @@
       }
     }
 
+    const sidebarTitle = extractConversationNameFromSidebar();
+    if (sidebarTitle) {
+      return sidebarTitle;
+    }
+
     return "ChatGPT Chat";
+  }
+
+  function extractConversationName() {
+    return extractConversationNameFromSidebar() || extractConversationTitle();
   }
 
   function extractConversationFolder() {
@@ -651,6 +673,7 @@
       providerId: "chatgpt",
       sourceUrl: location.href,
       folderName: extractConversationFolder(),
+      chatName: extractConversationName(),
       title: extractConversationTitle(),
       modelName: extractModelName(),
       messages

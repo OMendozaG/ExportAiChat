@@ -43,6 +43,7 @@ The TXT export is designed as a readable chat log:
 - Shared raised button component across popup, settings, and inline export menu
 - Unified download icon sizing across popup and inline export menus
 - Download format icons sized consistently at 20px
+- Button-level export feedback with loading and success states
 - Refined line-art robot export icon with transparent background assets
 - Unicode-friendly file naming and a blank-line default TXT separator
 - Higher-contrast export button labels for better readability
@@ -75,11 +76,13 @@ The settings page supports:
 - Media handling rules
 - Metadata toggles
 - Separate metadata toggles for provider, chat name, and message summary
+- `PC / User` metadata disabled by default
 - Popup provider/chat/message summary with total messages and H/AI counts
 - Message time export toggle
 - Conversation start, end, and duration metadata toggles when message dates exist
 - Thinking or reasoning export toggle
 - User attachment and assistant reference toggles
+- Separate Chat Name summary path from Chat Title extraction
 - Visible export format toggles
 - Auto naming toggle and file name template
 - Auto-save vs ask-for-location download mode

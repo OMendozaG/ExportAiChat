@@ -21,6 +21,7 @@
   let activeTabId = null;
   let popupSettings = null;
   let exportInProgress = false;
+  const exportButtons = [exportPdfButton, exportMhtButton, exportHtmlButton, exportTxtButton];
 
   function setStatus(message) {
     const text = String(message || "").trim();
@@ -49,14 +50,14 @@
   }
 
   function setButtonsEnabled(enabled) {
-    [exportPdfButton, exportMhtButton, exportHtmlButton, exportTxtButton].forEach((button) => {
+    exportButtons.forEach((button) => {
       button.disabled = !enabled || button.hidden || exportInProgress;
     });
   }
 
-  function setLoadingButton(activeButton) {
-    [exportPdfButton, exportMhtButton, exportHtmlButton, exportTxtButton].forEach((button) => {
-      button.classList.toggle("is-loading", button === activeButton && exportInProgress);
+  function setOnlyButtonState(activeButton, state) {
+    exportButtons.forEach((button) => {
+      root.buttonSystem.setButtonState(button, button === activeButton ? state : "idle");
     });
   }
 
@@ -115,34 +116,39 @@
       });
 
       if (!response || !response.supported) {
-        setActionsVisible(false);
-        setStatus("This tab does not contain a LLM Chat.");
-        setSummaryVisible(false);
-        return;
-      }
+      setActionsVisible(false);
+      setStatus("This tab does not contain a LLM Chat.");
+      setSummaryVisible(false);
+      setOnlyButtonState(null, "idle");
+      return;
+    }
 
       if (!response.isChatPage || !response.messageCount) {
-        setActionsVisible(false);
-        setStatus("This tab does not contain a LLM Chat.");
-        setSummaryVisible(false);
-        return;
-      }
+      setActionsVisible(false);
+      setStatus("This tab does not contain a LLM Chat.");
+      setSummaryVisible(false);
+      setOnlyButtonState(null, "idle");
+      return;
+    }
 
       if (!visibleExportButtons(popupSettings)) {
-        setStatus("No export formats are enabled in Settings.");
-        setActionsVisible(false);
-        setSummary(response.summary || null);
-        return;
-      }
+      setStatus("No export formats are enabled in Settings.");
+      setActionsVisible(false);
+      setSummary(response.summary || null);
+      setOnlyButtonState(null, "idle");
+      return;
+    }
 
       setSummary(response.summary || null);
       setStatus("");
       setActionsVisible(true);
+      setOnlyButtonState(null, "idle");
       setButtonsEnabled(true);
     } catch (_error) {
       setActionsVisible(false);
       setStatus("This tab does not contain a LLM Chat.");
       setSummaryVisible(false);
+      setOnlyButtonState(null, "idle");
     }
   }
 
@@ -158,9 +164,9 @@
     }
 
     exportInProgress = true;
-    setLoadingButton(buttonNode);
+    setOnlyButtonState(buttonNode, "loading");
     setButtonsEnabled(false);
-    setStatus(`Exporting ${format.toUpperCase()}...`);
+    setStatus("");
 
     try {
       const response = await root.chromeHelpers.tabsSendMessage(activeTabId, {
@@ -172,12 +178,13 @@
         throw new Error(response?.error || "Export error.");
       }
 
-      setStatus(`Download started (${format.toUpperCase()}).`);
+      setOnlyButtonState(buttonNode, "success");
+      setStatus("");
     } catch (error) {
+      setOnlyButtonState(buttonNode, "idle");
       setStatus(`Error: ${error.message}`);
     } finally {
       exportInProgress = false;
-      setLoadingButton(null);
       setButtonsEnabled(true);
     }
   }

@@ -146,8 +146,15 @@
       label,
       stacked: true
     });
-    button.addEventListener("click", () => {
-      void Promise.resolve(onExport(format)).catch(() => {});
+    button.addEventListener("click", async () => {
+      root.buttonSystem.setButtonState(button, "loading");
+
+      try {
+        await Promise.resolve(onExport(format));
+        root.buttonSystem.setButtonState(button, "success");
+      } catch (_error) {
+        root.buttonSystem.setButtonState(button, "idle");
+      }
     });
     return button;
   }
@@ -291,6 +298,9 @@
       mainButton.disabled = !enabled || isLoading;
       formatButtons.forEach((button) => {
         button.disabled = !enabled || button.hidden || isLoading;
+        if (!enabled && !isLoading) {
+          root.buttonSystem.setButtonState(button, "idle");
+        }
       });
 
       if (!enabled) {
@@ -304,6 +314,9 @@
       mainButton.disabled = isLoading;
       formatButtons.forEach((button) => {
         button.disabled = isLoading || button.hidden;
+        if (isLoading) {
+          root.buttonSystem.setButtonState(button, "idle");
+        }
       });
 
       if (isLoading) {

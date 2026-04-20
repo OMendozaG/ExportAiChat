@@ -15,6 +15,14 @@
     ].join("");
   }
 
+  function checkGlyphMarkup(className = "ceai-button__check") {
+    return [
+      `<svg class="${className}" viewBox="0 0 24 24" role="img" aria-hidden="true">`,
+      '  <path d="M7.5 12.4 10.6 15.5 16.8 9.3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25"></path>',
+      '</svg>'
+    ].join("");
+  }
+
   function downloadGlyphMarkup(className = "ceai-button__icon") {
     return [
       `<svg class="${className}" viewBox="0 0 24 24" role="img" aria-hidden="true">`,
@@ -67,10 +75,19 @@
 .ceai-button.is-loading {
   color: transparent !important;
 }
+.ceai-button.is-success {
+  color: transparent !important;
+}
 .ceai-button.is-loading .ceai-button__content {
   opacity: 0;
 }
+.ceai-button.is-success .ceai-button__content {
+  opacity: 0;
+}
 .ceai-button.is-loading .ceai-button__spinner {
+  opacity: 1;
+}
+.ceai-button.is-success .ceai-button__check {
   opacity: 1;
 }
 .ceai-button__content {
@@ -93,25 +110,29 @@
   display: block;
   flex: 0 0 auto;
 }
-.ceai-button__spinner {
-  width: 9px;
-  height: 9px;
+.ceai-button__check {
+  width: 16px;
+  height: 16px;
   display: block;
   flex: 0 0 auto;
 }
 .ceai-button__spinner {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex: 0 0 auto;
+}
+.ceai-button__spinner,
+.ceai-button__check {
   position: absolute;
   left: 50%;
   top: 50%;
-  margin-left: -4.5px;
-  margin-top: -4.5px;
+  margin-left: -8px;
+  margin-top: -8px;
   opacity: 0;
-  animation: ceai-button-spin 0.85s linear infinite;
 }
-.ceai-button__icon svg,
-.ceai-button__spinner svg {
-  width: 100%;
-  height: 100%;
+.ceai-button__spinner {
+  animation: ceai-button-spin 0.85s linear infinite;
 }
 .ceai-button__label {
   display: block;
@@ -152,8 +173,18 @@
 
   function buildContentMarkup(label, stacked) {
     return stacked
-      ? `<span class="ceai-button__content ceai-button__stack">${downloadGlyphMarkup()}<span class="ceai-button__label">${label}</span></span>${spinnerMarkup()}`
-      : `<span class="ceai-button__content"><span class="ceai-button__label">${label}</span></span>${spinnerMarkup()}`;
+      ? `<span class="ceai-button__content ceai-button__stack">${downloadGlyphMarkup()}<span class="ceai-button__label">${label}</span></span>${spinnerMarkup()}${checkGlyphMarkup()}`
+      : `<span class="ceai-button__content"><span class="ceai-button__label">${label}</span></span>${spinnerMarkup()}${checkGlyphMarkup()}`;
+  }
+
+  function setButtonState(button, state = "idle") {
+    if (!button) {
+      return button;
+    }
+
+    button.classList.toggle("is-loading", state === "loading");
+    button.classList.toggle("is-success", state === "success");
+    return button;
   }
 
   function decorateButton(button, options = {}) {
@@ -171,13 +202,16 @@
     button.classList.toggle("ceai-button--stacked", Boolean(stacked));
     button.classList.toggle("ceai-button--secondary", Boolean(secondary));
     button.innerHTML = buildContentMarkup(label, stacked);
+    setButtonState(button, "idle");
     return button;
   }
 
   root.buttonSystem = {
     ensureDocumentStyles,
     decorateButton,
+    setButtonState,
     downloadGlyphMarkup,
+    checkGlyphMarkup,
     spinnerMarkup,
     styleText
   };

@@ -6,10 +6,10 @@
   --muted: #475569;
   --panel-bg: #ffffff;
   --panel-border: #d6dfec;
-  --button-bg: #4f8cff;
-  --button-border: #2f6ff2;
-  --button-base: #224fb4;
-  --button-text: #ffffff;
+  --button-bg: #eef4ff;
+  --button-border: #c8dafd;
+  --button-base: #86a9ea;
+  --button-text: #14325f;
   --icon-bg: #ffffff;
   --icon-border: #d6dfec;
   --icon-text: #1f2937;
@@ -23,10 +23,10 @@
     --muted: #a8bad2;
     --panel-bg: #162131;
     --panel-border: #233247;
-    --button-bg: #67a2ff;
-    --button-border: #4d8cf0;
-    --button-base: #2f5daa;
-    --button-text: #08111f;
+    --button-bg: #dce9ff;
+    --button-border: #bbd1fb;
+    --button-base: #6c8fd1;
+    --button-text: #10233f;
     --icon-bg: #1b2738;
     --icon-border: #2a3d57;
     --icon-text: #e5edf8;
@@ -40,10 +40,10 @@
   --muted: #a8bad2;
   --panel-bg: #162131;
   --panel-border: #233247;
-  --button-bg: #67a2ff;
-  --button-border: #4d8cf0;
-  --button-base: #2f5daa;
-  --button-text: #08111f;
+  --button-bg: #dce9ff;
+  --button-border: #bbd1fb;
+  --button-base: #6c8fd1;
+  --button-text: #10233f;
   --icon-bg: #1b2738;
   --icon-border: #2a3d57;
   --icon-text: #e5edf8;
@@ -90,9 +90,9 @@ h1 {
   position: relative;
   flex: 1 1 70px;
   min-height: 60px;
-  margin-bottom: 4px;
-  border: 1px solid var(--button-border);
-  border-radius: 12px;
+  margin-bottom: 6px;
+  border: 0;
+  border-radius: 14px;
   background: var(--button-bg);
   color: var(--button-text);
   padding: 8px 6px;
@@ -103,14 +103,28 @@ h1 {
   transition: transform 120ms ease, filter 120ms ease;
 }
 
-.actions button::after {
+.actions button::before {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
+  box-shadow:
+    inset 1px 0 0 var(--button-border),
+    inset -1px 0 0 var(--button-border),
+    inset 0 -1px 0 var(--button-border);
+  pointer-events: none;
+}
+
+.actions button::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 0;
+  bottom: -4px;
+  left: 0;
+  border-radius: inherit;
   background: var(--button-base);
   z-index: -1;
-  transform: translateY(4px);
 }
 
 .actions button:hover {
@@ -118,16 +132,8 @@ h1 {
   transform: translateY(1px);
 }
 
-.actions button:hover::after {
-  transform: translateY(3px);
-}
-
 .actions button:active {
   transform: translateY(4px);
-}
-
-.actions button:active::after {
-  transform: translateY(0);
 }
 
 .actions button.is-loading {
@@ -144,7 +150,7 @@ h1 {
   margin-left: -8px;
   margin-top: -8px;
   border-radius: 999px;
-  border: 2px solid rgba(255, 255, 255, 0.28);
+  border: 2px solid rgba(20, 50, 95, 0.2);
   border-top-color: var(--button-text);
   animation: ceai-popup-spin 0.85s linear infinite;
 }

@@ -35,6 +35,7 @@ The TXT export is designed as a readable chat log:
 - Optional message date and time export when the provider exposes it in the page
 - Configurable file naming templates
 - Optional inline `EXPORT...` action in the ChatGPT header
+- Theme-aware raised export buttons in the popup and inline export menu
 - Local-first export flow with no server-side processing
 
 ## Export Options

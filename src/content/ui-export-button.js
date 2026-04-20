@@ -73,10 +73,10 @@
   --ceai-menu-bg: #ffffff;
   --ceai-menu-border: #d0d7e2;
   --ceai-menu-shadow: rgba(15, 23, 42, 0.16);
-  --ceai-menu-button-bg: #67a2ff;
-  --ceai-menu-button-border: #4d8cf0;
-  --ceai-menu-button-base: #2f5daa;
-  --ceai-menu-button-text: #08111f;
+  --ceai-menu-button-bg: #eef4ff;
+  --ceai-menu-button-border: #c8dafd;
+  --ceai-menu-button-base: #86a9ea;
+  --ceai-menu-button-text: #14325f;
   position: fixed;
   top: 0;
   left: 0;
@@ -96,19 +96,19 @@
   --ceai-menu-bg: rgba(19, 29, 43, 0.98);
   --ceai-menu-border: #2a3d57;
   --ceai-menu-shadow: rgba(2, 6, 23, 0.42);
-  --ceai-menu-button-bg: #67a2ff;
-  --ceai-menu-button-border: #4d8cf0;
-  --ceai-menu-button-base: #2f5daa;
-  --ceai-menu-button-text: #08111f;
+  --ceai-menu-button-bg: #dce9ff;
+  --ceai-menu-button-border: #bbd1fb;
+  --ceai-menu-button-base: #6c8fd1;
+  --ceai-menu-button-text: #10233f;
 }
 #${MENU_ID}.is-open {
   display: flex;
 }
 #${MENU_ID} button {
   position: relative;
-  margin-bottom: 4px;
-  border: 1px solid var(--ceai-menu-button-border);
-  border-radius: 10px;
+  margin-bottom: 6px;
+  border: 0;
+  border-radius: 12px;
   background: var(--ceai-menu-button-bg);
   color: var(--ceai-menu-button-text);
   min-width: 64px;
@@ -119,26 +119,33 @@
   font-weight: 700;
   white-space: nowrap;
 }
-#${MENU_ID} button::after {
+#${MENU_ID} button::before {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
+  box-shadow:
+    inset 1px 0 0 var(--ceai-menu-button-border),
+    inset -1px 0 0 var(--ceai-menu-button-border),
+    inset 0 -1px 0 var(--ceai-menu-button-border);
+  pointer-events: none;
+}
+#${MENU_ID} button::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 0;
+  bottom: -4px;
+  left: 0;
+  border-radius: inherit;
   background: var(--ceai-menu-button-base);
   z-index: -1;
-  transform: translateY(4px);
 }
 #${MENU_ID} button:hover {
   transform: translateY(1px);
 }
-#${MENU_ID} button:hover::after {
-  transform: translateY(3px);
-}
 #${MENU_ID} button:active {
   transform: translateY(4px);
-}
-#${MENU_ID} button:active::after {
-  transform: translateY(0);
 }
 #${MENU_ID} button[hidden] {
   display: none !important;

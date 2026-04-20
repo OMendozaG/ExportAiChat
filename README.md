@@ -46,6 +46,7 @@ The TXT export is designed as a readable chat log:
 - Unified download icon sizing across popup and inline export menus
 - Download format icons sized consistently at 20px
 - Button-level export feedback with loading and success states
+- Shared export buttons keep spinner and success check centered and visible in both the popup and the inline page menu
 - Refined line-art robot export icon with transparent background assets
 - Unicode-friendly file naming and a blank-line default TXT separator
 - Higher-contrast export button labels for better readability

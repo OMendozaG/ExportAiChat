@@ -52,9 +52,11 @@
   color: var(--ceai-btn-text);
   font: inherit;
   font-weight: 700;
+  position: relative;
   cursor: pointer;
   user-select: none;
   text-decoration: none;
+  overflow: hidden;
   transition: transform 120ms ease, background-color 120ms ease, color 120ms ease, filter 120ms ease;
 }
 .ceai-button:hover:not([disabled]) {
@@ -71,12 +73,6 @@
   cursor: not-allowed;
   opacity: 1;
   filter: saturate(0.85);
-}
-.ceai-button.is-loading {
-  color: transparent !important;
-}
-.ceai-button.is-success {
-  color: transparent !important;
 }
 .ceai-button.is-loading .ceai-button__content {
   opacity: 0;
@@ -96,6 +92,7 @@
   justify-content: center;
   gap: 8px;
   width: 100%;
+  transition: opacity 120ms ease;
 }
 .ceai-button__stack {
   display: grid;
@@ -130,6 +127,8 @@
   margin-left: -8px;
   margin-top: -8px;
   opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
 }
 .ceai-button__spinner {
   animation: ceai-button-spin 0.85s linear infinite;

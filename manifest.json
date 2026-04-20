@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Chat Export AI",
   "description": "Export AI chats to TXT, HTML, MHT and PDF with a modular provider architecture.",
-  "version": "0.1.38",
+  "version": "0.1.39",
   "icons": {
     "16": "src/assets/robot-download-16.png",
     "32": "src/assets/robot-download-32.png",
@@ -18,7 +18,11 @@
     "debugger"
   ],
   "host_permissions": [
-    "https://chatgpt.com/*"
+    "https://chatgpt.com/*",
+    "https://claude.ai/*",
+    "https://gemini.google.com/*",
+    "https://chat.deepseek.com/*",
+    "https://grok.com/*"
   ],
   "background": {
     "service_worker": "src/background/background.js"
@@ -26,7 +30,11 @@
   "content_scripts": [
     {
       "matches": [
-        "https://chatgpt.com/*"
+        "https://chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://chat.deepseek.com/*",
+        "https://grok.com/*"
       ],
       "js": [
         "src/shared/namespace.js",
@@ -42,6 +50,10 @@
         "src/shared/export-engine.js",
         "src/providers/provider-registry.js",
         "src/providers/chatgpt-provider.js",
+        "src/providers/claude-provider.js",
+        "src/providers/gemini-provider.js",
+        "src/providers/deepseek-provider.js",
+        "src/providers/grok-provider.js",
         "src/content/ui-export-button.js",
         "src/content/content.js"
       ],

@@ -23,8 +23,17 @@
   const exportSnapshotsByConversation = new Map();
 
   function getProviderButtonSetting(settings, providerId) {
-    if (providerId === "chatgpt") {
-      return Boolean(settings.showHeaderExportButtonChatgpt ?? settings.showHeaderExportButton);
+    const providerSettingById = {
+      chatgpt: "showHeaderExportButtonChatgpt",
+      claude: "showHeaderExportButtonClaude",
+      gemini: "showHeaderExportButtonGemini",
+      deepseek: "showHeaderExportButtonDeepseek",
+      grok: "showHeaderExportButtonGrok"
+    };
+
+    const providerSettingKey = providerSettingById[providerId];
+    if (providerSettingKey) {
+      return Boolean(settings[providerSettingKey] ?? settings.showHeaderExportButton);
     }
 
     return Boolean(settings.showHeaderExportButton);

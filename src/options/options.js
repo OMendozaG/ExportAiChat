@@ -49,6 +49,10 @@
   const showAssistantGeneratedAttachmentReferencesCheckbox = document.getElementById("showAssistantGeneratedAttachmentReferences");
   const showAssistantWebReferencesCheckbox = document.getElementById("showAssistantWebReferences");
   const showHeaderExportButtonChatgptCheckbox = document.getElementById("showHeaderExportButtonChatgpt");
+  const showHeaderExportButtonClaudeCheckbox = document.getElementById("showHeaderExportButtonClaude");
+  const showHeaderExportButtonGeminiCheckbox = document.getElementById("showHeaderExportButtonGemini");
+  const showHeaderExportButtonDeepseekCheckbox = document.getElementById("showHeaderExportButtonDeepseek");
+  const showHeaderExportButtonGrokCheckbox = document.getElementById("showHeaderExportButtonGrok");
   const exportTimeoutSecondsInput = document.getElementById("exportTimeoutSeconds");
   const showExportPdfCheckbox = document.getElementById("showExportPdf");
   const showExportMhtCheckbox = document.getElementById("showExportMht");
@@ -171,6 +175,18 @@
     showHeaderExportButtonChatgptCheckbox.checked = Boolean(
       settings.showHeaderExportButtonChatgpt ?? settings.showHeaderExportButton
     );
+    showHeaderExportButtonClaudeCheckbox.checked = Boolean(
+      settings.showHeaderExportButtonClaude ?? settings.showHeaderExportButton
+    );
+    showHeaderExportButtonGeminiCheckbox.checked = Boolean(
+      settings.showHeaderExportButtonGemini ?? settings.showHeaderExportButton
+    );
+    showHeaderExportButtonDeepseekCheckbox.checked = Boolean(
+      settings.showHeaderExportButtonDeepseek ?? settings.showHeaderExportButton
+    );
+    showHeaderExportButtonGrokCheckbox.checked = Boolean(
+      settings.showHeaderExportButtonGrok ?? settings.showHeaderExportButton
+    );
     exportTimeoutSecondsInput.value = String(clampTimeoutSeconds(settings.exportTimeoutSeconds));
     showExportPdfCheckbox.checked = Boolean(settings.showExportPdf);
     showExportMhtCheckbox.checked = Boolean(settings.showExportMht);
@@ -233,6 +249,10 @@
       showAssistantWebReferences: showAssistantWebReferencesCheckbox.checked,
       showHeaderExportButton: showHeaderExportButtonChatgptCheckbox.checked,
       showHeaderExportButtonChatgpt: showHeaderExportButtonChatgptCheckbox.checked,
+      showHeaderExportButtonClaude: showHeaderExportButtonClaudeCheckbox.checked,
+      showHeaderExportButtonGemini: showHeaderExportButtonGeminiCheckbox.checked,
+      showHeaderExportButtonDeepseek: showHeaderExportButtonDeepseekCheckbox.checked,
+      showHeaderExportButtonGrok: showHeaderExportButtonGrokCheckbox.checked,
       exportTimeoutSeconds: clampTimeoutSeconds(exportTimeoutSecondsInput.value),
       showExportPdf: showExportPdfCheckbox.checked,
       showExportMht: showExportMhtCheckbox.checked,

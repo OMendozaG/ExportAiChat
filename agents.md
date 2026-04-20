@@ -99,7 +99,7 @@ When adding a new provider:
 6. Do not make exporters depend on provider-specific DOM details.
 7. Add the provider to the integration settings so its in-page button can be enabled or disabled independently.
 
-When DeepSeek, Grok, Claude, Gemini, or other providers are added later, request their URL limits explicitly before wiring the manifest and provider matcher.
+For providers that are not already integrated, request URL limits explicitly before wiring the manifest and provider matcher.
 
 ## Delivery Workflow
 Every new feature or bug fix should end with its own commit once the change is in a stable state.
@@ -115,5 +115,5 @@ If the git tree contains unexpected unrelated changes, stop and ask before pushi
 When working from a WSL/bash-style path and Git authentication or push behavior fails there, also try the same git flow from `cmd.exe` using the Windows repo path. If `cmd.exe` can push successfully while bash/WSL cannot, prefer the `cmd.exe` route for the final push.
 
 ## Current Baseline
-- ChatGPT is the current implemented provider.
+- Implemented providers: ChatGPT, Claude, Gemini, DeepSeek, and Grok.
 - The extension is designed so more LLM providers can be added without rewriting exporters or settings.

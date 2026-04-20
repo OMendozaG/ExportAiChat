@@ -2,14 +2,12 @@
 
 Chat Export AI is a browser extension that exports AI chat conversations into clean local files.
 
-Current supported provider:
+Current supported providers:
 - ChatGPT (`https://chatgpt.com/*`)
-
-Planned next providers:
-- DeepSeek
-- Grok
-- Claude
-- Gemini
+- Claude (`https://claude.ai/*`)
+- Gemini (`https://gemini.google.com/*`)
+- DeepSeek (`https://chat.deepseek.com/*`)
+- Grok (`https://grok.com/*`)
 
 ## What It Does
 
@@ -40,10 +38,14 @@ The TXT export is designed as a readable chat log:
 - ChatGPT user file tiles and assistant inline file/reference chips are extracted explicitly instead of relying only on sanitized rich text
 - ChatGPT attachment tile detection, including attachment-only user turns
 - Broader ChatGPT thinking/reasoning block detection, including localized labels and timing extraction
+- Claude extraction for user/assistant turns, title, model, and share-anchor integration
+- Gemini extraction for user/assistant turns, title, mode/model label, share-anchor integration, and uploaded-file labels
+- DeepSeek extraction for user/assistant turns plus visible thinking duration labels from current DOM logs
+- Grok extraction for user/assistant turns, visible thinking duration labels, and user file chip labels
 - Configurable AI/Human border colors for HTML and PDF exports
 - Configurable file naming templates
 - Auto-save overwrite vs add-count conflict policy
-- Optional inline `EXPORT...` action in the ChatGPT header
+- Optional inline `EXPORT...` action per provider in supported headers
 - Provider and message summary in the popup with the resolved download file name preview
 - Popup format buttons stay centered as a group when some formats are hidden
 - Shared raised button component across popup, settings, and inline export menu
@@ -114,7 +116,7 @@ The settings page supports:
 - Auto naming toggle and file name template
 - Auto-save vs ask-for-location download mode
 - Auto-save overwrite or add-count conflict mode
-- Inline ChatGPT header button toggle
+- Inline header button toggle per provider (ChatGPT, Claude, Gemini, DeepSeek, Grok)
 - Credits tab with the public GitHub repository link
 
 Supported file naming keywords:
@@ -170,7 +172,11 @@ The current extension uses these permissions:
 - `tabs`: query the active tab and create a temporary tab for PDF rendering
 - `pageCapture`: capture MHT when needed
 - `debugger`: render reliable PDFs from generated HTML
-- `https://chatgpt.com/*`: run only on ChatGPT for now
+- `https://chatgpt.com/*`
+- `https://claude.ai/*`
+- `https://gemini.google.com/*`
+- `https://chat.deepseek.com/*`
+- `https://grok.com/*`
 
 ## Install For Development
 
@@ -178,7 +184,12 @@ The current extension uses these permissions:
 2. Enable Developer Mode
 3. Click `Load unpacked`
 4. Select this project folder
-5. Open a ChatGPT conversation at `https://chatgpt.com/`
+5. Open a supported conversation page:
+   - `https://chatgpt.com/`
+   - `https://claude.ai/`
+   - `https://gemini.google.com/app`
+   - `https://chat.deepseek.com/`
+   - `https://grok.com/`
 6. Use the extension popup or the inline `EXPORT...` action if enabled
 
 ## Project Structure
@@ -202,21 +213,19 @@ The intended workflow is:
 4. Normalize extracted messages into the shared pipeline
 5. Reuse the same post-processing and export modules
 
+## Provider Notes (Known Gaps)
+
+- ChatGPT: full adapter implemented with dedicated title/folder/model, attachments, references, and thinking extraction.
+- Claude: message/title/model/share selectors are integrated; chat-folder extraction is not identified from current logs.
+- Gemini: message/title/model/share selectors and uploaded-file labels are integrated; stable per-message timestamps were not identified from current logs.
+- DeepSeek: message + visible thinking extraction are integrated; share-anchor and model selectors are heuristic because current logs depend on hash-like CSS classes.
+- Grok: message + visible thinking + file chip extraction are integrated; stable model selector extraction was not confirmed from current logs.
+
 ## Status
 
 Current status:
 - Base architecture implemented
-- ChatGPT support implemented
+- ChatGPT, Claude, Gemini, DeepSeek, and Grok support implemented
 - Export pipeline implemented
 - Settings UI implemented
 - Public docs and store copy prepared
-
-## Roadmap
-
-Next likely integrations:
-1. DeepSeek
-2. Grok
-3. Claude
-4. Gemini
-
-Those integrations should be added one by one using real page HTML and an explicit allowed URL pattern for each provider.

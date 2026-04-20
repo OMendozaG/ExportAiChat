@@ -87,6 +87,10 @@
       // Show the inline "Export To..." button in supported chat headers.
       showHeaderExportButton: true,
       showHeaderExportButtonChatgpt: true,
+      showHeaderExportButtonClaude: true,
+      showHeaderExportButtonGemini: true,
+      showHeaderExportButtonDeepseek: true,
+      showHeaderExportButtonGrok: true,
 
       // Per-export timeout in seconds. Clamped to MAX_EXPORT_TIMEOUT_SECONDS.
       exportTimeoutSeconds: MAX_EXPORT_TIMEOUT_SECONDS,
@@ -128,13 +132,41 @@
       }
     }
 
-    // Backward compatibility: the old global toggle becomes the ChatGPT toggle
-    // if the provider-specific setting is not present in storage yet.
+    // Backward compatibility: old global toggle seeds provider-specific toggles
+    // if they are not present in storage yet.
     if (
       incoming.showHeaderExportButtonChatgpt === undefined &&
       incoming.showHeaderExportButton !== undefined
     ) {
       next.showHeaderExportButtonChatgpt = Boolean(incoming.showHeaderExportButton);
+    }
+
+    if (
+      incoming.showHeaderExportButtonClaude === undefined &&
+      incoming.showHeaderExportButton !== undefined
+    ) {
+      next.showHeaderExportButtonClaude = Boolean(incoming.showHeaderExportButton);
+    }
+
+    if (
+      incoming.showHeaderExportButtonGemini === undefined &&
+      incoming.showHeaderExportButton !== undefined
+    ) {
+      next.showHeaderExportButtonGemini = Boolean(incoming.showHeaderExportButton);
+    }
+
+    if (
+      incoming.showHeaderExportButtonDeepseek === undefined &&
+      incoming.showHeaderExportButton !== undefined
+    ) {
+      next.showHeaderExportButtonDeepseek = Boolean(incoming.showHeaderExportButton);
+    }
+
+    if (
+      incoming.showHeaderExportButtonGrok === undefined &&
+      incoming.showHeaderExportButton !== undefined
+    ) {
+      next.showHeaderExportButtonGrok = Boolean(incoming.showHeaderExportButton);
     }
 
     if (incoming.metadataConversationSummary !== undefined) {

@@ -345,6 +345,13 @@
         mainButton.style.backgroundColor = "transparent";
         mainButton.style.border = "0";
       }
+
+      if (activeProvider === "gemini") {
+        const currentFontSize = Number.parseFloat(mainButton.style.fontSize || computed.fontSize || "13");
+        if (Number.isFinite(currentFontSize) && currentFontSize > 0) {
+          mainButton.style.fontSize = `${(currentFontSize * 0.7).toFixed(2)}px`;
+        }
+      }
     }
 
     function mount(anchor) {

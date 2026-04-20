@@ -25,6 +25,7 @@
   const autoFileNameCheckbox = document.getElementById("autoFileName");
   const fileNameTemplateInput = document.getElementById("fileNameTemplate");
   const invalidFileNameReplacementInput = document.getElementById("invalidFileNameReplacement");
+  const customDownloadFolderInput = document.getElementById("customDownloadFolder");
   const autosaveConflictActionSelect = document.getElementById("autosaveConflictAction");
   const mediaHandlingSelect = document.getElementById("mediaHandling");
   const companionMhtOnMediaCheckbox = document.getElementById("companionMhtOnMedia");
@@ -68,6 +69,7 @@
   const applyCounterValuesButton = document.getElementById("applyCounterValues");
   const resetDayCounterButton = document.getElementById("resetDayCounter");
   const resetAllCountersButton = document.getElementById("resetAllCounters");
+  const clearChatNameMappingsButton = document.getElementById("clearChatNameMappings");
 
   const aiNameModeRadios = Array.from(form.querySelectorAll('input[name="aiNameMode"]'));
   const saveModeRadios = Array.from(form.querySelectorAll('input[name="saveMode"]'));
@@ -103,8 +105,11 @@
     fileNameTemplateInput.placeholder = isAutomatic ? "YY.MM-<ChatNameCount*3> <ChatName>" : "chat";
   }
 
-  function updateAutosaveConflictFieldState() {
-    autosaveConflictActionSelect.disabled = getSaveModeFromForm() !== "autosave";
+  function updateDownloadModeFieldState() {
+    const mode = getSaveModeFromForm();
+    const directSave = mode === "autosave" || mode === "custom";
+    autosaveConflictActionSelect.disabled = !directSave;
+    customDownloadFolderInput.disabled = mode !== "custom";
   }
 
   function updateMetadataFieldState() {
@@ -190,16 +195,18 @@
 
     const entries = Array.isArray(summary.entries) ? summary.entries : [];
     if (!entries.length) {
-      counterMapBodyNode.innerHTML = "<tr><td colspan=\"3\">No mappings yet.</td></tr>";
+      counterMapBodyNode.innerHTML = "<tr><td colspan=\"4\">No mappings yet.</td></tr>";
       return;
     }
 
     counterMapBodyNode.innerHTML = entries.map((entry) => {
+      const safeMappingKey = escapeHtml(entry.key || "");
       return [
         "<tr>",
-        `  <td>${escapeHtml(entry.count)}</td>`,
+        `  <td><input class="counter-id-input" type="number" min="1" step="1" value="${escapeHtml(entry.count)}" data-counter-key="${safeMappingKey}" aria-label="ChatNameCount id"></td>`,
         `  <td>${escapeHtml(entry.providerName || "-")}</td>`,
         `  <td>${escapeHtml(entry.chatPath || "-")}</td>`,
+        `  <td><button type="button" class="counter-inline-delete" data-counter-key="${safeMappingKey}" aria-label="Delete ChatNameCount association">Delete</button></td>`,
         "</tr>"
       ].join("");
     }).join("");
@@ -260,6 +267,36 @@
     showStatus("All counters reset.");
   }
 
+  async function updateChatNameCountMapping(mappingKey, nextCount) {
+    if (!root.storage || typeof root.storage.updateChatNameCountMapping !== "function") {
+      throw new Error("ChatNameCount mapping updates are not available.");
+    }
+
+    const summary = await root.storage.updateChatNameCountMapping(mappingKey, nextCount);
+    applyCounterSummary(summary);
+    showStatus("ChatNameCount id updated.");
+  }
+
+  async function deleteChatNameCountMapping(mappingKey) {
+    if (!root.storage || typeof root.storage.deleteChatNameCountMapping !== "function") {
+      throw new Error("ChatNameCount mapping deletion is not available.");
+    }
+
+    const summary = await root.storage.deleteChatNameCountMapping(mappingKey);
+    applyCounterSummary(summary);
+    showStatus("ChatNameCount association deleted.");
+  }
+
+  async function clearChatNameMappings() {
+    if (!root.storage || typeof root.storage.clearChatNameCountMappings !== "function") {
+      throw new Error("Clearing ChatNameCount associations is not available.");
+    }
+
+    const summary = await root.storage.clearChatNameCountMappings();
+    applyCounterSummary(summary);
+    showStatus("All ChatNameCount associations were cleared.");
+  }
+
   function applySettingsToForm(settings) {
     humanNameInput.value = settings.humanName || "";
     aiCustomNameInput.value = settings.aiCustomName || "";
@@ -275,6 +312,7 @@
     autoFileNameCheckbox.checked = Boolean(settings.autoFileName);
     fileNameTemplateInput.value = settings.fileNameTemplate || "";
     invalidFileNameReplacementInput.value = settings.invalidFileNameReplacement || ".";
+    customDownloadFolderInput.value = settings.customDownloadFolder || "Chat Export AI";
     autosaveConflictActionSelect.value = settings.autosaveConflictAction || "overwrite";
     mediaHandlingSelect.value = settings.mediaHandling;
     companionMhtOnMediaCheckbox.checked = Boolean(settings.companionMhtOnMedia);
@@ -330,7 +368,7 @@
 
     updateAiCustomFieldState();
     updateFileNameFieldState();
-    updateAutosaveConflictFieldState();
+    updateDownloadModeFieldState();
     updateMetadataFieldState();
   }
 
@@ -352,6 +390,7 @@
       fileNameTemplate: fileNameTemplateInput.value,
       invalidFileNameReplacement: invalidFileNameReplacementInput.value,
       saveMode: getSaveModeFromForm(),
+      customDownloadFolder: customDownloadFolderInput.value,
       autosaveConflictAction: autosaveConflictActionSelect.value,
       mediaHandling: mediaHandlingSelect.value,
       companionMhtOnMedia: companionMhtOnMediaCheckbox.checked,
@@ -414,6 +453,12 @@
     if (resetAllCountersButton) {
       root.buttonSystem.decorateButton(resetAllCountersButton, {
         label: "Reset all counters",
+        secondary: true
+      });
+    }
+    if (clearChatNameMappingsButton) {
+      root.buttonSystem.decorateButton(clearChatNameMappingsButton, {
+        label: "Clear ChatNameCount associations",
         secondary: true
       });
     }
@@ -497,13 +542,26 @@
     });
   }
 
+  if (clearChatNameMappingsButton) {
+    clearChatNameMappingsButton.addEventListener("click", () => {
+      const confirmed = window.confirm("Clear all ChatNameCount associations?");
+      if (!confirmed) {
+        return;
+      }
+
+      clearChatNameMappings().catch((error) => {
+        showStatus(`Error clearing ChatNameCount associations: ${error.message}`, true);
+      });
+    });
+  }
+
   aiNameModeRadios.forEach((radio) => {
     radio.addEventListener("change", updateAiCustomFieldState);
   });
 
   autoFileNameCheckbox.addEventListener("change", updateFileNameFieldState);
   saveModeRadios.forEach((radio) => {
-    radio.addEventListener("change", updateAutosaveConflictFieldState);
+    radio.addEventListener("change", updateDownloadModeFieldState);
   });
   appThemeSelect.addEventListener("change", () => {
     root.appTheme.applyThemeDocument(appThemeSelect.value);
@@ -524,6 +582,47 @@
   if (counterNextChatNameCountInput) {
     counterNextChatNameCountInput.addEventListener("change", () => {
       counterNextChatNameCountInput.value = String(clampPositiveInteger(counterNextChatNameCountInput.value, 1));
+    });
+  }
+  if (counterMapBodyNode) {
+    counterMapBodyNode.addEventListener("input", (event) => {
+      const target = event.target;
+      if (target instanceof HTMLInputElement && target.classList.contains("counter-id-input")) {
+        event.stopPropagation();
+      }
+    });
+
+    counterMapBodyNode.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || !target.classList.contains("counter-id-input")) {
+        return;
+      }
+
+      event.stopPropagation();
+      const mappingKey = target.dataset.counterKey || "";
+      const nextCount = clampPositiveInteger(target.value, 1);
+      target.value = String(nextCount);
+      updateChatNameCountMapping(mappingKey, nextCount).catch((error) => {
+        showStatus(`Error updating ChatNameCount id: ${error.message}`, true);
+        void loadCounterSummary();
+      });
+    });
+
+    counterMapBodyNode.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLButtonElement) || !target.classList.contains("counter-inline-delete")) {
+        return;
+      }
+
+      const mappingKey = target.dataset.counterKey || "";
+      const confirmed = window.confirm("Delete this ChatNameCount association?");
+      if (!confirmed) {
+        return;
+      }
+
+      deleteChatNameCountMapping(mappingKey).catch((error) => {
+        showStatus(`Error deleting ChatNameCount association: ${error.message}`, true);
+      });
     });
   }
   tabButtons.forEach((button) => {

@@ -53,6 +53,7 @@ Settings must support relevant shared behavior, including:
 - provider-specific in-page export button toggles,
 - auto naming and editable file name template,
 - save mode: auto-save or ask for location.
+- save mode: direct to Downloads, direct to a custom Downloads subfolder, or ask for location.
 
 Document naming keywords in settings. Supported keywords should include:
 - `<ChatName>`
@@ -118,6 +119,12 @@ For providers that are not already integrated, request URL limits explicitly bef
 ## Delivery Workflow
 Every new feature or bug fix should end with its own commit once the change is in a stable state.
 After every functional change or bug fix, update `README.md` so the public documentation stays aligned with the current behavior before finishing the task.
+
+When editing filename counter behavior, keep these guarantees:
+- `ChatNameCount` associations can be edited per chat key from settings,
+- rows can be deleted individually (including whatever row is currently last),
+- all associations can be cleared in one action with confirmation,
+- `ChatNameCount` ids must remain unique to avoid ambiguous naming.
 
 Before finishing work, use this order:
 1. sync,

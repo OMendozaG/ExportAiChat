@@ -48,6 +48,10 @@
     return safe || fallback;
   }
 
+  function normalizeCounterMapKey(value) {
+    return normalizeText(value).toLowerCase();
+  }
+
   function buildChatNameCounterKey(conversation) {
     const providerPart = normalizeChatKeyPart(
       conversation?.providerId || conversation?.providerName,
@@ -480,6 +484,61 @@
     return summaryFromCounterState(savedState);
   }
 
+  async function updateChatNameCountMapping(mappingKey, nextCount) {
+    const state = await getCounterState();
+    const safeKey = normalizeCounterMapKey(mappingKey);
+
+    if (!safeKey || !state.chatNameMap[safeKey]) {
+      throw new Error("ChatNameCount association not found.");
+    }
+
+    const safeCount = toPositiveInteger(nextCount, state.chatNameMap[safeKey].count);
+    const conflictingKey = Object.entries(state.chatNameMap).find(([key, entry]) => {
+      if (key === safeKey) {
+        return false;
+      }
+
+      return toPositiveInteger(entry?.count, 1) === safeCount;
+    })?.[0];
+
+    if (conflictingKey) {
+      throw new Error(`ChatNameCount id ${safeCount} is already assigned.`);
+    }
+
+    const normalizedEntry = normalizeCounterEntry(state.chatNameMap[safeKey]);
+    if (!normalizedEntry) {
+      throw new Error("ChatNameCount association is invalid.");
+    }
+
+    normalizedEntry.count = safeCount;
+    normalizedEntry.lastUsedAtIso = new Date().toISOString();
+    state.chatNameMap[safeKey] = normalizedEntry;
+
+    const savedState = await saveCounterState(state);
+    return summaryFromCounterState(savedState);
+  }
+
+  async function deleteChatNameCountMapping(mappingKey) {
+    const state = await getCounterState();
+    const safeKey = normalizeCounterMapKey(mappingKey);
+
+    if (!safeKey || !state.chatNameMap[safeKey]) {
+      throw new Error("ChatNameCount association not found.");
+    }
+
+    delete state.chatNameMap[safeKey];
+    const savedState = await saveCounterState(state);
+    return summaryFromCounterState(savedState);
+  }
+
+  async function clearChatNameCountMappings() {
+    const state = await getCounterState();
+    state.chatNameMap = {};
+    state.nextChatNameCount = 1;
+    const savedState = await saveCounterState(state);
+    return summaryFromCounterState(savedState);
+  }
+
   async function resetCounterValues(scope = "all") {
     const state = await getCounterState();
     const normalizedScope = String(scope || "all").trim().toLowerCase();
@@ -516,6 +575,9 @@
     reserveExportCounters,
     getCounterSummary,
     updateCounterValues,
-    resetCounterValues
+    resetCounterValues,
+    updateChatNameCountMapping,
+    deleteChatNameCountMapping,
+    clearChatNameCountMappings
   };
 })();

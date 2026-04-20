@@ -41,8 +41,9 @@
       fileNameTemplate: "YY.MM-<ChatNameCount*3> <ChatName>",
       invalidFileNameReplacement: ".",
 
-      // Download mode: autosave directly or ask for location every time.
+      // Download mode: save to Downloads, ask location, or save to custom Downloads subfolder.
       saveMode: "autosave",
+      customDownloadFolder: "Chat Export AI",
       autosaveConflictAction: "overwrite",
 
       // App chrome theme: auto follows the browser/system preference.
@@ -120,6 +121,32 @@
     }
 
     return fallback;
+  }
+
+  function normalizeSaveMode(value) {
+    const candidate = String(value || "").trim().toLowerCase();
+    if (candidate === "ask" || candidate === "custom" || candidate === "autosave") {
+      return candidate;
+    }
+
+    return "autosave";
+  }
+
+  function normalizeAutosaveConflictAction(value) {
+    return String(value || "").trim().toLowerCase() === "uniquify" ? "uniquify" : "overwrite";
+  }
+
+  function normalizeCustomDownloadFolder(value, fallback) {
+    const rawValue = String(value ?? fallback ?? "").trim();
+    const normalizedValue = rawValue.normalize ? rawValue.normalize("NFC") : rawValue;
+    const sanitizedValue = normalizedValue
+      .replace(/\\/g, "/")
+      .replace(/[<>:"|?*\u0000-\u001F]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/^[/.\s]+|[/.\s]+$/g, "");
+
+    return sanitizedValue || fallback || "Chat Export AI";
   }
 
   // Función de merge defensivo: rellena faltantes sin perder settings existentes.
@@ -207,6 +234,12 @@
     next.exportTimeoutSeconds = Math.min(
       MAX_EXPORT_TIMEOUT_SECONDS,
       Math.max(1, Math.round(safeTimeout))
+    );
+    next.saveMode = normalizeSaveMode(next.saveMode);
+    next.autosaveConflictAction = normalizeAutosaveConflictAction(next.autosaveConflictAction);
+    next.customDownloadFolder = normalizeCustomDownloadFolder(
+      next.customDownloadFolder,
+      root.defaults.settings.customDownloadFolder
     );
     next.htmlPdfAiBorderColor = normalizeHexColor(
       next.htmlPdfAiBorderColor,

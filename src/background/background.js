@@ -75,7 +75,26 @@
 
   function normalizeDownloadFilename(filename) {
     const rawValue = String(filename || "chat-export");
-    return rawValue.normalize ? rawValue.normalize("NFC") : rawValue;
+    const normalized = rawValue.normalize ? rawValue.normalize("NFC") : rawValue;
+    const pathSegments = normalized
+      .replace(/\\/g, "/")
+      .split("/")
+      .map((segment) => segment.trim())
+      .filter(Boolean)
+      .filter((segment) => segment !== "." && segment !== "..")
+      .map((segment) => {
+        return segment
+          .replace(/[<>:"|?*\u0000-\u001F]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      })
+      .filter(Boolean);
+
+    if (!pathSegments.length) {
+      return "chat-export";
+    }
+
+    return pathSegments.join("/");
   }
 
   function normalizeConflictAction(value) {

@@ -338,3 +338,29 @@ body {
 .counter-map-table tbody tr:last-child td {
   border-bottom: 0;
 }
+
+.counter-id-input {
+  width: 100%;
+  min-width: 78px;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: var(--field-bg);
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.counter-inline-delete {
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: var(--field-bg);
+  color: var(--text);
+  font-size: 0.84rem;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.counter-inline-delete:hover {
+  border-color: color-mix(in srgb, var(--field-border) 70%, #dc2626 30%);
+  background: color-mix(in srgb, var(--field-bg) 88%, #fee2e2 12%);
+}

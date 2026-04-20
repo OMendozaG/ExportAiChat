@@ -303,12 +303,22 @@
 
           <div class="field">
             <span>Download mode</span>
-            <label><input type="radio" name="saveMode" value="autosave"> Auto-save</label>
+            <label><input type="radio" name="saveMode" value="autosave"> To download folder</label>
+            <label><input type="radio" name="saveMode" value="custom"> To custom subfolder (inside Downloads)</label>
             <label><input type="radio" name="saveMode" value="ask"> Ask for location</label>
           </div>
 
           <label class="field">
-            <span>When auto-save finds an existing file</span>
+            <span>Custom download subfolder (inside Downloads)</span>
+            <input id="customDownloadFolder" name="customDownloadFolder" type="text" maxlength="140" placeholder="Chat Export AI">
+          </label>
+
+          <p class="field-help">
+            Example: <code>LLM Exports/Chat Logs</code>. This is always relative to your browser Downloads folder.
+          </p>
+
+          <label class="field">
+            <span>When direct save finds an existing file</span>
             <select id="autosaveConflictAction" name="autosaveConflictAction">
               <option value="overwrite">Overwrite the existing file</option>
               <option value="uniquify">Add a count to the file name</option>
@@ -429,18 +439,25 @@
           <p class="field-help">
             `ChatNameCount` is stable for each unique `provider/folder/chat name` key.
           </p>
+          <p class="field-help">
+            You can edit the ID in place or delete associations. IDs must stay unique.
+          </p>
+          <div class="counter-actions">
+            <button id="clearChatNameMappings" type="button">Clear ChatNameCount associations</button>
+          </div>
           <div class="counter-map-wrap">
             <table class="counter-map-table">
               <thead>
                 <tr>
-                  <th>#</th>
+                  <th>ID</th>
                   <th>Provider</th>
                   <th>Chat Name</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="counterMapBody">
                 <tr>
-                  <td colspan="3">No mappings yet.</td>
+                  <td colspan="4">No mappings yet.</td>
                 </tr>
               </tbody>
             </table>

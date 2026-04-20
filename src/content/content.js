@@ -111,6 +111,47 @@
     return response;
   }
 
+  function normalizeCustomDownloadFolder(value) {
+    const rawValue = String(value || "").trim();
+    if (!rawValue) {
+      return "";
+    }
+
+    const normalizedValue = rawValue.normalize ? rawValue.normalize("NFC") : rawValue;
+    const pathSegments = normalizedValue
+      .replace(/\\/g, "/")
+      .split("/")
+      .map((segment) => segment.trim())
+      .filter(Boolean)
+      .filter((segment) => segment !== "." && segment !== "..")
+      .map((segment) => segment
+        .replace(/[<>:"|?*\u0000-\u001F]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+      )
+      .filter(Boolean);
+
+    return pathSegments.join("/");
+  }
+
+  function resolveDownloadFilename(baseFilename, settings) {
+    const safeBaseFileName = String(baseFilename || "chat-export");
+    if (settings?.saveMode !== "custom") {
+      return safeBaseFileName;
+    }
+
+    const safeFolder = normalizeCustomDownloadFolder(settings.customDownloadFolder);
+    if (!safeFolder) {
+      return safeBaseFileName;
+    }
+
+    return `${safeFolder}/${safeBaseFileName}`;
+  }
+
+  function shouldAskForDownloadLocation(settings) {
+    return settings?.saveMode === "ask";
+  }
+
   function allFormats() {
     return Object.values(EXPORT_FORMATS);
   }
@@ -303,7 +344,7 @@
       let htmlDocument = "";
 
       if (format === EXPORT_FORMATS.TXT) {
-        filename = exporter.buildFileName(processedConversation, "txt");
+        filename = resolveDownloadFilename(exporter.buildFileName(processedConversation, "txt"), settings);
         root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
         const formatter = exporter.toIrcText || exporter.toChatText;
 
@@ -313,19 +354,19 @@
 
         content = formatter(processedConversation);
       } else if (format === EXPORT_FORMATS.HTML) {
-        filename = exporter.buildFileName(processedConversation, "html");
+        filename = resolveDownloadFilename(exporter.buildFileName(processedConversation, "html"), settings);
         root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
         htmlDocument = exporter.toHtmlDocument(processedConversation, settings);
         content = htmlDocument;
         mimeType = "text/html;charset=utf-8";
       } else if (format === EXPORT_FORMATS.MHT) {
-        filename = exporter.buildFileName(processedConversation, "mht");
+        filename = resolveDownloadFilename(exporter.buildFileName(processedConversation, "mht"), settings);
         root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
         htmlDocument = exporter.toHtmlDocument(processedConversation, settings);
         content = exporter.toMhtDocument(htmlDocument, processedConversation);
         mimeType = "application/octet-stream";
       } else if (format === EXPORT_FORMATS.PDF) {
-        filename = exporter.buildFileName(processedConversation, "pdf");
+        filename = resolveDownloadFilename(exporter.buildFileName(processedConversation, "pdf"), settings);
         root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
         htmlDocument = typeof exporter.toPdfDocument === "function"
           ? exporter.toPdfDocument(processedConversation, settings)
@@ -341,7 +382,7 @@
             payload: {
               filename,
               html: htmlDocument,
-              saveAs: settings.saveMode === "ask",
+              saveAs: shouldAskForDownloadLocation(settings),
               conflictAction: settings.autosaveConflictAction,
               timeoutMs
             }
@@ -359,7 +400,7 @@
             filename,
             mimeType,
             content,
-            saveAs: settings.saveMode === "ask",
+            saveAs: shouldAskForDownloadLocation(settings),
             conflictAction: settings.autosaveConflictAction
           }),
           timeoutMs,
@@ -374,7 +415,10 @@
         format !== EXPORT_FORMATS.MHT
       ) {
         const htmlDoc = htmlDocument || exporter.toHtmlDocument(processedConversation, settings);
-        const companionFilename = exporter.buildFileName(processedConversation, "mht");
+        const companionFilename = resolveDownloadFilename(
+          exporter.buildFileName(processedConversation, "mht"),
+          settings
+        );
         root.postProcess.setResolvedFileNameMetadata(processedConversation, companionFilename);
         const mhtContent = exporter.toMhtDocument(htmlDoc, processedConversation);
 
@@ -383,7 +427,7 @@
             filename: companionFilename,
             mimeType: "application/octet-stream",
             content: mhtContent,
-            saveAs: settings.saveMode === "ask",
+            saveAs: shouldAskForDownloadLocation(settings),
             conflictAction: settings.autosaveConflictAction
           }),
           timeoutMs,
@@ -450,6 +494,9 @@
           }
         }
         summary = processedConversation.summary || null;
+        if (summary && summary.fileName) {
+          summary.fileName = resolveDownloadFilename(summary.fileName, settings);
+        }
       } catch (_error) {
         summary = null;
       }

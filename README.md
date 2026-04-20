@@ -50,6 +50,7 @@ The TXT export is designed as a readable chat log:
 - Configurable AI/Human border colors for HTML, PDF, and MHT exports
 - Configurable file naming templates
 - Persistent filename counters (`TotalCount`, `DayCount`, `ChatNameCount`) with configurable values and mapping view
+- Editable `ChatNameCount` associations with inline id editing, single delete, and clear-all reset
 - Auto-save overwrite vs add-count conflict policy
 - Optional inline `EXPORT...` action per provider in supported headers
 - Provider and message summary in the popup with the resolved download file name preview
@@ -125,8 +126,13 @@ The settings page supports:
 - Visible export format toggles
 - Auto naming toggle and file name template
 - Dedicated `Counters` tab to configure counter values and inspect `ChatNameCount` associations
+- `Counters` tab supports editing each `ChatNameCount` id directly (unique ids only) and deleting rows
+- `Counters` tab supports clearing all `ChatNameCount` associations with confirmation
 - Only manually changed settings are pinned; untouched fields keep following new version defaults after updates
-- Auto-save vs ask-for-location download mode
+- Download mode supports:
+- direct save to Downloads
+- direct save to a custom subfolder inside Downloads
+- ask-for-location mode
 - Auto-save overwrite or add-count conflict mode
 - Inline header button toggle per provider (ChatGPT, Claude, Gemini, DeepSeek, Grok)
 - Credits tab with the public GitHub repository link

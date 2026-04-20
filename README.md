@@ -50,7 +50,7 @@ The TXT export is designed as a readable chat log:
 - Broader ChatGPT thinking/reasoning block detection, including localized labels and timing extraction
 - ChatGPT extraction now supports modern `conversation-turn` sections, including assistant image-only turns
 - ChatGPT export now hydrates virtualized turn lists while collecting messages, reducing skipped messages in long chats
-- Thinking labels now export as `(Thought for …)` when only duration is visible, or `(Thought: …)` when a reasoning body exists
+- Thinking labels now export inline under the AI message header as `(<label>)` using provider wording (for example, `(Pensó por 18s)`), and no longer create standalone messages
 - MHT and PDF exports now inline chat images as data URLs when possible, so generated-image replies are preserved more reliably
 - ChatGPT extraction now prefers section-level turns over nested legacy placeholders so image-only assistant replies are not dropped
 - ChatGPT button-based assistant references are now limited to file/url-like labels so generic UI action text is not exported across locales

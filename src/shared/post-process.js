@@ -232,11 +232,29 @@
     return THINKING_LABEL_ONLY_REGEX.test(normalized);
   }
 
-  function normalizeThinkingText(rawText, message, settings) {
-    const cleanedText = compactThinkingText(rawText);
+  function stripOuterParentheses(text) {
+    return String(text || "")
+      .trim()
+      .replace(/^\((.*)\)$/s, "$1")
+      .trim();
+  }
 
-    if (cleanedText && !isLabelOnlyThinking(cleanedText)) {
-      return `(Thought: ${cleanedText})`;
+  function toParenthesizedLabel(text) {
+    const innerLabel = stripOuterParentheses(text);
+    return innerLabel ? `(${innerLabel})` : "";
+  }
+
+  function normalizeThinkingText(rawText, message, settings) {
+    // Prefer explicit provider labels (for example, "Pensó por 18s")
+    // to keep wording consistent with the source chat language.
+    const explicitLabel = compactThinkingText(message?.thinkingLabel);
+    if (explicitLabel) {
+      return toParenthesizedLabel(explicitLabel);
+    }
+
+    const cleanedText = compactThinkingText(rawText);
+    if (cleanedText && isLabelOnlyThinking(cleanedText)) {
+      return toParenthesizedLabel(cleanedText);
     }
 
     if (settings.includeThinkingDuration) {
@@ -246,11 +264,57 @@
       const duration = fromMessage || fromIndicator || fromSeconds;
 
       if (duration) {
-        return `(Thought for ${duration})`;
+        return toParenthesizedLabel(duration);
       }
     }
 
-    return "(Thought)";
+    return "";
+  }
+
+  function mergeThinkingIntoAssistantMessages(messages) {
+    const mergedMessages = [];
+    let pendingThinking = "";
+
+    for (const message of messages) {
+      if (message.isThinking) {
+        const note = compactThinkingText(message.thinkingNote || message.text);
+        if (note) {
+          pendingThinking = pendingThinking
+            ? `${pendingThinking}\n${note}`
+            : note;
+        }
+        continue;
+      }
+
+      const nextMessage = { ...message };
+      if (pendingThinking && nextMessage.role === ROLES.ASSISTANT) {
+        nextMessage.thinkingNote = pendingThinking;
+        pendingThinking = "";
+      }
+
+      mergedMessages.push(nextMessage);
+    }
+
+    // Defensive fallback: if a thinking label was detected but there is no next
+    // assistant entry, append it to the latest assistant already collected.
+    if (pendingThinking) {
+      for (let index = mergedMessages.length - 1; index >= 0; index -= 1) {
+        if (mergedMessages[index].role !== ROLES.ASSISTANT) {
+          continue;
+        }
+
+        const currentNote = compactThinkingText(mergedMessages[index].thinkingNote);
+        mergedMessages[index] = {
+          ...mergedMessages[index],
+          thinkingNote: currentNote
+            ? `${currentNote}\n${pendingThinking}`
+            : pendingThinking
+        };
+        break;
+      }
+    }
+
+    return mergedMessages;
   }
 
   function resolveMessageTimeLabel(message, settings) {
@@ -439,17 +503,20 @@
     rawConversation.settings = settings;
 
     const knownUserAttachmentKeys = collectKnownUserAttachmentKeys(rawConversation.messages || []);
-    const processedMessages = (rawConversation.messages || [])
+    const mappedMessages = (rawConversation.messages || [])
       .map((message, index) => {
         const safeHtml = message.safeHtml || "";
         const text = settings.textFormatting === TEXT_FORMATTING.MARKDOWN
           ? root.textConverter.htmlToMarkdown(safeHtml, settings)
           : root.textConverter.htmlToPlainText(safeHtml, settings);
-        const normalizedText = message.isThinking
+        const normalizedThinkingNote = message.isThinking
           ? normalizeThinkingText(text, message, settings)
+          : "";
+        const normalizedText = message.isThinking
+          ? normalizedThinkingNote
           : text;
         const normalizedSafeHtml = message.isThinking
-          ? `<p>${root.sanitize.escapeHtml(normalizedText)}</p>`
+          ? (normalizedThinkingNote ? `<p>${root.sanitize.escapeHtml(normalizedThinkingNote)}</p>` : "")
           : safeHtml;
         const leadingReferenceLines = message.role === ROLES.HUMAN
           ? collectReferenceLines(message.attachments)
@@ -474,6 +541,7 @@
           trailingReferenceLines,
           hasMedia: Boolean(message.hasMedia),
           isThinking: Boolean(message.isThinking),
+          thinkingNote: normalizedThinkingNote,
           thinkingSeconds: message.thinkingSeconds || null,
           thinkingLabel: message.thinkingLabel || "",
           thinkingDurationLabel: message.thinkingDurationLabel || ""
@@ -484,6 +552,14 @@
           || message.safeHtml
           || (Array.isArray(message.leadingReferenceLines) && message.leadingReferenceLines.length)
           || (Array.isArray(message.trailingReferenceLines) && message.trailingReferenceLines.length);
+      });
+
+    const processedMessages = mergeThinkingIntoAssistantMessages(mappedMessages)
+      .map((message, index) => {
+        return {
+          ...message,
+          messageNumber: index + 1
+        };
       });
 
     const summary = buildConversationSummary(rawConversation, processedMessages, provider);

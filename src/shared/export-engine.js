@@ -303,6 +303,10 @@
     const messageHeader = resolveTxtMessageHeader(message, settings, conversation);
     const shouldUseSpeakerPrefix = !normalizeTemplateValue(messageHeader).trim();
     const prefix = shouldUseSpeakerPrefix ? rolePrefix(message, settings) : "";
+    const thinkingNoteLines = String(message.thinkingNote || "")
+      .split("\n")
+      .map((line) => String(line || "").trim())
+      .filter(Boolean);
     const leadingLines = Array.isArray(message.leadingReferenceLines)
       ? message.leadingReferenceLines.map((line) => `[${line}]`)
       : [];
@@ -310,6 +314,7 @@
     const trailingLines = Array.isArray(message.trailingReferenceLines)
       ? message.trailingReferenceLines.map((line) => `[${line}]`)
       : [];
+    contentLines.push(...thinkingNoteLines);
     contentLines.push(...leadingLines);
 
     if (message.text) {
@@ -328,7 +333,7 @@
 
     const blockBody = outputLines.join("\n");
     const blockWithHeader = `${messageHeader}${blockBody}`;
-    return message.isThinking ? `${blockWithHeader}\n` : blockWithHeader;
+    return blockWithHeader;
   }
 
   function toChatText(conversation) {
@@ -411,6 +416,7 @@
     const speaker = escapeHtml(message.speakerLabel || "Unknown");
     const timeLabel = escapeHtml(message.timeLabel || "");
     const messageId = escapeHtml(messageIdPrefix(message, settings).trim());
+    const thinkingNote = escapeHtml(String(message.thinkingNote || "").trim());
 
     return [
       "  <div class=\"ceai-message-head\">",
@@ -419,7 +425,8 @@
       `      <h2>${speaker}</h2>`,
       "    </div>",
       timeLabel ? `    <span class=\"ceai-message-time\">${timeLabel}</span>` : "",
-      "  </div>"
+      "  </div>",
+      thinkingNote ? `  <p class="ceai-thinking-note">${thinkingNote}</p>` : ""
     ].filter(Boolean).join("\n");
   }
 
@@ -536,6 +543,7 @@
       ".ceai-message h2 { margin: 0; font-size: 1rem; }",
       ".ceai-message-id { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; padding: 0.2rem 0.55rem; border-radius: 999px; background: #e7eefc; color: #1d4ed8; font-size: 0.78rem; font-weight: 700; line-height: 1; }",
       ".ceai-message-time { color: #64748b; font-size: 0.82rem; white-space: nowrap; }",
+      ".ceai-thinking-note { margin: -2px 0 10px; color: #475569; font-size: 0.84rem; font-style: italic; }",
       ".ceai-reference-block { margin: 0 0 10px; }",
       ".ceai-reference-block p { margin: 0 0 6px; color: #334155; font-size: 0.92rem; font-weight: 600; }",
       ".ceai-reference-block--trailing { margin-top: 10px; margin-bottom: 0; }",
@@ -582,6 +590,7 @@
       ".ceai-message h2 { margin: 0; font-size: 14px; }",
       ".ceai-message-id { display: inline-flex; align-items: center; justify-content: center; min-width: 38px; padding: 0.15rem 0.45rem; border-radius: 999px; background: #e7eefc; color: #1d4ed8; font-size: 10px; font-weight: 700; line-height: 1; }",
       ".ceai-message-time { color: #667085; font-size: 11px; white-space: nowrap; }",
+      ".ceai-thinking-note { margin: -2px 0 8px; color: #475467; font-size: 11px; font-style: italic; }",
       ".ceai-reference-block { margin: 0 0 8px; }",
       ".ceai-reference-block p { margin: 0 0 4px; color: #475467; font-size: 11px; font-weight: 600; }",
       ".ceai-reference-block--trailing { margin-top: 8px; margin-bottom: 0; }",

@@ -211,6 +211,15 @@
             <input id="fileNameTemplate" name="fileNameTemplate" type="text" maxlength="200" placeholder="<ChatName>">
           </label>
 
+          <label class="field">
+            <span>Replace invalid file name characters with</span>
+            <input id="invalidFileNameReplacement" name="invalidFileNameReplacement" type="text" maxlength="8" placeholder=".">
+          </label>
+
+          <p class="field-help">
+            Characters that are not valid in file names are replaced with this value when `<ChatName>`, `<ChatFolder>`, or the final file name contains them.
+          </p>
+
           <div class="keyword-box">
             <strong>Keywords</strong>
             <code>&lt;ChatName&gt;</code>

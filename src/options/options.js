@@ -20,6 +20,7 @@
   const appThemeSelect = document.getElementById("appTheme");
   const autoFileNameCheckbox = document.getElementById("autoFileName");
   const fileNameTemplateInput = document.getElementById("fileNameTemplate");
+  const invalidFileNameReplacementInput = document.getElementById("invalidFileNameReplacement");
   const mediaHandlingSelect = document.getElementById("mediaHandling");
   const companionMhtOnMediaCheckbox = document.getElementById("companionMhtOnMedia");
   const metadataExportedAtCheckbox = document.getElementById("metadataExportedAt");
@@ -98,6 +99,7 @@
     appThemeSelect.value = settings.appTheme || "auto";
     autoFileNameCheckbox.checked = Boolean(settings.autoFileName);
     fileNameTemplateInput.value = settings.fileNameTemplate || "";
+    invalidFileNameReplacementInput.value = settings.invalidFileNameReplacement || ".";
     mediaHandlingSelect.value = settings.mediaHandling;
     companionMhtOnMediaCheckbox.checked = Boolean(settings.companionMhtOnMedia);
     metadataExportedAtCheckbox.checked = Boolean(settings.metadataExportedAt);
@@ -140,6 +142,7 @@
       appTheme: appThemeSelect.value,
       autoFileName: autoFileNameCheckbox.checked,
       fileNameTemplate: fileNameTemplateInput.value,
+      invalidFileNameReplacement: invalidFileNameReplacementInput.value,
       saveMode: getSaveModeFromForm(),
       mediaHandling: mediaHandlingSelect.value,
       companionMhtOnMedia: companionMhtOnMediaCheckbox.checked,

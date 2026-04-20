@@ -5,10 +5,21 @@
 (() => {
   const root = globalThis.ChatExportAi;
 
-  function compactName(value) {
+  function normalizeReplacement(value) {
+    const candidate = String(value ?? ".")
+      .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "")
+      .trim();
+
+    return candidate || ".";
+  }
+
+  function compactName(value, replacementValue) {
+    const replacement = normalizeReplacement(replacementValue);
+
     return String(value || "chat")
-      .replace(/[<>:"/\\|?*\u0000-\u001F]/g, " ")
+      .replace(/[<>:"/\\|?*\u0000-\u001F]/g, replacement)
       .replace(/\s+/g, " ")
+      .replace(/[. ]+$/g, "")
       .trim() || "chat";
   }
 
@@ -29,12 +40,13 @@
 
   function keywordValueMap(conversation) {
     const timeParts = timestampParts(new Date(conversation.extractedAtIso || Date.now()));
+    const replacement = conversation.settings?.invalidFileNameReplacement;
 
     return {
-      "<ChatName>": compactName(conversation.title || "chat"),
-      "<ChatFolder>": compactName(conversation.folderName || ""),
-      "<Model>": compactName(conversation.modelName || ""),
-      "<Provider>": compactName(conversation.providerName || ""),
+      "<ChatName>": compactName(conversation.title || "chat", replacement),
+      "<ChatFolder>": compactName(conversation.folderName || "", replacement),
+      "<Model>": compactName(conversation.modelName || "", replacement),
+      "<Provider>": compactName(conversation.providerName || "", replacement),
       "<Date>": timeParts.date,
       "<Time>": timeParts.time
     };
@@ -53,9 +65,9 @@
       resolved = resolved.split(keyword).join(value);
     }
 
-    resolved = compactName(resolved);
+    resolved = compactName(resolved, settings.invalidFileNameReplacement);
 
-    return resolved || compactName(conversation.title || "chat");
+    return resolved || compactName(conversation.title || "chat", settings.invalidFileNameReplacement);
   }
 
   function buildFileName(conversation, format) {

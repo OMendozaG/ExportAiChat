@@ -143,6 +143,13 @@
 
     for (let index = 0; index < legacyNodes.length; index += 1) {
       const node = legacyNodes[index];
+      // Modern ChatGPT wraps turns in `section[data-testid^='conversation-turn-']`.
+      // In that layout, nested legacy role nodes can be empty placeholders.
+      // Prefer section-level extraction to avoid dropping image-only assistant turns.
+      if (node.closest("section[data-testid^='conversation-turn-'][data-turn]")) {
+        continue;
+      }
+
       entries.push({
         node,
         rawRole: node.getAttribute("data-message-author-role") || "unknown",
@@ -158,13 +165,6 @@
       const section = turnSections[index];
       const rawRole = normalizeRole(section.getAttribute("data-turn") || "unknown");
       if (!rawRole) {
-        continue;
-      }
-
-      const hasRoleInsideLegacyNode = Array.from(section.querySelectorAll("[data-message-author-role]"))
-        .some((node) => normalizeRole(node.getAttribute("data-message-author-role")) === rawRole);
-
-      if (hasRoleInsideLegacyNode) {
         continue;
       }
 

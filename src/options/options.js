@@ -77,6 +77,7 @@
   const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
   let autoSaveTimer = null;
   let lastCounterSummary = null;
+  let lastSavedSettingsSnapshot = "";
 
   function showStatus(message, isError = false) {
     statusNode.textContent = message;
@@ -467,15 +468,22 @@
         secondary: true
       });
     }
+    lastSavedSettingsSnapshot = JSON.stringify(readSettingsFromForm());
     await loadCounterSummary();
     showStatus("Settings loaded.");
   }
 
   async function saveSettings() {
     const next = readSettingsFromForm();
+    const nextSnapshot = JSON.stringify(next);
+
+    if (nextSnapshot === lastSavedSettingsSnapshot) {
+      return;
+    }
 
     await root.storage.saveSettings(next);
     root.appTheme.applyThemeDocument(next.appTheme);
+    lastSavedSettingsSnapshot = nextSnapshot;
     showStatus("Saved automatically.");
   }
 
@@ -483,6 +491,7 @@
     const settings = await root.storage.resetSettings();
     root.appTheme.applyThemeDocument(settings.appTheme);
     applySettingsToForm(settings);
+    lastSavedSettingsSnapshot = JSON.stringify(readSettingsFromForm());
     showStatus("Settings reset to defaults.");
   }
 

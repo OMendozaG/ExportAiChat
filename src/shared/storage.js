@@ -372,9 +372,25 @@
             manualValues[key] = normalizedValues[key];
           }
         });
+
+        const resolved = resolveSettingsFromManualValues(manualValues);
+        const defaults = root.defaults.settings || {};
+        const prunedManualKeys = manualKeys.filter((key) => !Object.is(resolved[key], defaults[key]));
+        const prunedManualValues = {};
+        prunedManualKeys.forEach((key) => {
+          prunedManualValues[key] = resolved[key];
+        });
+
+        if (
+          prunedManualKeys.length !== manualKeys.length
+          || JSON.stringify(prunedManualValues) !== JSON.stringify(manualValues)
+        ) {
+          await saveSettingsState(prunedManualValues, prunedManualKeys);
+        }
+
         return {
-          manualValues,
-          manualKeys
+          manualValues: prunedManualValues,
+          manualKeys: prunedManualKeys
         };
       }
 
@@ -402,12 +418,27 @@
     const state = await loadSettingsState();
     const current = resolveSettingsFromManualValues(state.manualValues);
     const merged = root.defaults.mergeSettings({ ...current, ...partialSettings });
+    const defaults = root.defaults.settings || {};
     const manualKeySet = new Set(state.manualKeys);
 
-    // Promote only values changed in this save call to manual/fixed overrides.
+    // Promote only keys changed in this save call and keep existing overrides.
+    // If a key now equals the current default, drop it from manual overrides so
+    // untouched/defaulted keys can follow future version defaults automatically.
     settingKeys().forEach((key) => {
-      if (!Object.is(current[key], merged[key])) {
-        manualKeySet.add(key);
+      const didChangeInThisSave = !Object.is(current[key], merged[key]);
+      const isDefaultValueNow = Object.is(merged[key], defaults[key]);
+
+      if (didChangeInThisSave) {
+        if (isDefaultValueNow) {
+          manualKeySet.delete(key);
+        } else {
+          manualKeySet.add(key);
+        }
+        return;
+      }
+
+      if (isDefaultValueNow) {
+        manualKeySet.delete(key);
       }
     });
 

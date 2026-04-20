@@ -50,6 +50,8 @@ The TXT export is designed as a readable chat log:
 - Broader ChatGPT thinking/reasoning block detection, including localized labels and timing extraction
 - ChatGPT extraction now supports modern `conversation-turn` sections, including assistant image-only turns
 - MHT and PDF exports now inline chat images as data URLs when possible, so generated-image replies are preserved more reliably
+- ChatGPT extraction now prefers section-level turns over nested legacy placeholders so image-only assistant replies are not dropped
+- MHT export now forces rich media extraction for the current export and companion MHT generation, improving generated-image preservation
 - Claude extraction for user/assistant turns, title, model, and share-anchor integration
 - Gemini extraction for user/assistant turns, title, mode/model label, share-anchor integration, and uploaded-file labels
 - DeepSeek extraction for user/assistant turns plus visible thinking duration labels from current DOM logs
@@ -72,6 +74,7 @@ The TXT export is designed as a readable chat log:
 - Button-level export feedback with loading and success states
 - Shared export buttons keep spinner and success check centered and visible in both the popup and the inline page menu
 - Inline header integration now swaps the `Export To...` label for a centered in-button spinner during export across all providers
+- Inline `Export To...` keeps a fixed button width while loading so the spinner stays centered and the button width does not jump
 - Per-format success state stays visible after export and resets to download when the conversation gets new messages
 - Refined line-art robot export icon with transparent background assets
 - Unicode-friendly file naming and an empty default TXT separator
@@ -141,6 +144,8 @@ The settings page supports:
 - `Counters` tab supports editing each `ChatNameCount` id directly (unique ids only) and deleting rows
 - `Counters` tab supports clearing all `ChatNameCount` associations with confirmation
 - Only manually changed settings are pinned; untouched fields keep following new version defaults after updates
+- Default-valued overrides are auto-pruned from storage so reverted fields follow future default updates again
+- Settings auto-save skips writes when there are no real field changes
 - Download mode supports:
 - direct save to Downloads
 - direct save to a custom subfolder inside Downloads
@@ -149,6 +154,7 @@ The settings page supports:
 - Auto-save overwrite or add-count conflict mode
 - Inline header button toggle per provider (ChatGPT, Claude, Gemini, DeepSeek, Grok)
 - Credits tab with the public GitHub repository link
+- Popup settings button opens the Settings page in a new browser tab
 
 Supported file naming keywords:
 - `<WindowTitle>`

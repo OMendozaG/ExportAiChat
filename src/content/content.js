@@ -76,6 +76,13 @@
     return root.postProcess.processConversation(rawConversation, settings, provider);
   }
 
+  function settingsForRichMediaExport(settings) {
+    return {
+      ...settings,
+      mediaHandling: MEDIA_HANDLING.MHT
+    };
+  }
+
   function applyCounterSnapshotToConversation(conversation, counterSnapshot) {
     if (!conversation || !counterSnapshot || typeof counterSnapshot !== "object") {
       return conversation;
@@ -430,7 +437,11 @@
       const settings = await root.storage.getSettings();
       const timeoutMs = settings.exportTimeoutSeconds * 1000;
       const liveMessageCountBeforeExport = getLiveMessageCount(provider);
-      const processedConversation = buildProcessedConversation(provider, settings);
+      const shouldForceRichMedia = format === EXPORT_FORMATS.MHT || format === EXPORT_FORMATS.PDF;
+      const extractionSettings = shouldForceRichMedia
+        ? settingsForRichMediaExport(settings)
+        : settings;
+      const processedConversation = buildProcessedConversation(provider, extractionSettings);
       const exporter = root.exporters;
 
       if (!exporter) {
@@ -528,15 +539,22 @@
         processedConversation.hasMedia &&
         format !== EXPORT_FORMATS.MHT
       ) {
+        const conversationForCompanion = buildProcessedConversation(
+          provider,
+          settingsForRichMediaExport(settings)
+        );
+        if (processedConversation.exportCounters) {
+          applyCounterSnapshotToConversation(conversationForCompanion, processedConversation.exportCounters);
+        }
         const htmlDoc = await inlineImagesInHtmlDocument(
-          htmlDocument || exporter.toHtmlDocument(processedConversation, settings)
+          exporter.toHtmlDocument(conversationForCompanion, settingsForRichMediaExport(settings))
         );
         const companionFilename = resolveDownloadFilename(
-          exporter.buildFileName(processedConversation, "mht"),
+          exporter.buildFileName(conversationForCompanion, "mht"),
           settings
         );
-        root.postProcess.setResolvedFileNameMetadata(processedConversation, companionFilename);
-        const mhtContent = exporter.toMhtDocument(htmlDoc, processedConversation);
+        root.postProcess.setResolvedFileNameMetadata(conversationForCompanion, companionFilename);
+        const mhtContent = exporter.toMhtDocument(htmlDoc, conversationForCompanion);
 
         await withTimeout(
           requestFileDownload({

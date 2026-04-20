@@ -36,6 +36,7 @@
   display: inline-flex;
   margin-left: 8px;
   z-index: 2147483000;
+  --ceai-inline-btn-width: 112px;
 }
 #${UI_ROOT_ID}[hidden] {
   display: none !important;
@@ -50,13 +51,21 @@
   align-items: center;
   justify-content: center;
   min-height: 36px;
+  width: var(--ceai-inline-btn-width);
+  min-width: var(--ceai-inline-btn-width);
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
   position: relative;
+  box-sizing: border-box;
 }
 #${UI_ROOT_ID} .ceai-inline-btn .ceai-inline-btn-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 1em;
   line-height: 1;
 }
 #${UI_ROOT_ID}[data-provider="deepseek"] .ceai-inline-btn,
@@ -95,16 +104,20 @@
   filter: saturate(1.05) brightness(1.05);
 }
 #${UI_ROOT_ID} .ceai-inline-btn .ceai-inline-btn-spinner {
-  display: block;
-  width: 15px;
-  height: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  width: auto;
+  height: auto;
   opacity: 0;
   pointer-events: none;
   transition: opacity 120ms ease;
+}
+#${UI_ROOT_ID} .ceai-inline-btn .ceai-inline-btn-spinner svg {
+  width: 15px;
+  height: 15px;
 }
 #${UI_ROOT_ID} .ceai-inline-btn.is-loading .ceai-inline-btn-spinner {
   opacity: 1;
@@ -112,6 +125,7 @@
 }
 #${UI_ROOT_ID} .ceai-inline-btn.is-loading .ceai-inline-btn-label {
   opacity: 0;
+  visibility: hidden;
 }
 #${UI_ROOT_ID} .ceai-inline-btn[disabled] {
   opacity: 0.55;
@@ -315,10 +329,6 @@
         "fontFamily",
         "fontSize",
         "fontWeight",
-        "lineHeight",
-        "padding",
-        "height",
-        "minHeight",
         "boxShadow"
       ];
 
@@ -332,10 +342,9 @@
       mainButton.style.display = "inline-flex";
       mainButton.style.alignItems = "center";
       mainButton.style.justifyContent = "center";
-      mainButton.style.width = "auto";
-      mainButton.style.minWidth = "fit-content";
       mainButton.style.whiteSpace = "nowrap";
       mainButton.style.cursor = "pointer";
+      mainButton.style.boxSizing = "border-box";
 
       // ChatGPT integration requirement: keep the inline button borderless/background-less
       // even when host styles are copied from Share.
@@ -351,6 +360,15 @@
         if (Number.isFinite(currentFontSize) && currentFontSize > 0) {
           mainButton.style.fontSize = `${(currentFontSize * 0.7).toFixed(2)}px`;
         }
+      }
+    }
+
+    function syncButtonWidth() {
+      mainButton.style.removeProperty("--ceai-inline-btn-width");
+      const currentWidth = Math.ceil(mainButton.getBoundingClientRect().width || 0);
+
+      if (currentWidth > 0) {
+        mainButton.style.setProperty("--ceai-inline-btn-width", `${currentWidth}px`);
       }
     }
 
@@ -377,6 +395,7 @@
       }
 
       applyReferenceButtonStyle(styleReferenceNode);
+      syncButtonWidth();
       return true;
     }
 

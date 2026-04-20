@@ -219,7 +219,18 @@
   exportTxtButton.addEventListener("click", () => runExport(EXPORT_FORMATS.TXT, exportTxtButton));
 
   openOptionsButton.addEventListener("click", () => {
-    chrome.runtime.openOptionsPage();
+    const optionsUrl = globalThis.chrome?.runtime?.getURL
+      ? globalThis.chrome.runtime.getURL("src/options/options.html")
+      : "src/options/options.html";
+
+    if (globalThis.chrome?.tabs?.create) {
+      globalThis.chrome.tabs.create({ url: optionsUrl });
+      return;
+    }
+
+    if (globalThis.chrome?.runtime?.openOptionsPage) {
+      globalThis.chrome.runtime.openOptionsPage();
+    }
   });
 
   loadStatus().catch((error) => {

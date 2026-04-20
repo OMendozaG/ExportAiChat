@@ -117,6 +117,7 @@ The settings page supports:
 - Editable TXT per-role message header templates for Human and AI messages
 - TXT template placeholders: `<HumanName>`, `<AiName>`, `<enter>`
 - TXT header placeholders resolve Human/AI names from the General tab settings
+- Default TXT headers use `----- <HumanName>:` and `----- <AiName>:` with the same surrounding line breaks
 - TXT speaker prefixes (`<Human>`, `<AI>`) are omitted when a TXT header template is present for that role
 - Dedicated HTML/PDF/MHT appearance section with AI and Human border colors (default AI blue, Human orange)
 - Visible export format toggles are configured in the General tab

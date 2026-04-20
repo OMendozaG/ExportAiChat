@@ -26,8 +26,8 @@
       multilineFormat: MULTILINE_FORMAT.NONE,
 
       // Per-role TXT message headers, supports <HumanName>/<AiName>/<enter>.
-      txtHumanMessageHeaderTemplate: "\n\n----- <HumanName>\n\n",
-      txtAiMessageHeaderTemplate: "\n\n----- <AiName>\n\n",
+      txtHumanMessageHeaderTemplate: "\n\n----- <HumanName>:\n\n",
+      txtAiMessageHeaderTemplate: "\n\n----- <AiName>:\n\n",
 
       // Separator inserted between TXT message blocks.
       messageSeparator: "",

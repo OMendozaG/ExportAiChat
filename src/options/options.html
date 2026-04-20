@@ -159,8 +159,15 @@
             <textarea id="txtAiMessageHeaderTemplate" name="txtAiMessageHeaderTemplate" rows="4" spellcheck="false"></textarea>
           </label>
 
+          <div class="keyword-box">
+            <strong>TXT placeholders</strong>
+            <code>&lt;HumanName&gt;</code>
+            <code>&lt;AiName&gt;</code>
+            <code>&lt;enter&gt;</code>
+          </div>
+
           <p class="field-help">
-            Supported placeholders: `&lt;HumanName&gt;`, `&lt;AiName&gt;`, `&lt;enter&gt;`. Human/AI names are resolved from the General tab.
+            Human and AI names are resolved from the General tab.
           </p>
         </section>
 
@@ -308,7 +315,7 @@
             <label><input type="radio" name="saveMode" value="ask"> Ask for location</label>
           </div>
 
-          <label class="field">
+          <label class="field field-inline-compact">
             <span>Custom download subfolder (inside Downloads)</span>
             <input id="customDownloadFolder" name="customDownloadFolder" type="text" maxlength="140" placeholder="Chat Export AI">
           </label>
@@ -437,16 +444,22 @@
         <section class="card">
           <h2>ChatNameCount Associations</h2>
           <p class="field-help">
-            `ChatNameCount` is stable for each unique `provider/folder/chat name` key.
+            `ChatNameCount` is stable for each unique `chat name` key.
           </p>
           <p class="field-help">
             You can edit the ID in place or delete associations. IDs must stay unique.
           </p>
-          <div class="counter-actions">
+          <div class="counter-actions counter-actions-clear">
             <button id="clearChatNameMappings" type="button">Clear ChatNameCount associations</button>
           </div>
           <div class="counter-map-wrap">
             <table class="counter-map-table">
+              <colgroup>
+                <col class="counter-col-id">
+                <col class="counter-col-provider">
+                <col class="counter-col-chat">
+                <col class="counter-col-actions">
+              </colgroup>
               <thead>
                 <tr>
                   <th>ID</th>

@@ -11,6 +11,7 @@
   const THINKING_SECONDS_REGEX = /(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s|segundos?|seg)\b/i;
   const SHARE_LABEL_REGEX = /\b(?:share|compartir)\b/i;
   const SOURCES_LABEL_REGEX = /^(?:fuentes?|sources?)$/i;
+  const IGNORED_ASSISTANT_ACTION_LABEL_REGEX = /^(?:edit(?: image)?|editar(?: imagen)?|share(?: this image)?|compartir(?: esta imagen)?|copy(?: response)?|copiar(?: respuesta)?|like(?: this image)?|me gusta(?: esta imagen)?|dislike(?: this image)?|no me gusta(?: esta imagen)?|regenerate|regenerar|retry|reintentar|thumbs?\s*up|thumbs?\s*down)$/i;
   const TIME_TEXT_REGEX = /\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|A\.M\.|P\.M\.)?\b/i;
   const CONVERSATION_PATH_REGEX = /\/c\/([^/?#]+)/i;
   const PROJECT_PATH_REGEX = /(\/g\/[^/]+)\/c\/[^/?#]+/i;
@@ -33,12 +34,17 @@
     );
   }
 
+  function normalizeRole(rawRole) {
+    return normalizeText(rawRole).toLowerCase();
+  }
+
   function mapRole(rawRole) {
-    if (rawRole === "user") {
+    const normalizedRole = normalizeRole(rawRole);
+    if (normalizedRole === "user") {
       return ROLES.HUMAN;
     }
 
-    if (rawRole === "assistant") {
+    if (normalizedRole === "assistant") {
       return ROLES.ASSISTANT;
     }
 
@@ -102,14 +108,26 @@
   }
 
   function pickMessageContentRoot(messageNode, rawRole) {
-    if (rawRole === "assistant") {
+    const normalizedRole = normalizeRole(rawRole);
+
+    if (normalizedRole === "assistant") {
+      const agentTurn = messageNode.querySelector(".agent-turn");
+      if (agentTurn) {
+        return agentTurn;
+      }
+
       const markdown = messageNode.querySelector(".markdown");
       if (markdown) {
         return markdown;
       }
+
+      const imageContainer = messageNode.querySelector(".group\\/imagegen-image, [id^='image-']");
+      if (imageContainer) {
+        return imageContainer;
+      }
     }
 
-    if (rawRole === "user") {
+    if (normalizedRole === "user") {
       const userBubble = messageNode.querySelector(".whitespace-pre-wrap");
       if (userBubble) {
         return userBubble;
@@ -117,6 +135,51 @@
     }
 
     return messageNode;
+  }
+
+  function collectConversationEntries() {
+    const entries = [];
+    const legacyNodes = Array.from(document.querySelectorAll("[data-message-author-role]"));
+
+    for (let index = 0; index < legacyNodes.length; index += 1) {
+      const node = legacyNodes[index];
+      entries.push({
+        node,
+        rawRole: node.getAttribute("data-message-author-role") || "unknown",
+        messageId: node.getAttribute("data-message-id") || `chatgpt-${index + 1}`
+      });
+    }
+
+    const turnSections = Array.from(
+      document.querySelectorAll("section[data-testid^='conversation-turn-'][data-turn]")
+    );
+
+    for (let index = 0; index < turnSections.length; index += 1) {
+      const section = turnSections[index];
+      const rawRole = normalizeRole(section.getAttribute("data-turn") || "unknown");
+      if (!rawRole) {
+        continue;
+      }
+
+      const hasRoleInsideLegacyNode = Array.from(section.querySelectorAll("[data-message-author-role]"))
+        .some((node) => normalizeRole(node.getAttribute("data-message-author-role")) === rawRole);
+
+      if (hasRoleInsideLegacyNode) {
+        continue;
+      }
+
+      const messageId = section.getAttribute("data-turn-id")
+        || section.closest("[data-turn-id-container]")?.getAttribute("data-turn-id-container")
+        || `chatgpt-turn-${index + 1}`;
+
+      entries.push({
+        node: section,
+        rawRole,
+        messageId
+      });
+    }
+
+    return entries;
   }
 
   function buildReferenceKey(item) {
@@ -199,6 +262,10 @@
     for (const candidate of candidates) {
       const label = normalizeReferenceLabel(candidate);
       if (!label || isIgnoredReferenceLabel(label) || label.length > 180) {
+        continue;
+      }
+
+      if (IGNORED_ASSISTANT_ACTION_LABEL_REGEX.test(label)) {
         continue;
       }
 
@@ -331,6 +398,28 @@
     if (!clone) {
       return contentRoot;
     }
+
+    // Remove UI-only action surfaces that are not part of the assistant content.
+    const uiOnlyNodes = Array.from(clone.querySelectorAll(
+      [
+        "[data-testid='image-gen-overlay-actions']",
+        "[data-testid$='turn-action-button']",
+        "[aria-label*='copy response' i]",
+        "[aria-label*='copiar respuesta' i]",
+        "[aria-label*='edit image' i]",
+        "[aria-label*='editar imagen' i]",
+        "[aria-label*='share this image' i]",
+        "[aria-label*='compartir esta imagen' i]",
+        "[aria-label*='like this image' i]",
+        "[aria-label*='me gusta esta imagen' i]",
+        "[aria-label*='dislike this image' i]",
+        "[aria-label*='no me gusta esta imagen' i]"
+      ].join(", ")
+    ));
+    uiOnlyNodes.forEach((node) => node.remove());
+
+    // Keep only the primary generated image instance.
+    Array.from(clone.querySelectorAll("img[aria-hidden='true']")).forEach((node) => node.remove());
 
     const buttons = Array.from(clone.querySelectorAll("button"));
     for (const button of buttons) {
@@ -766,7 +855,7 @@
   }
 
   function extractConversation(settings) {
-    const rawNodes = Array.from(document.querySelectorAll("[data-message-author-role]"));
+    const rawEntries = collectConversationEntries();
     const seenIds = new Set();
     const messages = [];
 
@@ -777,10 +866,11 @@
       || settings.showAssistantReferences
     );
 
-    for (let index = 0; index < rawNodes.length; index += 1) {
-      const node = rawNodes[index];
-      const rawRole = node.getAttribute("data-message-author-role") || "unknown";
-      const messageId = node.getAttribute("data-message-id") || `chatgpt-${index + 1}`;
+    for (let index = 0; index < rawEntries.length; index += 1) {
+      const entry = rawEntries[index];
+      const node = entry.node;
+      const rawRole = entry.rawRole || "unknown";
+      const messageId = entry.messageId || `chatgpt-${index + 1}`;
 
       if (seenIds.has(messageId)) {
         continue;
@@ -816,7 +906,7 @@
         : [];
 
       const stripped = normalizeText((sanitized.safeHtml || "").replace(/<[^>]*>/g, " "));
-      if (!stripped && !userAttachments.length && !assistantReferences.length) {
+      if (!stripped && !sanitized.hasMedia && !userAttachments.length && !assistantReferences.length) {
         continue;
       }
 

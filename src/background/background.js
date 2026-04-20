@@ -133,25 +133,14 @@
   }
 
   async function downloadPdfData(base64Data, filename, saveAs = false, conflictAction = "overwrite") {
-    const pdfBlob = base64ToBlob(base64Data, "application/pdf");
-    const supportsBlobUrl = typeof URL !== "undefined" && typeof URL.createObjectURL === "function";
-
-    if (!supportsBlobUrl) {
-      return downloadByUrl(
-        "data:application/pdf;base64," + base64Data,
-        filename,
-        saveAs,
-        conflictAction
-      );
-    }
-
-    const blobUrl = URL.createObjectURL(pdfBlob);
-
-    try {
-      return await downloadByUrl(blobUrl, filename, saveAs, conflictAction);
-    } finally {
-      URL.revokeObjectURL(blobUrl);
-    }
+    // Use a direct data URL for PDF downloads.
+    // This avoids blob-URL lifecycle races in service workers.
+    return downloadByUrl(
+      "data:application/pdf;base64," + base64Data,
+      filename,
+      saveAs,
+      conflictAction
+    );
   }
 
   function createInactiveTab(url) {

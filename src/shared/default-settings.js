@@ -30,7 +30,7 @@
       txtAiMessageHeaderTemplate: "\n\n----- <AiName>\n\n",
 
       // Separator inserted between TXT message blocks.
-      messageSeparator: "\n\n\n",
+      messageSeparator: "",
 
       // Role border colors for HTML/PDF exports.
       htmlPdfAiBorderColor: "#2563eb",

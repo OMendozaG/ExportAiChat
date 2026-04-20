@@ -52,24 +52,40 @@
     return normalizeText(value).toLowerCase();
   }
 
+  function extractLegacyChatNameFromKey(rawKey) {
+    const normalizedRawKey = normalizeText(rawKey);
+    if (!normalizedRawKey) {
+      return "";
+    }
+
+    // Legacy keys used `provider::folder::chat`. Keep only the chat part now.
+    const legacyParts = normalizedRawKey.split("::").map((part) => normalizeText(part)).filter(Boolean);
+    if (!legacyParts.length) {
+      return normalizedRawKey;
+    }
+
+    return legacyParts[legacyParts.length - 1];
+  }
+
+  function buildChatNameCounterKeyFromValues(chatNameValue, fallback = "chat") {
+    const chatPart = normalizeChatKeyPart(chatNameValue, fallback);
+    return chatPart;
+  }
+
+  function deriveCounterMapKey(rawKey, rawEntry) {
+    const fromEntry = normalizeText(rawEntry?.chatName);
+    if (fromEntry) {
+      return buildChatNameCounterKeyFromValues(fromEntry);
+    }
+
+    return buildChatNameCounterKeyFromValues(extractLegacyChatNameFromKey(rawKey));
+  }
+
   function buildChatNameCounterKey(conversation) {
-    const providerPart = normalizeChatKeyPart(
-      conversation?.providerId || conversation?.providerName,
-      "unknown-provider"
-    );
-    const folderPart = normalizeChatKeyPart(conversation?.folderName, "no-folder");
-    const chatPart = normalizeChatKeyPart(
+    return buildChatNameCounterKeyFromValues(
       conversation?.chatName || conversation?.title,
       "chat"
     );
-
-    return `${providerPart}::${folderPart}::${chatPart}`;
-  }
-
-  function buildChatPath(folderName, chatName) {
-    const folder = normalizeText(folderName);
-    const chat = normalizeText(chatName) || "chat";
-    return folder ? `${folder}/${chat}` : chat;
   }
 
   function defaultCounterState() {
@@ -128,18 +144,30 @@
 
     let maxAssignedCount = 0;
     Object.entries(sourceMap).forEach(([rawKey, rawEntry]) => {
-      const key = normalizeText(rawKey).toLowerCase();
+      const key = deriveCounterMapKey(rawKey, rawEntry);
       if (!key) {
         return;
       }
 
-      const normalizedEntry = normalizeCounterEntry(rawEntry);
+      const normalizedEntry = normalizeCounterEntry(rawEntry, {
+        chatName: extractLegacyChatNameFromKey(rawKey)
+      });
       if (!normalizedEntry) {
         return;
       }
 
-      next.chatNameMap[key] = normalizedEntry;
-      maxAssignedCount = Math.max(maxAssignedCount, normalizedEntry.count);
+      const existingEntry = normalizeCounterEntry(next.chatNameMap[key]);
+      if (existingEntry) {
+        // During migration from legacy keys, keep the smallest id for the same chat name.
+        if (normalizedEntry.count < existingEntry.count) {
+          next.chatNameMap[key] = normalizedEntry;
+        }
+      } else {
+        next.chatNameMap[key] = normalizedEntry;
+      }
+
+      const savedEntry = next.chatNameMap[key];
+      maxAssignedCount = Math.max(maxAssignedCount, toPositiveInteger(savedEntry?.count, 1));
     });
 
     next.nextChatNameCount = Math.max(next.nextChatNameCount, maxAssignedCount + 1);
@@ -211,7 +239,7 @@
           providerName: normalizedEntry.providerName,
           folderName: normalizedEntry.folderName,
           chatName: normalizedEntry.chatName,
-          chatPath: buildChatPath(normalizedEntry.folderName, normalizedEntry.chatName),
+          chatPath: normalizedEntry.chatName,
           createdAtIso: normalizedEntry.createdAtIso,
           lastUsedAtIso: normalizedEntry.lastUsedAtIso
         };

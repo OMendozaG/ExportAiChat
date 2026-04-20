@@ -348,7 +348,8 @@
     }
 
     if (messageBlocks.length) {
-      sections.push(messageBlocks.join(separator || "\n\n"));
+      // Respect an explicit empty-string separator (no gap between message blocks).
+      sections.push(messageBlocks.join(separator));
     }
 
     return `${sections.join("\n\n").trimEnd()}\n`;

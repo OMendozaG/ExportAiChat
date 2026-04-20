@@ -201,12 +201,17 @@
 
     counterMapBodyNode.innerHTML = entries.map((entry) => {
       const safeMappingKey = escapeHtml(entry.key || "");
+      const safeFolder = escapeHtml(entry.folderName || "");
+      const safeChatName = escapeHtml(entry.chatName || entry.chatPath || "-");
+      const folderLine = safeFolder
+        ? `<div class="counter-chat-folder">${safeFolder}</div>`
+        : "";
       return [
         "<tr>",
-        `  <td><input class="counter-id-input" type="number" min="1" step="1" value="${escapeHtml(entry.count)}" data-counter-key="${safeMappingKey}" aria-label="ChatNameCount id"></td>`,
-        `  <td>${escapeHtml(entry.providerName || "-")}</td>`,
-        `  <td>${escapeHtml(entry.chatPath || "-")}</td>`,
-        `  <td><button type="button" class="counter-inline-delete" data-counter-key="${safeMappingKey}" aria-label="Delete ChatNameCount association">Delete</button></td>`,
+        `  <td class="counter-id-cell"><input class="counter-id-input" type="number" min="1" step="1" value="${escapeHtml(entry.count)}" data-counter-key="${safeMappingKey}" aria-label="ChatNameCount id"></td>`,
+        `  <td class="counter-provider-cell">${escapeHtml(entry.providerName || "-")}</td>`,
+        `  <td class="counter-chat-cell"><div class="counter-chat-name">${safeChatName}</div>${folderLine}</td>`,
+        `  <td class="counter-action-cell"><button type="button" class="counter-inline-delete" data-counter-key="${safeMappingKey}" aria-label="Delete ChatNameCount association">Delete</button></td>`,
         "</tr>"
       ].join("");
     }).join("");

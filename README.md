@@ -21,6 +21,15 @@ The TXT export is designed as a readable chat log:
 - `<Human> message...`
 - `<ChatGPT> message...`
 
+## Install In Chrome (ZIP)
+
+1. Download this repository as a `.zip` from GitHub.
+2. Extract it to a local folder.
+3. Open `chrome://extensions`.
+4. Enable **Developer mode**.
+5. Click **Load unpacked**.
+6. Select the extracted project folder.
+
 ## Main Features
 
 - Modular provider architecture for adding more LLM websites later
@@ -39,6 +48,8 @@ The TXT export is designed as a readable chat log:
 - ChatGPT user file tiles and assistant inline file/reference chips are extracted explicitly instead of relying only on sanitized rich text
 - ChatGPT attachment tile detection, including attachment-only user turns
 - Broader ChatGPT thinking/reasoning block detection, including localized labels and timing extraction
+- ChatGPT extraction now supports modern `conversation-turn` sections, including assistant image-only turns
+- MHT and PDF exports now inline chat images as data URLs when possible, so generated-image replies are preserved more reliably
 - Claude extraction for user/assistant turns, title, model, and share-anchor integration
 - Gemini extraction for user/assistant turns, title, mode/model label, share-anchor integration, and uploaded-file labels
 - DeepSeek extraction for user/assistant turns plus visible thinking duration labels from current DOM logs
@@ -63,11 +74,12 @@ The TXT export is designed as a readable chat log:
 - Inline header integration now swaps the `Export To...` label for a centered in-button spinner during export across all providers
 - Per-format success state stays visible after export and resets to download when the conversation gets new messages
 - Refined line-art robot export icon with transparent background assets
-- Unicode-friendly file naming and a blank-line default TXT separator
+- Unicode-friendly file naming and an empty default TXT separator
 - Higher-contrast export button labels for better readability
 - Defensive settings fallback when a shared script runs without extension storage APIs
 - Guarded runtime/storage listeners and caught inline refresh failures to avoid uncaught extension-context errors
 - PDF rendering now injects HTML directly into the debug target instead of navigating to a `data:` URL, to reduce renderer failures
+- PDF download now uses direct base64 data URLs from the background worker to avoid blob URL lifecycle failures
 - Reset defaults now asks for confirmation before overwriting the current settings
 - Shared Chrome API helpers no longer throw path-based missing-API errors
 - Current builds load a dedicated `extension-bridge.js` wrapper for Chrome APIs, while the legacy helper path is kept as a harmless shim for stale tabs
@@ -133,6 +145,7 @@ The settings page supports:
 - direct save to Downloads
 - direct save to a custom subfolder inside Downloads
 - ask-for-location mode
+- Custom Downloads subfolder input is compact and inline in the Download behavior section
 - Auto-save overwrite or add-count conflict mode
 - Inline header button toggle per provider (ChatGPT, Claude, Gemini, DeepSeek, Grok)
 - Credits tab with the public GitHub repository link

@@ -174,6 +174,26 @@ body {
   margin-bottom: 12px;
 }
 
+.field-inline-compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.field-inline-compact > span {
+  margin: 0;
+  flex: 1;
+}
+
+.field-inline-compact > input[type="text"] {
+  width: 220px;
+  max-width: 45%;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  padding: 6px 8px;
+}
+
 .field > span {
   font-size: 0.92rem;
   font-weight: 600;
@@ -304,6 +324,10 @@ body {
   margin-top: 10px;
 }
 
+.counter-actions-clear {
+  margin-bottom: 10px;
+}
+
 .counter-actions .ceai-button {
   min-height: 38px;
   padding: 10px 14px;
@@ -320,6 +344,22 @@ body {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+}
+
+.counter-col-id {
+  width: 170px;
+}
+
+.counter-col-provider {
+  width: 22%;
+}
+
+.counter-col-chat {
+  width: auto;
+}
+
+.counter-col-actions {
+  width: 132px;
 }
 
 .counter-map-table th,
@@ -339,8 +379,13 @@ body {
   border-bottom: 0;
 }
 
+.counter-id-cell {
+  padding-right: 12px;
+}
+
 .counter-id-input {
-  width: 100%;
+  width: min(100%, 150px);
+  max-width: 150px;
   min-width: 78px;
   border: 1px solid var(--field-border);
   border-radius: 8px;
@@ -348,6 +393,30 @@ body {
   background: var(--field-bg);
   color: var(--text);
   font-size: 0.88rem;
+  margin-right: 10px;
+}
+
+.counter-provider-cell {
+  white-space: nowrap;
+}
+
+.counter-chat-cell {
+  padding-right: 16px;
+}
+
+.counter-chat-name {
+  line-height: 1.3;
+}
+
+.counter-chat-folder {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.counter-action-cell {
+  white-space: nowrap;
 }
 
 .counter-inline-delete {

@@ -152,6 +152,118 @@
     return settings?.saveMode === "ask";
   }
 
+  function shouldInlineMediaSource(rawSource) {
+    const source = String(rawSource || "").trim();
+    if (!source) {
+      return false;
+    }
+
+    if (/^data:/i.test(source)) {
+      return false;
+    }
+
+    if (/^(?:javascript|about|chrome-extension):/i.test(source)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  function withSignalTimeout(timeoutMs) {
+    const controller = new AbortController();
+    const timerId = window.setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
+
+    return {
+      signal: controller.signal,
+      clear: () => window.clearTimeout(timerId)
+    };
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Could not convert image blob to data URL."));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function fetchImageAsDataUrl(url) {
+    const timeoutHandle = withSignalTimeout(6000);
+
+    try {
+      const response = await fetch(url, {
+        credentials: "include",
+        cache: "force-cache",
+        signal: timeoutHandle.signal
+      });
+
+      if (!response.ok) {
+        throw new Error(`Image request failed (${response.status})`);
+      }
+
+      const imageBlob = await response.blob();
+      if (!imageBlob || !imageBlob.size) {
+        throw new Error("Image payload is empty.");
+      }
+
+      return await blobToDataUrl(imageBlob);
+    } finally {
+      timeoutHandle.clear();
+    }
+  }
+
+  async function inlineImagesInHtmlDocument(htmlDocument) {
+    const htmlSource = String(htmlDocument || "");
+    if (!htmlSource || !/<img\b/i.test(htmlSource)) {
+      return htmlSource;
+    }
+
+    const parser = new DOMParser();
+    const parsed = parser.parseFromString(htmlSource, "text/html");
+    const images = Array.from(parsed.querySelectorAll("img[src]"));
+
+    if (!images.length) {
+      return htmlSource;
+    }
+
+    const dataUrlCache = new Map();
+
+    await Promise.all(images.map(async (image) => {
+      const source = image.getAttribute("src") || "";
+      if (!shouldInlineMediaSource(source)) {
+        return;
+      }
+
+      let absoluteUrl = "";
+      try {
+        absoluteUrl = new URL(source, location.href).href;
+      } catch (_error) {
+        return;
+      }
+
+      if (!shouldInlineMediaSource(absoluteUrl)) {
+        return;
+      }
+
+      if (!dataUrlCache.has(absoluteUrl)) {
+        dataUrlCache.set(absoluteUrl, fetchImageAsDataUrl(absoluteUrl).catch(() => ""));
+      }
+
+      const resolvedDataUrl = await dataUrlCache.get(absoluteUrl);
+      if (!resolvedDataUrl) {
+        return;
+      }
+
+      image.setAttribute("src", resolvedDataUrl);
+      image.removeAttribute("srcset");
+    }));
+
+    return "<!doctype html>\n" + parsed.documentElement.outerHTML;
+  }
+
   function allFormats() {
     return Object.values(EXPORT_FORMATS);
   }
@@ -363,6 +475,7 @@
         filename = resolveDownloadFilename(exporter.buildFileName(processedConversation, "mht"), settings);
         root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
         htmlDocument = exporter.toHtmlDocument(processedConversation, settings);
+        htmlDocument = await inlineImagesInHtmlDocument(htmlDocument);
         content = exporter.toMhtDocument(htmlDocument, processedConversation);
         mimeType = "application/octet-stream";
       } else if (format === EXPORT_FORMATS.PDF) {
@@ -371,6 +484,7 @@
         htmlDocument = typeof exporter.toPdfDocument === "function"
           ? exporter.toPdfDocument(processedConversation, settings)
           : exporter.toHtmlDocument(processedConversation, settings);
+        htmlDocument = await inlineImagesInHtmlDocument(htmlDocument);
       } else {
         throw new Error("Unsupported format: " + format);
       }
@@ -414,7 +528,9 @@
         processedConversation.hasMedia &&
         format !== EXPORT_FORMATS.MHT
       ) {
-        const htmlDoc = htmlDocument || exporter.toHtmlDocument(processedConversation, settings);
+        const htmlDoc = await inlineImagesInHtmlDocument(
+          htmlDocument || exporter.toHtmlDocument(processedConversation, settings)
+        );
         const companionFilename = resolveDownloadFilename(
           exporter.buildFileName(processedConversation, "mht"),
           settings

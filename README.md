@@ -53,6 +53,7 @@ The TXT export is designed as a readable chat log:
 - Thinking labels now export inline under the AI message header as `(<label>)` using provider wording (for example, `(Pensó por 18s)`), and no longer create standalone messages
 - TXT exports now keep the speaker prefix on the first real message line even when a thinking label is present above it, including attachment-only first messages
 - TXT thinking notes now always end with a line break and keep a blank line before the message body/attachments
+- TXT thinking notes are normalized as `(...)` without role prefix
 - DeepSeek thinking-only blocks no longer duplicate into separate assistant reply messages
 - MHT and PDF exports now inline chat images as data URLs when possible, so generated-image replies are preserved more reliably
 - ChatGPT extraction now prefers section-level turns over nested legacy placeholders so image-only assistant replies are not dropped
@@ -124,7 +125,7 @@ The settings page supports:
 - TXT template placeholders: `<HumanName>`, `<AiName>`
 - TXT header placeholders resolve Human/AI names from the General tab settings
 - Default TXT headers use `----- <HumanName>:` and `----- <AiName>:` with the same surrounding line breaks
-- TXT speaker prefixes (`<Human>`, `<AI>`) are omitted when a TXT header template is present for that role
+- TXT speaker prefixes (`<Human>`, `<AI>`) are kept on the first real content line even when a TXT header template is present
 - Dedicated HTML/PDF/MHT appearance section with AI and Human border colors (default AI blue, Human orange)
 - Visible export format toggles are configured in the General tab
 - Media handling rules

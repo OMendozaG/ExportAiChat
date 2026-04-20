@@ -204,6 +204,10 @@
       .trim();
   }
 
+  function compactThinkingLabel(value) {
+    return compactThinkingText(value).replace(/\s*\n+\s*/g, " ").trim();
+  }
+
   function thinkingDurationFromLabel(rawLabel) {
     const label = String(rawLabel || "").trim();
     if (!label) {
@@ -247,13 +251,13 @@
   function normalizeThinkingText(rawText, message, settings) {
     // Prefer explicit provider labels (for example, "Pensó por 18s")
     // to keep wording consistent with the source chat language.
-    const explicitLabel = compactThinkingText(message?.thinkingLabel);
+    const explicitLabel = compactThinkingLabel(message?.thinkingLabel);
     if (explicitLabel) {
       return toParenthesizedLabel(explicitLabel);
     }
 
-    const cleanedText = compactThinkingText(rawText);
-    if (cleanedText && isLabelOnlyThinking(cleanedText)) {
+    const cleanedText = compactThinkingLabel(rawText);
+    if (cleanedText) {
       return toParenthesizedLabel(cleanedText);
     }
 
@@ -264,11 +268,11 @@
       const duration = fromMessage || fromIndicator || fromSeconds;
 
       if (duration) {
-        return toParenthesizedLabel(duration);
+        return toParenthesizedLabel(compactThinkingLabel(duration));
       }
     }
 
-    return "";
+    return "(Thought)";
   }
 
   function mergeThinkingIntoAssistantMessages(messages) {

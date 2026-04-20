@@ -76,13 +76,15 @@
   async function refreshInlineUi() {
     const provider = getActiveProvider();
     const settings = cachedInlineUiSettings || await root.storage.getSettings();
+    const liveStatus = provider?.getLiveStatus ? provider.getLiveStatus() : null;
     cachedInlineUiSettings = settings;
 
     if (
       !settings.showHeaderExportButton ||
       !provider ||
       typeof provider.findInlineActionAnchor !== "function" ||
-      !provider.isChatPage()
+      !provider.isChatPage() ||
+      !liveStatus?.messageCount
     ) {
       if (inlineUi) {
         inlineUi.setVisible(false);
@@ -117,7 +119,7 @@
     }
 
     ui.setVisible(true);
-    ui.setEnabled(!exportInProgress && isProviderReadyForExport());
+    ui.setEnabled(!exportInProgress && Boolean(liveStatus?.messageCount));
   }
 
   async function handleInlineExport(format) {

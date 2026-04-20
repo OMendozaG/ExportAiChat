@@ -9,6 +9,18 @@
   const MENU_ID = "ceai-inline-export-menu";
   const STYLE_ID = "ceai-inline-export-style";
 
+  function robotButtonIconMarkup() {
+    return [
+      "<svg viewBox=\"0 0 128 128\" role=\"img\" aria-hidden=\"true\">",
+      "  <rect x=\"24\" y=\"20\" width=\"80\" height=\"56\" rx=\"19\" fill=\"currentColor\"/>",
+      "  <rect x=\"31\" y=\"31\" width=\"66\" height=\"20\" rx=\"10\" fill=\"#1f2937\" fill-opacity=\"0.28\"/>",
+      "  <circle cx=\"51\" cy=\"41\" r=\"5\" fill=\"#ffffff\"/>",
+      "  <circle cx=\"77\" cy=\"41\" r=\"5\" fill=\"#ffffff\"/>",
+      "  <path d=\"M58 55h12v27h14L64 106 44 82h14z\" fill=\"#ffffff\" stroke=\"#ffffff\" stroke-width=\"2.5\" stroke-linejoin=\"round\"/>",
+      "</svg>"
+    ].join("");
+  }
+
   function ensureStyles() {
     if (document.getElementById(STYLE_ID)) {
       return;
@@ -26,15 +38,26 @@
   display: none !important;
 }
 #${UI_ROOT_ID} .ceai-inline-btn {
-  white-space: nowrap;
-  border: 1px solid #d0d7e2;
-  background: #ffffff;
-  color: #0f172a;
-  border-radius: 999px;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-family: "Segoe UI", Tahoma, sans-serif;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  background: linear-gradient(180deg, #ff4d6d 0%, #ff8a00 18%, #ffd60a 36%, #2fd46b 54%, #34c4ff 72%, #5b6cff 88%, #c45bff 100%);
+  color: #ffffff;
+  border-radius: 14px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.2);
   cursor: pointer;
+}
+#${UI_ROOT_ID} .ceai-inline-btn svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+#${UI_ROOT_ID} .ceai-inline-btn:hover {
+  filter: saturate(1.04) brightness(1.02);
 }
 #${UI_ROOT_ID} .ceai-inline-btn[disabled] {
   opacity: 0.55;
@@ -106,7 +129,9 @@
     const mainButton = document.createElement("button");
     mainButton.type = "button";
     mainButton.className = "ceai-inline-btn";
-    mainButton.textContent = "EXPORT...";
+    mainButton.setAttribute("aria-label", "Export current chat");
+    mainButton.title = "Export current chat";
+    mainButton.innerHTML = robotButtonIconMarkup();
 
     const menuNode = document.createElement("div");
     menuNode.id = MENU_ID;

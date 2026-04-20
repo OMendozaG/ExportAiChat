@@ -52,9 +52,9 @@ The TXT export is designed as a readable chat log:
 - ChatGPT export now hydrates virtualized turn lists while collecting messages, reducing skipped messages in long chats
 - Virtualized turn hydration now restores the original chat scroll position after export collection (ChatGPT and DeepSeek)
 - Thinking labels now export inline under the AI message header as `(<label>)` using provider wording (for example, `(Pensó por 18s)`), and no longer create standalone messages
-- TXT exports now keep the speaker prefix on the first real message line even when a thinking label is present above it, including attachment-only first messages
 - TXT thinking notes now always end with a line break and keep a blank line before the message body/attachments
 - TXT thinking notes are normalized as `(...)` without role prefix
+- TXT first-line indentation now follows the TXT indentation style with a dedicated toggle (`Apply indentation style to the first content line`, default on)
 - DeepSeek thinking-only blocks no longer duplicate into separate assistant reply messages
 - MHT and PDF exports now inline chat images as data URLs when possible, so generated-image replies are preserved more reliably
 - ChatGPT extraction now prefers section-level turns over nested legacy placeholders so image-only assistant replies are not dropped
@@ -120,13 +120,14 @@ The settings page supports:
 - AI display name by provider name or custom name
 - Markdown or clean text formatting
 - Quote and divider style
-- Dedicated TXT section with multiline continuation style (default `Indent with tab`)
+- Dedicated TXT section with message indentation style (default `Indent with tab`)
+- TXT option to apply indentation style to the first content line (default on)
 - Editable TXT message separator
 - Editable TXT per-role message header templates for Human and AI messages
 - TXT template placeholders: `<HumanName>`, `<AiName>`
 - TXT header placeholders resolve Human/AI names from the General tab settings
 - Default TXT headers use `----- <HumanName>:` and `----- <AiName>:` with the same surrounding line breaks
-- TXT speaker prefixes (`<Human>`, `<AI>`) are kept on the first real content line even when a TXT header template is present
+- TXT first content line follows indentation style: tab, repeated speaker name, or no prefix (configurable), with optional legacy speaker-prefix behavior by disabling first-line indentation style
 - Dedicated HTML/PDF/MHT appearance section with AI and Human border colors (default AI blue, Human orange)
 - Visible export format toggles are configured in the General tab
 - Media handling rules

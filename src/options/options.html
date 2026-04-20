@@ -157,12 +157,17 @@
           <h2>TXT Export</h2>
 
           <label class="field">
-            <span>Multiline TXT continuation</span>
+            <span>Message indentation style (TXT)</span>
             <select id="multilineFormat" name="multilineFormat">
               <option value="tab">Indent with tab</option>
               <option value="name">Repeat speaker name</option>
               <option value="none">No prefix</option>
             </select>
+          </label>
+
+          <label class="field checkbox-field">
+            <input id="txtApplyMultilineOnFirstLine" name="txtApplyMultilineOnFirstLine" type="checkbox">
+            <span>Apply indentation style to the first content line</span>
           </label>
 
           <label class="field">

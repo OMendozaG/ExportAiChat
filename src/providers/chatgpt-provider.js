@@ -1048,7 +1048,9 @@
       ]
         .map((value) => normalizeText(value))
         .filter(Boolean);
-      const matchText = candidateTexts.find((text) => THINKING_LABEL_REGEX.test(text));
+      const matchText = candidateTexts.find((text) => (
+        THINKING_LABEL_REGEX.test(text) || THINKING_SECONDS_REGEX.test(text)
+      ));
 
       if (!matchText) {
         continue;

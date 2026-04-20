@@ -25,6 +25,9 @@
       // Continuation style for multiline TXT exports.
       multilineFormat: MULTILINE_FORMAT.TAB,
 
+      // If true, apply multiline TXT style to the first real content line too.
+      txtApplyMultilineOnFirstLine: true,
+
       // Per-role TXT message headers, supports <HumanName>/<AiName>.
       txtHumanMessageHeaderTemplate: "\n\n----- <HumanName>:\n\n",
       txtAiMessageHeaderTemplate: "\n\n----- <AiName>:\n\n",

@@ -222,8 +222,22 @@
   }
 
   function continuationPrefix(prefix, settings, isFirstLine) {
+    const applyFirstLineStyle = settings?.txtApplyMultilineOnFirstLine !== false;
+
     if (isFirstLine) {
-      return prefix ? `${prefix} ` : "";
+      if (!applyFirstLineStyle) {
+        return prefix ? `${prefix} ` : "";
+      }
+
+      if (settings.multilineFormat === root.constants.MULTILINE_FORMAT.NAME) {
+        return prefix ? `${prefix} ` : "";
+      }
+
+      if (settings.multilineFormat === root.constants.MULTILINE_FORMAT.NONE) {
+        return "";
+      }
+
+      return "\t";
     }
 
     if (settings.multilineFormat === root.constants.MULTILINE_FORMAT.NAME) {
@@ -235,6 +249,19 @@
     }
 
     return "\t";
+  }
+
+  function ensureParenthesizedThinkingLine(value) {
+    const cleaned = String(value || "").trim();
+    if (!cleaned) {
+      return "";
+    }
+
+    if (/^\(.*\)$/s.test(cleaned)) {
+      return cleaned;
+    }
+
+    return `(${cleaned})`;
   }
 
   function normalizeSeparator(settings) {
@@ -308,6 +335,9 @@
       .split("\n")
       .map((line) => String(line || "").trim())
       .filter(Boolean);
+    const normalizedThinkingLines = thinkingNoteLines
+      .map((line) => ensureParenthesizedThinkingLine(line))
+      .filter(Boolean);
     const leadingLines = Array.isArray(message.leadingReferenceLines)
       ? message.leadingReferenceLines.map((line) => `[${line}]`)
       : [];
@@ -327,11 +357,11 @@
 
     // Thinking labels are rendered as a hint below the header but do not consume
     // the role prefix position for the actual message content.
-    for (const line of thinkingNoteLines) {
+    for (const line of normalizedThinkingLines) {
       outputLines.push(line.trimEnd());
     }
 
-    if (thinkingNoteLines.length) {
+    if (normalizedThinkingLines.length) {
       // Keep a guaranteed line break after the closing ")" of the thinking note.
       // This applies to every provider because thinking is normalized upstream.
       outputLines.push("");

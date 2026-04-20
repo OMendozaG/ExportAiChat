@@ -24,6 +24,7 @@
   const textFormattingSelect = document.getElementById("textFormatting");
   const quoteDividerStyleSelect = document.getElementById("quoteDividerStyle");
   const multilineFormatSelect = document.getElementById("multilineFormat");
+  const txtApplyMultilineOnFirstLineCheckbox = document.getElementById("txtApplyMultilineOnFirstLine");
   const htmlPdfAiBorderColorInput = document.getElementById("htmlPdfAiBorderColor");
   const htmlPdfHumanBorderColorInput = document.getElementById("htmlPdfHumanBorderColor");
   const messageSeparatorTextarea = document.getElementById("messageSeparator");
@@ -339,6 +340,7 @@
     textFormattingSelect.value = settings.textFormatting;
     quoteDividerStyleSelect.value = settings.quoteDividerStyle;
     multilineFormatSelect.value = settings.multilineFormat;
+    txtApplyMultilineOnFirstLineCheckbox.checked = Boolean(settings.txtApplyMultilineOnFirstLine ?? true);
     htmlPdfAiBorderColorInput.value = settings.htmlPdfAiBorderColor || "#2563eb";
     htmlPdfHumanBorderColorInput.value = settings.htmlPdfHumanBorderColor || "#f59e0b";
     messageSeparatorTextarea.value = settings.messageSeparator || "";
@@ -416,6 +418,7 @@
       textFormatting: textFormattingSelect.value,
       quoteDividerStyle: quoteDividerStyleSelect.value,
       multilineFormat: multilineFormatSelect.value,
+      txtApplyMultilineOnFirstLine: txtApplyMultilineOnFirstLineCheckbox.checked,
       htmlPdfAiBorderColor: htmlPdfAiBorderColorInput.value,
       htmlPdfHumanBorderColor: htmlPdfHumanBorderColorInput.value,
       messageSeparator: messageSeparatorTextarea.value,

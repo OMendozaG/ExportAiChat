@@ -559,6 +559,10 @@
     return Number(container?.scrollTop || 0);
   }
 
+  function scrollLeftOf(container) {
+    return Number(container?.scrollLeft || 0);
+  }
+
   function scrollHeightOf(container) {
     return Number(container?.scrollHeight || 0);
   }
@@ -573,6 +577,58 @@
     }
 
     container.scrollTop = Number(value || 0);
+  }
+
+  function isDocumentScrollContainer(container) {
+    const root = document.scrollingElement || document.documentElement;
+    return container === root || container === document.documentElement || container === document.body;
+  }
+
+  function setScrollPosition(container, top, left) {
+    if (!container) {
+      return;
+    }
+
+    const safeTop = Number(top || 0);
+    const safeLeft = Number(left || 0);
+
+    if (isDocumentScrollContainer(container)) {
+      // Keep both assignment paths because some host layouts only honor one.
+      window.scrollTo(safeLeft, safeTop);
+      const root = document.scrollingElement || document.documentElement;
+      if (root) {
+        root.scrollTop = safeTop;
+        root.scrollLeft = safeLeft;
+      }
+      if (document.body) {
+        document.body.scrollTop = safeTop;
+        document.body.scrollLeft = safeLeft;
+      }
+      return;
+    }
+
+    container.scrollTop = safeTop;
+    container.scrollLeft = safeLeft;
+  }
+
+  function captureScrollPosition(container) {
+    return {
+      top: scrollTopOf(container),
+      left: scrollLeftOf(container)
+    };
+  }
+
+  async function restoreScrollPosition(container, snapshot) {
+    if (!container || !snapshot) {
+      return;
+    }
+
+    // Restore repeatedly because virtualization/repaint may override first write.
+    setScrollPosition(container, snapshot.top, snapshot.left);
+    await waitForRender(24);
+    setScrollPosition(container, snapshot.top, snapshot.left);
+    await waitForRender(96);
+    setScrollPosition(container, snapshot.top, snapshot.left);
   }
 
   function waitForRender(ms = 84) {
@@ -598,7 +654,7 @@
       return visibleEntries;
     }
 
-    const originalTop = scrollTopOf(scrollContainer);
+    const originalScroll = captureScrollPosition(scrollContainer);
     const collectedByKey = new Map();
     const mergeEntries = (entries) => {
       entries.forEach((entry) => {
@@ -649,7 +705,7 @@
         .sort((left, right) => left.order - right.order);
       return merged.length ? merged : visibleEntries;
     } finally {
-      setScrollTop(scrollContainer, originalTop);
+      await restoreScrollPosition(scrollContainer, originalScroll);
     }
   }
 

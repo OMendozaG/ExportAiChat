@@ -277,6 +277,10 @@
     return Number(container?.scrollTop || 0);
   }
 
+  function scrollLeftOf(container) {
+    return Number(container?.scrollLeft || 0);
+  }
+
   function scrollHeightOf(container) {
     return Number(container?.scrollHeight || 0);
   }
@@ -291,6 +295,59 @@
     }
 
     container.scrollTop = Number(value || 0);
+  }
+
+  function isDocumentScrollContainer(container) {
+    const root = document.scrollingElement || document.documentElement;
+    return container === root || container === document.documentElement || container === document.body;
+  }
+
+  function setScrollPosition(container, top, left) {
+    if (!container) {
+      return;
+    }
+
+    const safeTop = Number(top || 0);
+    const safeLeft = Number(left || 0);
+
+    if (isDocumentScrollContainer(container)) {
+      // Some hosts bind scrolling to the root and ignore direct `scrollTop`
+      // assignments intermittently during reflow, so set both APIs.
+      window.scrollTo(safeLeft, safeTop);
+      const root = document.scrollingElement || document.documentElement;
+      if (root) {
+        root.scrollTop = safeTop;
+        root.scrollLeft = safeLeft;
+      }
+      if (document.body) {
+        document.body.scrollTop = safeTop;
+        document.body.scrollLeft = safeLeft;
+      }
+      return;
+    }
+
+    container.scrollTop = safeTop;
+    container.scrollLeft = safeLeft;
+  }
+
+  function captureScrollPosition(container) {
+    return {
+      top: scrollTopOf(container),
+      left: scrollLeftOf(container)
+    };
+  }
+
+  async function restoreScrollPosition(container, snapshot) {
+    if (!container || !snapshot) {
+      return;
+    }
+
+    // Restore repeatedly because virtualized list reflow can fight the first set.
+    setScrollPosition(container, snapshot.top, snapshot.left);
+    await waitForRender(24);
+    setScrollPosition(container, snapshot.top, snapshot.left);
+    await waitForRender(96);
+    setScrollPosition(container, snapshot.top, snapshot.left);
   }
 
   function waitForRender(ms = 72) {
@@ -323,7 +380,7 @@
       return visibleEntries;
     }
 
-    const originalTop = scrollTopOf(scrollContainer);
+    const originalScroll = captureScrollPosition(scrollContainer);
     const collectedById = new Map();
     const mergeEntries = (entries) => {
       for (const entry of entries) {
@@ -360,7 +417,7 @@
       const mergedEntries = Array.from(collectedById.values()).sort((left, right) => left.order - right.order);
       return mergedEntries.length ? mergedEntries : visibleEntries;
     } finally {
-      setScrollTop(scrollContainer, originalTop);
+      await restoreScrollPosition(scrollContainer, originalScroll);
     }
   }
 

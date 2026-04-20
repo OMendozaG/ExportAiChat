@@ -50,6 +50,7 @@ The TXT export is designed as a readable chat log:
 - Broader ChatGPT thinking/reasoning block detection, including localized labels and timing extraction
 - ChatGPT extraction now supports modern `conversation-turn` sections, including assistant image-only turns
 - ChatGPT export now hydrates virtualized turn lists while collecting messages, reducing skipped messages in long chats
+- Virtualized turn hydration now restores the original chat scroll position after export collection (ChatGPT and DeepSeek)
 - Thinking labels now export inline under the AI message header as `(<label>)` using provider wording (for example, `(Pensó por 18s)`), and no longer create standalone messages
 - TXT exports now keep the speaker prefix on the first real message line even when a thinking label is present above it, including attachment-only first messages
 - TXT thinking notes now always end with a line break and keep a blank line before the message body/attachments

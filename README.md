@@ -37,6 +37,7 @@ The TXT export is designed as a readable chat log:
 - Optional inline `EXPORT...` action in the ChatGPT header
 - Theme-aware raised export buttons in the popup and inline export menu
 - Refined line-art robot export icon with transparent background assets
+- Unicode-friendly file naming and a blank-line default TXT separator
 - Local-first export flow with no server-side processing
 
 ## Export Options

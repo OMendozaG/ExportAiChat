@@ -75,7 +75,9 @@
   --ceai-menu-shadow: rgba(15, 23, 42, 0.16);
   --ceai-menu-button-bg: #eef4ff;
   --ceai-menu-button-border: #c8dafd;
+  --ceai-menu-button-border-strong: #a9c6fd;
   --ceai-menu-button-base: #86a9ea;
+  --ceai-menu-button-glow: rgba(120, 166, 255, 0.42);
   --ceai-menu-button-text: #14325f;
   position: fixed;
   top: 0;
@@ -98,7 +100,9 @@
   --ceai-menu-shadow: rgba(2, 6, 23, 0.42);
   --ceai-menu-button-bg: #dce9ff;
   --ceai-menu-button-border: #bbd1fb;
+  --ceai-menu-button-border-strong: #d5e4ff;
   --ceai-menu-button-base: #6c8fd1;
+  --ceai-menu-button-glow: rgba(195, 219, 255, 0.34);
   --ceai-menu-button-text: #10233f;
 }
 #${MENU_ID}.is-open {
@@ -142,7 +146,15 @@
   z-index: -1;
 }
 #${MENU_ID} button:hover {
+  background: color-mix(in srgb, var(--ceai-menu-button-bg) 84%, white 16%);
+  box-shadow: 0 0 16px var(--ceai-menu-button-glow);
   transform: translateY(1px);
+}
+#${MENU_ID} button:hover::before {
+  box-shadow:
+    inset 1px 0 0 var(--ceai-menu-button-border-strong),
+    inset -1px 0 0 var(--ceai-menu-button-border-strong),
+    inset 0 -1px 0 var(--ceai-menu-button-border-strong);
 }
 #${MENU_ID} button:active {
   transform: translateY(4px);

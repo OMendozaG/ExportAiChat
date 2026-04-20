@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Chat Export AI icon dark">
-  <!-- Dark-on-light UI variant. -->
-  <g fill="none" stroke="#3153ab" stroke-linecap="round" stroke-linejoin="round" stroke-width="8">
+  <!-- Dark-theme toolbar variant using the lighter icon tone requested by the user. -->
+  <g fill="none" stroke="#B3CAD4" stroke-linecap="round" stroke-linejoin="round" stroke-width="8">
     <rect x="24" y="22" width="80" height="54" rx="18"/>
     <path d="M64 58v28"/>
     <path d="M52 74 64 86 76 74"/>
   </g>
-  <g fill="none" stroke="#3153ab" stroke-width="6">
+  <g fill="none" stroke="#B3CAD4" stroke-width="6">
     <circle cx="49" cy="45" r="8"/>
     <circle cx="79" cy="45" r="8"/>
   </g>
-  <g fill="#3153ab">
+  <g fill="#B3CAD4">
     <circle cx="49" cy="45" r="2.75"/>
     <circle cx="79" cy="45" r="2.75"/>
   </g>

@@ -8,7 +8,9 @@
   --panel-border: #d6dfec;
   --button-bg: #eef4ff;
   --button-border: #c8dafd;
+  --button-border-strong: #a9c6fd;
   --button-base: #86a9ea;
+  --button-glow: rgba(120, 166, 255, 0.42);
   --button-text: #14325f;
   --icon-bg: #ffffff;
   --icon-border: #d6dfec;
@@ -25,7 +27,9 @@
     --panel-border: #233247;
     --button-bg: #dce9ff;
     --button-border: #bbd1fb;
+    --button-border-strong: #d5e4ff;
     --button-base: #6c8fd1;
+    --button-glow: rgba(195, 219, 255, 0.34);
     --button-text: #10233f;
     --icon-bg: #1b2738;
     --icon-border: #2a3d57;
@@ -42,7 +46,9 @@
   --panel-border: #233247;
   --button-bg: #dce9ff;
   --button-border: #bbd1fb;
+  --button-border-strong: #d5e4ff;
   --button-base: #6c8fd1;
+  --button-glow: rgba(195, 219, 255, 0.34);
   --button-text: #10233f;
   --icon-bg: #1b2738;
   --icon-border: #2a3d57;
@@ -128,8 +134,17 @@ h1 {
 }
 
 .actions button:hover {
-  filter: brightness(1.04) saturate(1.02);
+  background: color-mix(in srgb, var(--button-bg) 84%, white 16%);
+  box-shadow: 0 0 16px var(--button-glow);
+  filter: none;
   transform: translateY(1px);
+}
+
+.actions button:hover::before {
+  box-shadow:
+    inset 1px 0 0 var(--button-border-strong),
+    inset -1px 0 0 var(--button-border-strong),
+    inset 0 -1px 0 var(--button-border-strong);
 }
 
 .actions button:active {

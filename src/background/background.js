@@ -5,9 +5,24 @@
   const MSG_DOWNLOAD_FILE = "CHAT_EXPORT_AI_DOWNLOAD_FILE";
   const MSG_CAPTURE_TAB_MHTML = "CHAT_EXPORT_AI_CAPTURE_TAB_MHTML";
   const MSG_RENDER_HTML_TO_PDF = "CHAT_EXPORT_AI_RENDER_HTML_TO_PDF";
+  const MSG_SET_ACTION_ICON_THEME = "CHAT_EXPORT_AI_SET_ACTION_ICON_THEME";
   const DEBUGGER_VERSION = "1.3";
   const DEFAULT_EXPORT_TIMEOUT_MS = 20000;
   const MAX_EXPORT_TIMEOUT_MS = 20000;
+  const ACTION_ICON_PATHS = {
+    light: {
+      16: "src/assets/robot-download-light-16.png",
+      32: "src/assets/robot-download-light-32.png",
+      48: "src/assets/robot-download-light-48.png",
+      128: "src/assets/robot-download-light-128.png"
+    },
+    dark: {
+      16: "src/assets/robot-download-dark-16.png",
+      32: "src/assets/robot-download-dark-32.png",
+      48: "src/assets/robot-download-dark-48.png",
+      128: "src/assets/robot-download-dark-128.png"
+    }
+  };
 
   function bytesToBase64(bytes) {
     let binary = "";
@@ -33,12 +48,17 @@
     return "data:" + safeMimeType + ";base64," + bytesToBase64(new Uint8Array(buffer));
   }
 
+  function normalizeDownloadFilename(filename) {
+    const rawValue = String(filename || "chat-export");
+    return rawValue.normalize ? rawValue.normalize("NFC") : rawValue;
+  }
+
   function downloadByUrl(url, filename, saveAs = false) {
     return new Promise((resolve, reject) => {
       chrome.downloads.download(
         {
           url,
-          filename,
+          filename: normalizeDownloadFilename(filename),
           saveAs: Boolean(saveAs)
         },
         (downloadId) => {
@@ -81,6 +101,40 @@
           resolve(tab);
         }
       );
+    });
+  }
+
+  function waitForTabComplete(tabId) {
+    return new Promise((resolve, reject) => {
+      if (!tabId) {
+        reject(new Error("Missing tab id while waiting for PDF tab."));
+        return;
+      }
+
+      chrome.tabs.get(tabId, (tab) => {
+        const immediateError = chrome.runtime.lastError;
+
+        if (immediateError) {
+          reject(new Error(immediateError.message));
+          return;
+        }
+
+        if (tab?.status === "complete") {
+          resolve(tab);
+          return;
+        }
+
+        const handleUpdate = (updatedTabId, changeInfo, updatedTab) => {
+          if (updatedTabId !== tabId || changeInfo.status !== "complete") {
+            return;
+          }
+
+          chrome.tabs.onUpdated.removeListener(handleUpdate);
+          resolve(updatedTab);
+        };
+
+        chrome.tabs.onUpdated.addListener(handleUpdate);
+      });
     });
   }
 
@@ -164,6 +218,21 @@
     });
   }
 
+  function waitForDebuggerEvent(target, method) {
+    return new Promise((resolve) => {
+      const listener = (source, eventName, params) => {
+        if (source?.tabId !== target?.tabId || eventName !== method) {
+          return;
+        }
+
+        chrome.debugger.onEvent.removeListener(listener);
+        resolve(params || {});
+      };
+
+      chrome.debugger.onEvent.addListener(listener);
+    });
+  }
+
   async function waitForPdfDocumentReady(target) {
     await sendDebuggerCommand(target, "Runtime.enable");
     await sendDebuggerCommand(target, "Emulation.setEmulatedMedia", { media: "print" });
@@ -191,6 +260,12 @@
 
     try {
       await withTimeout(
+        waitForTabComplete(tab.id),
+        timeoutMs,
+        "Timed out while opening the temporary PDF tab."
+      );
+
+      await withTimeout(
         attachDebugger(target),
         timeoutMs,
         "Timed out while attaching the PDF renderer."
@@ -202,24 +277,19 @@
         timeoutMs,
         "Timed out while preparing the PDF page."
       );
-      const frameTree = await withTimeout(
-        sendDebuggerCommand(target, "Page.getFrameTree"),
-        timeoutMs,
-        "Timed out while resolving the PDF frame."
-      );
-      const frameId = frameTree?.frameTree?.frame?.id;
-
-      if (!frameId) {
-        throw new Error("Could not resolve the PDF frame id.");
-      }
 
       await withTimeout(
-        sendDebuggerCommand(target, "Page.setDocumentContent", {
-          frameId,
-          html: payload.html
+        sendDebuggerCommand(target, "Page.navigate", {
+          url: textToDataUrl(payload.html, "text/html;charset=utf-8")
         }),
         timeoutMs,
-        "Timed out while sending HTML to the PDF renderer."
+        "Timed out while navigating the PDF renderer."
+      );
+
+      await withTimeout(
+        waitForDebuggerEvent(target, "Page.loadEventFired"),
+        timeoutMs,
+        "Timed out while waiting for the PDF page to finish loading."
       );
 
       await withTimeout(
@@ -296,6 +366,36 @@
     });
   }
 
+  function normalizeActionTheme(theme) {
+    return theme === "dark" ? "dark" : "light";
+  }
+
+  function setActionIconTheme(theme) {
+    return new Promise((resolve, reject) => {
+      chrome.action.setIcon(
+        { path: ACTION_ICON_PATHS[normalizeActionTheme(theme)] },
+        () => {
+          const error = chrome.runtime.lastError;
+
+          if (error) {
+            reject(new Error(error.message));
+            return;
+          }
+
+          resolve({ ok: true });
+        }
+      );
+    });
+  }
+
+  chrome.runtime.onInstalled.addListener(() => {
+    void setActionIconTheme("light").catch(() => {});
+  });
+
+  chrome.runtime.onStartup.addListener(() => {
+    void setActionIconTheme("light").catch(() => {});
+  });
+
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (!message || typeof message !== "object") {
       return false;
@@ -319,6 +419,14 @@
 
     if (message.type === MSG_RENDER_HTML_TO_PDF) {
       renderHtmlToPdf(message.payload)
+        .then((result) => sendResponse(result))
+        .catch((error) => sendResponse({ ok: false, error: error.message }));
+
+      return true;
+    }
+
+    if (message.type === MSG_SET_ACTION_ICON_THEME) {
+      setActionIconTheme(message.payload?.theme)
         .then((result) => sendResponse(result))
         .catch((error) => sendResponse({ ok: false, error: error.message }));
 

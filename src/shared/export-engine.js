@@ -6,21 +6,25 @@
   const root = globalThis.ChatExportAi;
 
   function normalizeReplacement(value) {
-    const candidate = String(value ?? ".")
+    const rawValue = String(value ?? ".");
+    const candidate = (rawValue.normalize ? rawValue.normalize("NFC") : rawValue)
       .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "")
       .trim();
 
     return candidate || ".";
   }
 
-  function compactName(value, replacementValue) {
+  function compactName(value, replacementValue, fallbackValue = "chat") {
     const replacement = normalizeReplacement(replacementValue);
+    const rawValue = String(value ?? "");
+    const normalizedValue = rawValue.normalize ? rawValue.normalize("NFC") : rawValue;
+    const sourceValue = normalizedValue || fallbackValue;
 
-    return String(value || "chat")
+    return String(sourceValue)
       .replace(/[<>:"/\\|?*\u0000-\u001F]/g, replacement)
       .replace(/\s+/g, " ")
       .replace(/[. ]+$/g, "")
-      .trim() || "chat";
+      .trim() || fallbackValue;
   }
 
   function timestampParts(date) {
@@ -90,9 +94,9 @@
     return {
       "<ChatTitle>": compactName(conversation.title || "chat", replacement),
       "<ChatName>": compactName(conversation.title || "chat", replacement),
-      "<ChatFolder>": compactName(conversation.folderName || "", replacement),
-      "<Model>": compactName(conversation.modelName || "", replacement),
-      "<Provider>": compactName(conversation.providerName || "", replacement),
+      "<ChatFolder>": compactName(conversation.folderName || "", replacement, ""),
+      "<Model>": compactName(conversation.modelName || "", replacement, ""),
+      "<Provider>": compactName(conversation.providerName || "", replacement, ""),
       "<Date>": timeParts.date,
       "<Time>": timeParts.time
     };

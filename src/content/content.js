@@ -105,6 +105,10 @@
     const liveStatus = provider?.getLiveStatus ? provider.getLiveStatus() : null;
     cachedInlineUiSettings = settings;
 
+    if (root.appTheme?.syncActionIconTheme) {
+      root.appTheme.syncActionIconTheme(settings.appTheme);
+    }
+
     if (
       !provider ||
       !getProviderButtonSetting(settings, provider.id) ||

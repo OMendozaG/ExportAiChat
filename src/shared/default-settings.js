@@ -26,7 +26,7 @@
       multilineFormat: MULTILINE_FORMAT.TAB,
 
       // Separator inserted between TXT message blocks.
-      messageSeparator: "\n-----------------------------------\n",
+      messageSeparator: "\n\n\n",
 
       // Automatic file naming and default naming template.
       autoFileName: true,

@@ -289,7 +289,8 @@
     }
 
     if (settings.metadataSummaryChatName) {
-      pushMetadata(items, METADATA_LABELS.CHAT_NAME, summary.chatPath);
+      // Keep Chat Name independent from Chat Folder in metadata output.
+      pushMetadata(items, METADATA_LABELS.CHAT_NAME, summary.chatName);
     }
 
     if (settings.metadataSummaryMessages) {

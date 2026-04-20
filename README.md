@@ -93,6 +93,7 @@ The settings page supports:
 - `Provider` metadata disabled by default
 - `PC/User` metadata disabled by default
 - `Window Title` metadata disabled by default
+- `Chat Folder` metadata and `Chat Name` metadata are independent toggles (`Chat Folder` default off, `Chat Name` default on)
 - Metadata `Date` includes date and time in system locale format with full year
 - Conversation timeline labels follow the browser/system locale short date format
 - Global metadata toggle to remove the entire metadata section from all export formats

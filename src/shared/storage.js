@@ -593,6 +593,63 @@
     return summaryFromCounterState(savedState);
   }
 
+  async function updateChatNameCountAssociation(mappingKey, patch) {
+    const state = await getCounterState();
+    const safeKey = normalizeCounterMapKey(mappingKey);
+
+    if (!safeKey || !state.chatNameMap[safeKey]) {
+      throw new Error("ChatNameCount association not found.");
+    }
+
+    const currentEntry = normalizeCounterEntry(state.chatNameMap[safeKey]);
+    if (!currentEntry) {
+      throw new Error("ChatNameCount association is invalid.");
+    }
+
+    const nextEntry = { ...currentEntry };
+    const requestedCount = patch && Object.prototype.hasOwnProperty.call(patch, "count")
+      ? toPositiveInteger(patch.count, currentEntry.count)
+      : currentEntry.count;
+    const requestedProviderName = patch && Object.prototype.hasOwnProperty.call(patch, "providerName")
+      ? (normalizeText(patch.providerName) || currentEntry.providerName || "Unknown")
+      : currentEntry.providerName;
+    const requestedChatName = patch && Object.prototype.hasOwnProperty.call(patch, "chatName")
+      ? (normalizeText(patch.chatName) || currentEntry.chatName || "chat")
+      : currentEntry.chatName;
+
+    const requestedKey = buildChatNameCounterKeyFromValues(requestedChatName, "chat");
+    const conflictingCountKey = Object.entries(state.chatNameMap).find(([key, entry]) => {
+      if (key === safeKey) {
+        return false;
+      }
+
+      return toPositiveInteger(entry?.count, 1) === requestedCount;
+    })?.[0];
+
+    if (conflictingCountKey) {
+      throw new Error(`ChatNameCount id ${requestedCount} is already assigned.`);
+    }
+
+    if (requestedKey !== safeKey && state.chatNameMap[requestedKey]) {
+      throw new Error("This chat name already has a ChatNameCount association.");
+    }
+
+    nextEntry.count = requestedCount;
+    nextEntry.providerName = requestedProviderName;
+    nextEntry.chatName = requestedChatName;
+    nextEntry.lastUsedAtIso = new Date().toISOString();
+
+    if (requestedKey !== safeKey) {
+      delete state.chatNameMap[safeKey];
+      state.chatNameMap[requestedKey] = nextEntry;
+    } else {
+      state.chatNameMap[safeKey] = nextEntry;
+    }
+
+    const savedState = await saveCounterState(state);
+    return summaryFromCounterState(savedState);
+  }
+
   async function deleteChatNameCountMapping(mappingKey) {
     const state = await getCounterState();
     const safeKey = normalizeCounterMapKey(mappingKey);
@@ -652,6 +709,7 @@
     updateCounterValues,
     resetCounterValues,
     updateChatNameCountMapping,
+    updateChatNameCountAssociation,
     deleteChatNameCountMapping,
     clearChatNameCountMappings
   };

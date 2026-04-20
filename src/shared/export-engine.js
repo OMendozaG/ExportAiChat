@@ -327,7 +327,8 @@
     }
 
     const blockBody = outputLines.join("\n");
-    return `${messageHeader}${blockBody}`;
+    const blockWithHeader = `${messageHeader}${blockBody}`;
+    return message.isThinking ? `${blockWithHeader}\n` : blockWithHeader;
   }
 
   function toChatText(conversation) {

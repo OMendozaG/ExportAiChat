@@ -5,6 +5,7 @@
 (() => {
   const root = globalThis.ChatExportAi;
   const { ROLES, TEXT_FORMATTING, AI_NAME_MODE, METADATA_LABELS } = root.constants;
+  const THINKING_LABEL_ONLY_REGEX = /^(?:thought|thinking|reasoning|reasoned|pensado|pensando|pensamiento|razonando|razonamiento)(?:\s*(?:for|durante)\s*.+)?$/i;
 
   function resolveNames(settings, provider) {
     const human = (settings.humanName || "Human").trim() || "Human";
@@ -181,7 +182,7 @@
     });
   }
 
-  function resolveSpeakerLabel(message, names, settings) {
+  function resolveSpeakerLabel(message, names) {
     let baseLabel = "Unknown";
 
     if (message.role === ROLES.HUMAN) {
@@ -192,15 +193,64 @@
       baseLabel = "System";
     }
 
-    if (!message.isThinking) {
-      return baseLabel;
+    return baseLabel;
+  }
+
+  function compactThinkingText(value) {
+    return String(value || "")
+      .replace(/\r/g, "")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+
+  function thinkingDurationFromLabel(rawLabel) {
+    const label = String(rawLabel || "").trim();
+    if (!label) {
+      return "";
     }
 
-    if (settings.includeThinkingDuration && message.thinkingSeconds) {
-      return `${baseLabel} (Thinking+${message.thinkingSeconds}s)`;
+    const normalized = label.replace(/\s+/g, " ").trim();
+    const durationMatch = normalized.match(
+      /(?:thought|thinking|reasoned|reasoning|pensado|pensando|pensamiento|razonando|razonamiento)(?:\s*(?:for|durante))?\s+(.+)$/i
+    );
+
+    return durationMatch ? durationMatch[1].trim() : "";
+  }
+
+  function isLabelOnlyThinking(text) {
+    const normalized = String(text || "")
+      .trim()
+      .replace(/^\((.*)\)$/s, "$1")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!normalized) {
+      return true;
     }
 
-    return `${baseLabel} (Thinking)`;
+    return THINKING_LABEL_ONLY_REGEX.test(normalized);
+  }
+
+  function normalizeThinkingText(rawText, message, settings) {
+    const cleanedText = compactThinkingText(rawText);
+
+    if (cleanedText && !isLabelOnlyThinking(cleanedText)) {
+      return `(Thought: ${cleanedText})`;
+    }
+
+    if (settings.includeThinkingDuration) {
+      const fromMessage = String(message?.thinkingDurationLabel || "").trim();
+      const fromIndicator = thinkingDurationFromLabel(message?.thinkingLabel);
+      const fromSeconds = message?.thinkingSeconds ? `${message.thinkingSeconds}s` : "";
+      const duration = fromMessage || fromIndicator || fromSeconds;
+
+      if (duration) {
+        return `(Thought for ${duration})`;
+      }
+    }
+
+    return "(Thought)";
   }
 
   function resolveMessageTimeLabel(message, settings) {
@@ -395,6 +445,12 @@
         const text = settings.textFormatting === TEXT_FORMATTING.MARKDOWN
           ? root.textConverter.htmlToMarkdown(safeHtml, settings)
           : root.textConverter.htmlToPlainText(safeHtml, settings);
+        const normalizedText = message.isThinking
+          ? normalizeThinkingText(text, message, settings)
+          : text;
+        const normalizedSafeHtml = message.isThinking
+          ? `<p>${root.sanitize.escapeHtml(normalizedText)}</p>`
+          : safeHtml;
         const leadingReferenceLines = message.role === ROLES.HUMAN
           ? collectReferenceLines(message.attachments)
           : [];
@@ -409,16 +465,18 @@
           id: message.id || `msg-${index + 1}`,
           messageNumber: index + 1,
           role: message.role || ROLES.UNKNOWN,
-          speakerLabel: resolveSpeakerLabel(message, names, settings),
+          speakerLabel: resolveSpeakerLabel(message, names),
           timeLabel: resolveMessageTimeLabel(message, settings),
           timeMs: Number.isFinite(Number(message.timeMs)) ? Number(message.timeMs) : null,
-          safeHtml,
-          text,
+          safeHtml: normalizedSafeHtml,
+          text: normalizedText,
           leadingReferenceLines,
           trailingReferenceLines,
           hasMedia: Boolean(message.hasMedia),
           isThinking: Boolean(message.isThinking),
-          thinkingSeconds: message.thinkingSeconds || null
+          thinkingSeconds: message.thinkingSeconds || null,
+          thinkingLabel: message.thinkingLabel || "",
+          thinkingDurationLabel: message.thinkingDurationLabel || ""
         };
       })
       .filter((message) => {

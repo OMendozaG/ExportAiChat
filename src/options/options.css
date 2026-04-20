@@ -105,23 +105,6 @@ body {
   font-size: 1.6rem;
 }
 
-.settings-icon {
-  width: 20px;
-  height: 20px;
-  border: 0;
-  background: transparent;
-  color: var(--gear-text);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.settings-icon svg {
-  width: 18px;
-  height: 18px;
-  fill: currentColor;
-}
-
 .intro {
   margin: 0 0 16px;
   color: var(--muted);
@@ -132,6 +115,7 @@ body {
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 14px;
+  align-items: center;
 }
 
 .tab-button {
@@ -148,6 +132,10 @@ body {
   background: var(--tab-active-bg);
   border-color: var(--tab-active-border);
   color: var(--tab-active-text);
+}
+
+.tabs-reset-button {
+  margin-left: auto;
 }
 
 .tab-panel[hidden] {
@@ -310,10 +298,37 @@ body {
 }
 
 .status {
-  margin-top: 12px;
-  min-height: 1.4em;
-  color: var(--muted);
-  font-weight: 600;
+  margin: 0;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: center;
+  max-width: 340px;
+  line-height: 1.15;
+}
+
+.status.status--info {
+  color: #0f3f8a;
+  border-color: #6ea2ff;
+  background: #ddebff;
+}
+
+.status.status--success {
+  color: #0a5f36;
+  border-color: #43c57d;
+  background: #d8fbe8;
+}
+
+.status.status--error {
+  color: #8a1328;
+  border-color: #ff6d8f;
+  background: #ffe0e8;
 }
 
 .counter-actions {
@@ -346,7 +361,7 @@ body {
 }
 
 .counter-col-id {
-  width: 170px;
+  width: 120px;
 }
 
 .counter-col-provider {
@@ -383,8 +398,8 @@ body {
 }
 
 .counter-id-input {
-  width: min(100%, 150px);
-  max-width: 150px;
+  width: min(100%, 100px);
+  max-width: 100px;
   min-width: 78px;
   border: 1px solid var(--field-border);
   border-radius: 8px;
@@ -392,7 +407,24 @@ body {
   background: var(--field-bg);
   color: var(--text);
   font-size: 0.88rem;
-  margin-right: 10px;
+  margin-right: 12px;
+}
+
+.counter-provider-select {
+  width: 100%;
+  max-width: 170px;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  padding: 6px 28px 6px 8px;
+  background: var(--field-bg);
+  color: var(--text);
+  font-size: 0.88rem;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: var(--select-arrow);
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 10px 10px;
 }
 
 .counter-provider-cell {
@@ -401,6 +433,19 @@ body {
 
 .counter-chat-cell {
   padding-right: 16px;
+}
+
+.counter-chat-input {
+  width: 100%;
+  max-width: 280px;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: var(--field-bg);
+  color: var(--text);
+  font-size: 0.88rem;
+  margin-right: 12px;
+  margin-bottom: 6px;
 }
 
 .counter-chat-name {

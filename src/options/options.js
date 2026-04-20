@@ -6,6 +6,14 @@
   const root = globalThis.ChatExportAi;
   const { AI_NAME_MODE } = root.constants;
   const { MAX_EXPORT_TIMEOUT_SECONDS } = root.constants;
+  const CHATNAME_PROVIDER_OPTIONS = [
+    "ChatGPT",
+    "Claude",
+    "Gemini",
+    "DeepSeek",
+    "Grok",
+    "Unknown"
+  ];
 
   const form = document.getElementById("settingsForm");
   const statusNode = document.getElementById("status");
@@ -79,9 +87,25 @@
   let lastCounterSummary = null;
   let lastSavedSettingsSnapshot = "";
 
-  function showStatus(message, isError = false) {
+  function showStatus(message, tone = "info") {
     statusNode.textContent = message;
-    statusNode.style.color = isError ? "#991b1b" : "#0f5132";
+    statusNode.classList.remove("status--info", "status--success", "status--error");
+    const safeTone = tone === "error" || tone === "success" ? tone : "info";
+    statusNode.classList.add(`status--${safeTone}`);
+  }
+
+  function escapeAttribute(value) {
+    return escapeHtml(value).replace(/\n/g, " ");
+  }
+
+  function providerOptionsMarkup(currentProvider) {
+    const normalizedCurrent = String(currentProvider || "").trim() || "Unknown";
+    const options = new Set([...CHATNAME_PROVIDER_OPTIONS, normalizedCurrent]);
+
+    return Array.from(options).map((option) => {
+      const isSelected = option.toLowerCase() === normalizedCurrent.toLowerCase();
+      return `<option value="${escapeAttribute(option)}"${isSelected ? " selected" : ""}>${escapeHtml(option)}</option>`;
+    }).join("");
   }
 
   function getAiNameModeFromForm() {
@@ -203,15 +227,15 @@
     counterMapBodyNode.innerHTML = entries.map((entry) => {
       const safeMappingKey = escapeHtml(entry.key || "");
       const safeFolder = escapeHtml(entry.folderName || "");
-      const safeChatName = escapeHtml(entry.chatName || entry.chatPath || "-");
+      const safeChatNameInputValue = escapeAttribute(entry.chatName || entry.chatPath || "");
       const folderLine = safeFolder
         ? `<div class="counter-chat-folder">${safeFolder}</div>`
         : "";
       return [
         "<tr>",
         `  <td class="counter-id-cell"><input class="counter-id-input" type="number" min="1" step="1" value="${escapeHtml(entry.count)}" data-counter-key="${safeMappingKey}" aria-label="ChatNameCount id"></td>`,
-        `  <td class="counter-provider-cell">${escapeHtml(entry.providerName || "-")}</td>`,
-        `  <td class="counter-chat-cell"><div class="counter-chat-name">${safeChatName}</div>${folderLine}</td>`,
+        `  <td class="counter-provider-cell"><select class="counter-provider-select" data-counter-key="${safeMappingKey}" aria-label="Provider">${providerOptionsMarkup(entry.providerName)}</select></td>`,
+        `  <td class="counter-chat-cell"><input class="counter-chat-input" type="text" maxlength="220" value="${safeChatNameInputValue}" data-counter-key="${safeMappingKey}" aria-label="Chat name">${folderLine}</td>`,
         `  <td class="counter-action-cell"><button type="button" class="counter-inline-delete" data-counter-key="${safeMappingKey}" aria-label="Delete ChatNameCount association">Delete</button></td>`,
         "</tr>"
       ].join("");
@@ -250,7 +274,7 @@
       dayKey: String(lastCounterSummary?.dayKey || "")
     });
     applyCounterSummary(summary);
-    showStatus("Counter values updated.");
+    showStatus("Counter values updated.", "success");
   }
 
   async function resetDayCounter() {
@@ -260,7 +284,7 @@
 
     const summary = await root.storage.resetCounterValues("day");
     applyCounterSummary(summary);
-    showStatus("Day counter reset.");
+    showStatus("Day counter reset.", "success");
   }
 
   async function resetAllCounters() {
@@ -270,7 +294,7 @@
 
     const summary = await root.storage.resetCounterValues("all");
     applyCounterSummary(summary);
-    showStatus("All counters reset.");
+    showStatus("All counters reset.", "success");
   }
 
   async function updateChatNameCountMapping(mappingKey, nextCount) {
@@ -280,7 +304,17 @@
 
     const summary = await root.storage.updateChatNameCountMapping(mappingKey, nextCount);
     applyCounterSummary(summary);
-    showStatus("ChatNameCount id updated.");
+    showStatus("ChatNameCount id updated.", "success");
+  }
+
+  async function updateChatNameCountAssociation(mappingKey, patch) {
+    if (!root.storage || typeof root.storage.updateChatNameCountAssociation !== "function") {
+      throw new Error("ChatNameCount association updates are not available.");
+    }
+
+    const summary = await root.storage.updateChatNameCountAssociation(mappingKey, patch);
+    applyCounterSummary(summary);
+    showStatus("ChatNameCount association updated.", "success");
   }
 
   async function deleteChatNameCountMapping(mappingKey) {
@@ -290,7 +324,7 @@
 
     const summary = await root.storage.deleteChatNameCountMapping(mappingKey);
     applyCounterSummary(summary);
-    showStatus("ChatNameCount association deleted.");
+    showStatus("ChatNameCount association deleted.", "success");
   }
 
   async function clearChatNameMappings() {
@@ -300,7 +334,7 @@
 
     const summary = await root.storage.clearChatNameCountMappings();
     applyCounterSummary(summary);
-    showStatus("All ChatNameCount associations were cleared.");
+    showStatus("All ChatNameCount associations were cleared.", "success");
   }
 
   function applySettingsToForm(settings) {
@@ -470,7 +504,7 @@
     }
     lastSavedSettingsSnapshot = JSON.stringify(readSettingsFromForm());
     await loadCounterSummary();
-    showStatus("Settings loaded.");
+    showStatus("Settings loaded.", "success");
   }
 
   async function saveSettings() {
@@ -484,7 +518,7 @@
     await root.storage.saveSettings(next);
     root.appTheme.applyThemeDocument(next.appTheme);
     lastSavedSettingsSnapshot = nextSnapshot;
-    showStatus("Saved automatically.");
+    showStatus("Settings auto-saved.", "success");
   }
 
   async function resetSettings() {
@@ -492,7 +526,7 @@
     root.appTheme.applyThemeDocument(settings.appTheme);
     applySettingsToForm(settings);
     lastSavedSettingsSnapshot = JSON.stringify(readSettingsFromForm());
-    showStatus("Settings reset to defaults.");
+    showStatus("Settings reset to defaults.", "success");
   }
 
   function scheduleAutoSave() {
@@ -503,7 +537,7 @@
     autoSaveTimer = window.setTimeout(() => {
       autoSaveTimer = null;
       saveSettings().catch((error) => {
-        showStatus(`Error saving settings: ${error.message}`, true);
+        showStatus(`Error saving settings: ${error.message}`, "error");
       });
     }, 120);
   }
@@ -523,14 +557,14 @@
     }
 
     resetSettings().catch((error) => {
-      showStatus(`Error resetting settings: ${error.message}`, true);
+      showStatus(`Error resetting settings: ${error.message}`, "error");
     });
   });
 
   if (applyCounterValuesButton) {
     applyCounterValuesButton.addEventListener("click", () => {
       applyCounterValues().catch((error) => {
-        showStatus(`Error updating counters: ${error.message}`, true);
+        showStatus(`Error updating counters: ${error.message}`, "error");
       });
     });
   }
@@ -538,7 +572,7 @@
   if (resetDayCounterButton) {
     resetDayCounterButton.addEventListener("click", () => {
       resetDayCounter().catch((error) => {
-        showStatus(`Error resetting day counter: ${error.message}`, true);
+        showStatus(`Error resetting day counter: ${error.message}`, "error");
       });
     });
   }
@@ -551,7 +585,7 @@
       }
 
       resetAllCounters().catch((error) => {
-        showStatus(`Error resetting all counters: ${error.message}`, true);
+        showStatus(`Error resetting all counters: ${error.message}`, "error");
       });
     });
   }
@@ -564,7 +598,7 @@
       }
 
       clearChatNameMappings().catch((error) => {
-        showStatus(`Error clearing ChatNameCount associations: ${error.message}`, true);
+        showStatus(`Error clearing ChatNameCount associations: ${error.message}`, "error");
       });
     });
   }
@@ -601,26 +635,74 @@
   if (counterMapBodyNode) {
     counterMapBodyNode.addEventListener("input", (event) => {
       const target = event.target;
-      if (target instanceof HTMLInputElement && target.classList.contains("counter-id-input")) {
+      if (
+        target instanceof HTMLInputElement
+        && (target.classList.contains("counter-id-input") || target.classList.contains("counter-chat-input"))
+      ) {
         event.stopPropagation();
       }
     });
 
     counterMapBodyNode.addEventListener("change", (event) => {
       const target = event.target;
-      if (!(target instanceof HTMLInputElement) || !target.classList.contains("counter-id-input")) {
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
         return;
       }
 
       event.stopPropagation();
       const mappingKey = target.dataset.counterKey || "";
-      const nextCount = clampPositiveInteger(target.value, 1);
-      target.value = String(nextCount);
-      updateChatNameCountMapping(mappingKey, nextCount).catch((error) => {
-        showStatus(`Error updating ChatNameCount id: ${error.message}`, true);
-        void loadCounterSummary();
-      });
+      if (!mappingKey) {
+        return;
+      }
+
+      if (target instanceof HTMLInputElement && target.classList.contains("counter-id-input")) {
+        const nextCount = clampPositiveInteger(target.value, 1);
+        target.value = String(nextCount);
+        updateChatNameCountMapping(mappingKey, nextCount).catch((error) => {
+          showStatus(`Error updating ChatNameCount id: ${error.message}`, "error");
+          void loadCounterSummary();
+        });
+        return;
+      }
+
+      if (target instanceof HTMLInputElement && target.classList.contains("counter-chat-input")) {
+        const nextChatName = target.value.trim();
+        updateChatNameCountAssociation(mappingKey, {
+          chatName: nextChatName
+        }).catch((error) => {
+          showStatus(`Error updating chat name: ${error.message}`, "error");
+          void loadCounterSummary();
+        });
+        return;
+      }
+
+      if (target instanceof HTMLSelectElement && target.classList.contains("counter-provider-select")) {
+        const nextProviderName = target.value.trim();
+        updateChatNameCountAssociation(mappingKey, {
+          providerName: nextProviderName
+        }).catch((error) => {
+          showStatus(`Error updating provider: ${error.message}`, "error");
+          void loadCounterSummary();
+        });
+        return;
+      }
+
+      if (target instanceof HTMLInputElement) {
+        return;
+      }
+
+      showStatus("Error updating ChatNameCount association.", "error");
+      void loadCounterSummary();
     });
+
+    counterMapBodyNode.addEventListener("blur", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || !target.classList.contains("counter-chat-input")) {
+        return;
+      }
+
+      target.value = target.value.trim();
+    }, true);
 
     counterMapBodyNode.addEventListener("click", (event) => {
       const target = event.target;
@@ -635,7 +717,8 @@
       }
 
       deleteChatNameCountMapping(mappingKey).catch((error) => {
-        showStatus(`Error deleting ChatNameCount association: ${error.message}`, true);
+        showStatus(`Error deleting ChatNameCount association: ${error.message}`, "error");
+        void loadCounterSummary();
       });
     });
   }
@@ -650,6 +733,6 @@
   activateTab("general");
 
   loadSettings().catch((error) => {
-    showStatus(`Error loading settings: ${error.message}`, true);
+    showStatus(`Error loading settings: ${error.message}`, "error");
   });
 })();

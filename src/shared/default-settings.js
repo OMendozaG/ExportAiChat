@@ -23,7 +23,7 @@
       quoteDividerStyle: QUOTE_DIVIDER_STYLE.MARKDOWN,
 
       // Continuation style for multiline TXT exports.
-      multilineFormat: MULTILINE_FORMAT.NONE,
+      multilineFormat: MULTILINE_FORMAT.TAB,
 
       // Per-role TXT message headers, supports <HumanName>/<AiName>.
       txtHumanMessageHeaderTemplate: "\n\n----- <HumanName>:\n\n",

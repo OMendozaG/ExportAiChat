@@ -49,6 +49,8 @@ The TXT export is designed as a readable chat log:
 - ChatGPT attachment tile detection, including attachment-only user turns
 - Broader ChatGPT thinking/reasoning block detection, including localized labels and timing extraction
 - ChatGPT extraction now supports modern `conversation-turn` sections, including assistant image-only turns
+- ChatGPT export now hydrates virtualized turn lists while collecting messages, reducing skipped messages in long chats
+- Thinking labels now export as `(Thought for …)` when only duration is visible, or `(Thought: …)` when a reasoning body exists
 - MHT and PDF exports now inline chat images as data URLs when possible, so generated-image replies are preserved more reliably
 - ChatGPT extraction now prefers section-level turns over nested legacy placeholders so image-only assistant replies are not dropped
 - ChatGPT button-based assistant references are now limited to file/url-like labels so generic UI action text is not exported across locales
@@ -65,7 +67,7 @@ The TXT export is designed as a readable chat log:
 - Exported rich media now stays inside message containers with proportional scaling (no overflow/deformation) in HTML, MHT, and PDF
 - Configurable file naming templates
 - Persistent filename counters (`TotalCount`, `DayCount`, `ChatNameCount`) with configurable values and mapping view
-- Editable `ChatNameCount` associations with inline id editing, single delete, and clear-all reset
+- Editable `ChatNameCount` associations with inline id, provider, and chat-name editing, plus single delete and clear-all reset
 - Auto-save overwrite vs add-count conflict policy
 - Optional inline `EXPORT...` action per provider in supported headers
 - Provider and message summary in the popup with the resolved download file name preview
@@ -112,7 +114,7 @@ The settings page supports:
 - AI display name by provider name or custom name
 - Markdown or clean text formatting
 - Quote and divider style
-- Dedicated TXT section with multiline continuation style (default `No prefix`)
+- Dedicated TXT section with multiline continuation style (default `Indent with tab`)
 - Editable TXT message separator
 - Editable TXT per-role message header templates for Human and AI messages
 - TXT template placeholders: `<HumanName>`, `<AiName>`
@@ -147,6 +149,7 @@ The settings page supports:
 - Auto naming toggle and file name template
 - Dedicated `Counters` tab to configure counter values and inspect `ChatNameCount` associations
 - `Counters` tab supports editing each `ChatNameCount` id directly (unique ids only) and deleting rows
+- `Counters` tab also supports editing provider and chat name directly in each association row
 - `Counters` tab supports clearing all `ChatNameCount` associations with confirmation
 - New `ChatNameCount` ids are always assigned from the current highest id + 1
 - Only manually changed settings are pinned; untouched fields keep following new version defaults after updates

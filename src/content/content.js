@@ -71,8 +71,8 @@
     return Boolean(provider && provider.isChatPage());
   }
 
-  function buildProcessedConversation(provider, settings) {
-    const rawConversation = provider.extractConversation(settings);
+  async function buildProcessedConversation(provider, settings, options = {}) {
+    const rawConversation = await Promise.resolve(provider.extractConversation(settings, options));
     return root.postProcess.processConversation(rawConversation, settings, provider);
   }
 
@@ -441,7 +441,9 @@
       const extractionSettings = shouldForceRichMedia
         ? settingsForRichMediaExport(settings)
         : settings;
-      const processedConversation = buildProcessedConversation(provider, extractionSettings);
+      const processedConversation = await buildProcessedConversation(provider, extractionSettings, {
+        hydrateVirtualized: true
+      });
       const exporter = root.exporters;
 
       if (!exporter) {
@@ -539,9 +541,12 @@
         processedConversation.hasMedia &&
         format !== EXPORT_FORMATS.MHT
       ) {
-        const conversationForCompanion = buildProcessedConversation(
+        const conversationForCompanion = await buildProcessedConversation(
           provider,
-          settingsForRichMediaExport(settings)
+          settingsForRichMediaExport(settings),
+          {
+            hydrateVirtualized: true
+          }
         );
         if (processedConversation.exportCounters) {
           applyCounterSnapshotToConversation(conversationForCompanion, processedConversation.exportCounters);
@@ -618,7 +623,9 @@
 
     if (liveStatus.isChatPage && Number(liveStatus.messageCount || 0) > 0) {
       try {
-        const processedConversation = buildProcessedConversation(provider, settings);
+        const processedConversation = await buildProcessedConversation(provider, settings, {
+          hydrateVirtualized: false
+        });
         if (typeof root.storage.previewExportCounters === "function") {
           try {
             const previewSnapshot = await root.storage.previewExportCounters(processedConversation);
@@ -641,7 +648,10 @@
       providerId: provider.id,
       providerName: provider.displayName,
       isChatPage: Boolean(liveStatus.isChatPage),
-      messageCount: Number(summary?.totalMessages || liveStatus.messageCount || 0),
+      messageCount: Math.max(
+        Number(summary?.totalMessages || 0),
+        Number(liveStatus.messageCount || 0)
+      ),
       summary,
       exportStates: getExportStates(provider, Number(liveStatus.messageCount || 0))
     };

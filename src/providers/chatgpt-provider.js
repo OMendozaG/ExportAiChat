@@ -9,6 +9,7 @@
   const MODEL_NAME_REGEX = /\b(?:ChatGPT\s*)?(?:GPT[-\s]?\d(?:\.\d+)?|GPT[-\s]?4o|GPT[-\s]?4\.1|GPT[-\s]?5|o[1345](?:-mini|-pro)?|4o(?:-mini)?|4\.1(?:-mini)?|gpt-[a-z0-9.-]+)\b/i;
   const THINKING_LABEL_REGEX = /\b(?:thinking|reasoning|reasoned|thought for|reasoned for|pensando|pens[oó]|pensamiento|razonando|razonamiento|reflexionando|reflexi[oó]n)\b/i;
   const THINKING_SECONDS_REGEX = /(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s|segundos?|seg)\b/i;
+  const THINKING_DURATION_LABEL_REGEX = /(?:thought|thinking|reasoned|reasoning|pensado|pensando|pensamiento|razonando|razonamiento)(?:\s*(?:for|durante))?\s+([0-9hms.: ]+)/i;
   const SHARE_LABEL_REGEX = /\b(?:share|compartir)\b/i;
   const SOURCES_LABEL_REGEX = /^(?:fuentes?|sources?)$/i;
   const IGNORED_ASSISTANT_ACTION_LABEL_REGEX = /^(?:edit(?: image)?|editar(?: imagen)?|share(?: this image)?|compartir(?: esta imagen)?|copy(?: response)?|copiar(?: respuesta)?|like(?: this image)?|me gusta(?: esta imagen)?|dislike(?: this image)?|no me gusta(?: esta imagen)?|regenerate|regenerar|retry|reintentar|thumbs?\s*up|thumbs?\s*down|more actions?|m[aá]s acciones?|more options?|opciones?)$/i;
@@ -137,49 +138,230 @@
     return messageNode;
   }
 
-  function collectConversationEntries() {
-    const entries = [];
-    const legacyNodes = Array.from(document.querySelectorAll("[data-message-author-role]"));
-
-    for (let index = 0; index < legacyNodes.length; index += 1) {
-      const node = legacyNodes[index];
-      // Modern ChatGPT wraps turns in `section[data-testid^='conversation-turn-']`.
-      // In that layout, nested legacy role nodes can be empty placeholders.
-      // Prefer section-level extraction to avoid dropping image-only assistant turns.
-      if (node.closest("section[data-testid^='conversation-turn-'][data-turn]")) {
-        continue;
-      }
-
-      entries.push({
-        node,
-        rawRole: node.getAttribute("data-message-author-role") || "unknown",
-        messageId: node.getAttribute("data-message-id") || `chatgpt-${index + 1}`
-      });
+  function parseTurnOrder(section, fallback) {
+    const dataTestId = normalizeText(section?.getAttribute?.("data-testid"));
+    const orderMatch = dataTestId.match(/conversation-turn-(\d+)/i);
+    if (orderMatch) {
+      return Number(orderMatch[1]);
     }
 
+    return Number(fallback || 0);
+  }
+
+  function hasRenderableTurnContent(section) {
+    if (!section) {
+      return false;
+    }
+
+    return Boolean(
+      section.querySelector(
+        [
+          "[data-message-author-role]",
+          ".agent-turn",
+          ".markdown",
+          ".whitespace-pre-wrap",
+          ".user-message-bubble-color",
+          "img",
+          "video"
+        ].join(", ")
+      )
+    );
+  }
+
+  function getEntryWeight(entryNode) {
+    if (!entryNode) {
+      return 0;
+    }
+
+    const textWeight = normalizeText(entryNode.textContent).length;
+    const mediaWeight = entryNode.querySelectorAll("img, video, audio, canvas").length * 30;
+    const richWeight = entryNode.querySelectorAll("p, li, pre, blockquote, table").length * 6;
+
+    return textWeight + mediaWeight + richWeight;
+  }
+
+  function readEntryFromTurnSection(section, fallbackIndex) {
+    const rawRole = normalizeRole(
+      section.getAttribute("data-turn")
+      || section.querySelector("[data-message-author-role]")?.getAttribute("data-message-author-role")
+      || "unknown"
+    );
+
+    if (!rawRole) {
+      return null;
+    }
+
+    const messageNode = section.querySelector("[data-message-author-role][data-message-id]")
+      || section.querySelector("[data-message-author-role]");
+    const messageId = messageNode?.getAttribute("data-message-id")
+      || section.getAttribute("data-turn-id")
+      || section.closest("[data-turn-id-container]")?.getAttribute("data-turn-id-container")
+      || `chatgpt-turn-${fallbackIndex + 1}`;
+    const clonedNode = section.cloneNode(true);
+
+    return {
+      node: clonedNode,
+      rawRole,
+      messageId,
+      order: parseTurnOrder(section, fallbackIndex + 1),
+      weight: getEntryWeight(clonedNode)
+    };
+  }
+
+  function collectVisibleConversationEntries() {
+    const entries = [];
     const turnSections = Array.from(
       document.querySelectorAll("section[data-testid^='conversation-turn-'][data-turn]")
     );
 
     for (let index = 0; index < turnSections.length; index += 1) {
       const section = turnSections[index];
-      const rawRole = normalizeRole(section.getAttribute("data-turn") || "unknown");
+      if (!hasRenderableTurnContent(section)) {
+        continue;
+      }
+
+      const entry = readEntryFromTurnSection(section, index);
+      if (!entry) {
+        continue;
+      }
+
+      entries.push(entry);
+    }
+
+    const legacyNodes = Array.from(document.querySelectorAll("[data-message-author-role]"));
+    for (let index = 0; index < legacyNodes.length; index += 1) {
+      const node = legacyNodes[index];
+      if (node.closest("section[data-testid^='conversation-turn-'][data-turn]")) {
+        continue;
+      }
+
+      const rawRole = normalizeRole(node.getAttribute("data-message-author-role") || "unknown");
       if (!rawRole) {
         continue;
       }
 
-      const messageId = section.getAttribute("data-turn-id")
-        || section.closest("[data-turn-id-container]")?.getAttribute("data-turn-id-container")
-        || `chatgpt-turn-${index + 1}`;
-
+      const clonedNode = node.cloneNode(true);
       entries.push({
-        node: section,
+        node: clonedNode,
         rawRole,
-        messageId
+        messageId: node.getAttribute("data-message-id") || `chatgpt-legacy-${index + 1}`,
+        order: Number.MAX_SAFE_INTEGER - 1000 + index,
+        weight: getEntryWeight(clonedNode)
       });
     }
 
-    return entries;
+    return entries.sort((left, right) => left.order - right.order);
+  }
+
+  function getScrollContainerFromSection(section) {
+    let current = section?.parentElement || null;
+
+    while (current) {
+      const style = window.getComputedStyle(current);
+      const overflowY = String(style.overflowY || "").toLowerCase();
+      const canScroll = (overflowY.includes("auto") || overflowY.includes("scroll") || overflowY.includes("overlay"))
+        && current.scrollHeight > current.clientHeight + 40;
+
+      if (canScroll) {
+        return current;
+      }
+
+      current = current.parentElement;
+    }
+
+    const fallbackRoot = document.scrollingElement || document.documentElement;
+    return fallbackRoot instanceof HTMLElement ? fallbackRoot : null;
+  }
+
+  function scrollTopOf(container) {
+    return Number(container?.scrollTop || 0);
+  }
+
+  function scrollHeightOf(container) {
+    return Number(container?.scrollHeight || 0);
+  }
+
+  function clientHeightOf(container) {
+    return Number(container?.clientHeight || window.innerHeight || 0);
+  }
+
+  function setScrollTop(container, value) {
+    if (!container) {
+      return;
+    }
+
+    container.scrollTop = Number(value || 0);
+  }
+
+  function waitForRender(ms = 72) {
+    return new Promise((resolve) => {
+      window.setTimeout(() => {
+        window.requestAnimationFrame(() => resolve());
+      }, ms);
+    });
+  }
+
+  async function collectConversationEntries(options = {}) {
+    const initialSections = Array.from(
+      document.querySelectorAll("section[data-testid^='conversation-turn-'][data-turn]")
+    );
+    const totalTurnCount = initialSections.length;
+    const renderedTurnCount = initialSections.filter((section) => hasRenderableTurnContent(section)).length;
+    const visibleEntries = collectVisibleConversationEntries();
+
+    if (
+      options.hydrateVirtualized === false
+      || !totalTurnCount
+      || totalTurnCount <= renderedTurnCount + 1
+      || totalTurnCount <= 8
+    ) {
+      return visibleEntries;
+    }
+
+    const scrollContainer = getScrollContainerFromSection(initialSections[0]);
+    if (!scrollContainer) {
+      return visibleEntries;
+    }
+
+    const originalTop = scrollTopOf(scrollContainer);
+    const collectedById = new Map();
+    const mergeEntries = (entries) => {
+      for (const entry of entries) {
+        const key = String(entry.messageId || "");
+        if (!key) {
+          continue;
+        }
+
+        const existing = collectedById.get(key);
+        if (!existing || entry.weight > existing.weight) {
+          collectedById.set(key, entry);
+        }
+      }
+    };
+
+    try {
+      mergeEntries(visibleEntries);
+      setScrollTop(scrollContainer, scrollHeightOf(scrollContainer));
+      await waitForRender();
+      mergeEntries(collectVisibleConversationEntries());
+
+      const stepSize = Math.max(420, Math.round(clientHeightOf(scrollContainer) * 0.75));
+      for (let guard = 0; guard < 90; guard += 1) {
+        const currentTop = scrollTopOf(scrollContainer);
+        if (currentTop <= 0) {
+          break;
+        }
+
+        setScrollTop(scrollContainer, Math.max(0, currentTop - stepSize));
+        await waitForRender();
+        mergeEntries(collectVisibleConversationEntries());
+      }
+
+      const mergedEntries = Array.from(collectedById.values()).sort((left, right) => left.order - right.order);
+      return mergedEntries.length ? mergedEntries : visibleEntries;
+    } finally {
+      setScrollTop(scrollContainer, originalTop);
+    }
   }
 
   function buildReferenceKey(item) {
@@ -842,6 +1024,11 @@
       indicatorText.match(THINKING_SECONDS_REGEX)
       || normalizeText((sanitized.safeHtml || "").replace(/<[^>]*>/g, " ")).match(THINKING_SECONDS_REGEX)
     );
+    const durationMatch = (
+      indicatorText.match(THINKING_DURATION_LABEL_REGEX)
+      || normalizeText((sanitized.safeHtml || "").replace(/<[^>]*>/g, " ")).match(THINKING_DURATION_LABEL_REGEX)
+    );
+    const thinkingDurationLabel = durationMatch ? normalizeText(durationMatch[1]) : "";
 
     if (!stripped && !indicatorText) {
       return null;
@@ -855,12 +1042,14 @@
       timeLabel,
       timeMs,
       isThinking: true,
-      thinkingSeconds: secondsMatch ? secondsMatch[1] : null
+      thinkingSeconds: secondsMatch ? secondsMatch[1] : null,
+      thinkingLabel: normalizeText(indicatorText),
+      thinkingDurationLabel
     };
   }
 
-  function extractConversation(settings) {
-    const rawEntries = collectConversationEntries();
+  async function extractConversation(settings, options = {}) {
+    const rawEntries = await collectConversationEntries(options);
     const seenIds = new Set();
     const messages = [];
 
@@ -939,9 +1128,11 @@
   }
 
   function getLiveStatus() {
+    const roleCount = document.querySelectorAll("[data-message-author-role]").length;
+    const turnCount = document.querySelectorAll("section[data-testid^='conversation-turn-'][data-turn]").length;
     return {
       isChatPage: isChatPage(),
-      messageCount: document.querySelectorAll("[data-message-author-role]").length
+      messageCount: Math.max(roleCount, turnCount)
     };
   }
 

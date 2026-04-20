@@ -8,6 +8,7 @@
 
   const HOSTNAME = "chat.deepseek.com";
   const THINKING_SECONDS_REGEX = /(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s|segundos?|seg)\b/i;
+  const THINKING_DURATION_LABEL_REGEX = /(?:thought|thinking|reasoning|pensado|pensando|pensamiento|razonando|razonamiento)(?:\s*(?:for|durante))?\s+([0-9hms.: ]+)/i;
   const THINKING_LABEL_REGEX = /\b(?:pens[oó]\s+durante|thinking|reasoning)\b/i;
   const SHARE_LABEL_REGEX = /\b(?:share|compartir)\b/i;
   const SHARE_ICON_PATH_MARKERS = [
@@ -272,6 +273,7 @@
     }
 
     const secondsMatch = (thinkingLabel || "").match(THINKING_SECONDS_REGEX);
+    const durationMatch = (thinkingLabel || "").match(THINKING_DURATION_LABEL_REGEX);
 
     return {
       id: `${messageId}-thinking`,
@@ -279,7 +281,9 @@
       safeHtml,
       hasMedia,
       isThinking: true,
-      thinkingSeconds: secondsMatch ? secondsMatch[1] : null
+      thinkingSeconds: secondsMatch ? secondsMatch[1] : null,
+      thinkingLabel: thinkingLabel || "",
+      thinkingDurationLabel: durationMatch ? normalizeText(durationMatch[1]) : ""
     };
   }
 

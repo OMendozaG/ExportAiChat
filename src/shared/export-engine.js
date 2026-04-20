@@ -242,6 +242,43 @@
     return String(rawValue).replace(/\r\n/g, "\n");
   }
 
+  function normalizeTemplateValue(value) {
+    return String(value ?? "").replace(/\r\n/g, "\n");
+  }
+
+  function resolveTxtHeaderTemplateByRole(message, settings) {
+    const role = String(message?.role || "");
+    if (role === root.constants.ROLES.HUMAN) {
+      return settings.txtHumanMessageHeaderTemplate ?? root.defaults.settings.txtHumanMessageHeaderTemplate;
+    }
+
+    if (role === root.constants.ROLES.ASSISTANT || role === root.constants.ROLES.SYSTEM) {
+      return settings.txtAiMessageHeaderTemplate ?? root.defaults.settings.txtAiMessageHeaderTemplate;
+    }
+
+    return "";
+  }
+
+  function applyTxtTemplateTokens(template, conversation) {
+    const names = conversation?.names || {};
+    const humanName = String(names.human || conversation?.settings?.humanName || "Human");
+    const aiName = String(names.ai || conversation?.settings?.aiCustomName || conversation?.providerName || "AI");
+
+    return normalizeTemplateValue(template)
+      .replace(/<HumanName>/gi, humanName)
+      .replace(/<AiName>/gi, aiName)
+      .replace(/<enter>/gi, "\n");
+  }
+
+  function resolveTxtMessageHeader(message, settings, conversation) {
+    const rawTemplate = resolveTxtHeaderTemplateByRole(message, settings);
+    if (!rawTemplate) {
+      return "";
+    }
+
+    return applyTxtTemplateTokens(rawTemplate, conversation);
+  }
+
   function resolveExportTitle(conversation) {
     return String(conversation.chatName || conversation.title || "chat").trim() || "chat";
   }
@@ -263,9 +300,10 @@
     return `${lines.join("\n")}\n`;
   }
 
-  function buildTextMessageBlock(message, settings) {
+  function buildTextMessageBlock(message, settings, conversation) {
     const prefix = rolePrefix(message, settings);
     const contentLines = [];
+    const messageHeader = resolveTxtMessageHeader(message, settings, conversation);
     const leadingLines = Array.isArray(message.leadingReferenceLines)
       ? message.leadingReferenceLines.map((line) => `[${line}]`)
       : [];
@@ -289,14 +327,15 @@
       outputLines.push(`${linePrefix}${line}`.trimEnd());
     }
 
-    return outputLines.join("\n");
+    const blockBody = outputLines.join("\n");
+    return `${messageHeader}${blockBody}`;
   }
 
   function toChatText(conversation) {
     const settings = conversation.settings || root.defaults.settings;
     const exportTitle = resolveExportTitle(conversation);
     const metadataBlock = buildMetadataText(conversation).trimEnd();
-    const messageBlocks = (conversation.messages || []).map((message) => buildTextMessageBlock(message, settings));
+    const messageBlocks = (conversation.messages || []).map((message) => buildTextMessageBlock(message, settings, conversation));
     const separator = normalizeSeparator(settings);
     const sections = [];
 

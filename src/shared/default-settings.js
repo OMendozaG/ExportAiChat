@@ -22,8 +22,12 @@
       // Estilo común para blockquotes y líneas de separación.
       quoteDividerStyle: QUOTE_DIVIDER_STYLE.MARKDOWN,
 
-      // Continuation style for multiline TXT/PDF exports.
-      multilineFormat: MULTILINE_FORMAT.TAB,
+      // Continuation style for multiline TXT exports.
+      multilineFormat: MULTILINE_FORMAT.NONE,
+
+      // Per-role TXT message headers, supports <HumanName>/<AiName>/<enter>.
+      txtHumanMessageHeaderTemplate: "\n\n----- <HumanName>\n\n",
+      txtAiMessageHeaderTemplate: "\n\n----- <AiName>\n\n",
 
       // Separator inserted between TXT message blocks.
       messageSeparator: "\n\n\n",

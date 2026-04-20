@@ -28,6 +28,7 @@ The TXT export is designed as a readable chat log:
 - Persistent settings stored locally in the browser
 - Configurable visible names for the human and the AI
 - Configurable text handling for markdown, quotes, separators, and multiline output
+- Dedicated TXT export settings, including per-role message header templates
 - Optional metadata export
 - Optional export title header (Chat Name) above metadata/messages
 - Optional visible reasoning or thinking export when the provider exposes it in the page
@@ -46,7 +47,7 @@ The TXT export is designed as a readable chat log:
 - ChatGPT inline button styling now keeps a transparent, borderless appearance to blend with the native header actions
 - Gemini inline button styling now applies a 30% smaller label size for better header fit
 - Grok extraction for user/assistant turns, visible thinking duration labels, and user file chip labels
-- Configurable AI/Human border colors for HTML and PDF exports
+- Configurable AI/Human border colors for HTML, PDF, and MHT exports
 - Configurable file naming templates
 - Persistent filename counters (`TotalCount`, `DayCount`, `ChatNameCount`) with configurable values and mapping view
 - Auto-save overwrite vs add-count conflict policy
@@ -93,9 +94,12 @@ The settings page supports:
 - AI display name by provider name or custom name
 - Markdown or clean text formatting
 - Quote and divider style
-- Multiline continuation style
-- AI and Human border colors for HTML/PDF (default AI blue, Human orange)
+- Dedicated TXT section with multiline continuation style (default `No prefix`)
 - Editable TXT message separator
+- Editable TXT per-role message header templates for Human and AI messages
+- TXT template placeholders: `<HumanName>`, `<AiName>`, `<enter>`
+- TXT header placeholders resolve Human/AI names from the General tab settings
+- Dedicated HTML/PDF/MHT appearance section with AI and Human border colors (default AI blue, Human orange)
 - Media handling rules
 - Metadata toggles
 - Export title toggle (default on) that prints `Chat Name` as the first line/header

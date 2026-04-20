@@ -113,7 +113,7 @@
 
       <section class="tab-panel" data-panel="export" hidden>
         <section class="card">
-          <h2>Text formatting</h2>
+          <h2>Shared Text Conversion</h2>
 
           <label class="field">
             <span>Bold, italic and markdown support</span>
@@ -130,9 +130,13 @@
               <option value="tabular">Tabular style (| and ------)</option>
             </select>
           </label>
+        </section>
+
+        <section class="card">
+          <h2>TXT Export</h2>
 
           <label class="field">
-            <span>Multiline TXT/PDF continuation</span>
+            <span>Multiline TXT continuation</span>
             <select id="multilineFormat" name="multilineFormat">
               <option value="tab">Indent with tab</option>
               <option value="name">Repeat speaker name</option>
@@ -141,18 +145,36 @@
           </label>
 
           <label class="field">
-            <span>AI border color in HTML/PDF</span>
+            <span>Message separator for TXT exports</span>
+            <textarea id="messageSeparator" name="messageSeparator" rows="4" spellcheck="false"></textarea>
+          </label>
+
+          <label class="field">
+            <span>TXT header for Human messages</span>
+            <textarea id="txtHumanMessageHeaderTemplate" name="txtHumanMessageHeaderTemplate" rows="4" spellcheck="false"></textarea>
+          </label>
+
+          <label class="field">
+            <span>TXT header for AI messages</span>
+            <textarea id="txtAiMessageHeaderTemplate" name="txtAiMessageHeaderTemplate" rows="4" spellcheck="false"></textarea>
+          </label>
+
+          <p class="field-help">
+            Supported placeholders: `&lt;HumanName&gt;`, `&lt;AiName&gt;`, `&lt;enter&gt;`. Human/AI names are resolved from the General tab.
+          </p>
+        </section>
+
+        <section class="card">
+          <h2>HTML / PDF / MHT Appearance</h2>
+
+          <label class="field">
+            <span>AI border color in HTML/PDF/MHT</span>
             <input id="htmlPdfAiBorderColor" name="htmlPdfAiBorderColor" type="color">
           </label>
 
           <label class="field">
-            <span>Human border color in HTML/PDF</span>
+            <span>Human border color in HTML/PDF/MHT</span>
             <input id="htmlPdfHumanBorderColor" name="htmlPdfHumanBorderColor" type="color">
-          </label>
-
-          <label class="field">
-            <span>Message separator for TXT exports</span>
-            <textarea id="messageSeparator" name="messageSeparator" rows="4" spellcheck="false"></textarea>
           </label>
         </section>
 

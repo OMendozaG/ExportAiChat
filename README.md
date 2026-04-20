@@ -36,6 +36,7 @@ The TXT export is designed as a readable chat log:
 - Optional message ids starting at 1 across TXT, HTML, and PDF exports
 - Optional metadata for provider/chat summary and conversation start, end, and duration when message dates are available
 - Optional user attachment file names and assistant attachment/URL references in exports
+- ChatGPT user file tiles and assistant inline file/reference chips are extracted explicitly instead of relying only on sanitized rich text
 - ChatGPT attachment tile detection, including attachment-only user turns
 - Configurable file naming templates
 - Auto-save overwrite vs add-count conflict policy

@@ -208,11 +208,26 @@
 
   function buildTextMessageBlock(message, settings) {
     const prefix = rolePrefix(message, settings);
+    const contentLines = [];
+    const leadingLines = Array.isArray(message.leadingReferenceLines)
+      ? message.leadingReferenceLines.map((line) => `[${line}]`)
+      : [];
     const messageLines = String(message.text || "").split("\n");
+    const trailingLines = Array.isArray(message.trailingReferenceLines)
+      ? message.trailingReferenceLines.map((line) => `[${line}]`)
+      : [];
+    contentLines.push(...leadingLines);
+
+    if (message.text) {
+      contentLines.push(...messageLines);
+    }
+
+    contentLines.push(...trailingLines);
+
     const outputLines = [];
 
-    for (let index = 0; index < messageLines.length; index += 1) {
-      const line = messageLines[index];
+    for (let index = 0; index < contentLines.length; index += 1) {
+      const line = contentLines[index];
       const linePrefix = continuationPrefix(prefix, settings, index === 0);
       outputLines.push(`${linePrefix}${line}`.trimEnd());
     }
@@ -292,39 +307,69 @@
     ].filter(Boolean).join("\n");
   }
 
+  function buildReferenceBlockHtml(lines, className) {
+    const escapeHtml = root.sanitize.escapeHtml;
+    if (!Array.isArray(lines) || !lines.length) {
+      return "";
+    }
+
+    const markup = lines
+      .map((line) => `    <p>[${escapeHtml(line)}]</p>`)
+      .join("\n");
+
+    return [
+      `  <div class="ceai-reference-block ${className}">`,
+      markup,
+      "  </div>"
+    ].join("\n");
+  }
+
   function messageHtml(message, settings) {
     const escapeHtml = root.sanitize.escapeHtml;
     const roleClass = `role-${escapeHtml(message.role || "unknown")}`;
     const headerMarkup = buildMessageHeader(message, settings);
+    const leadingReferencesMarkup = buildReferenceBlockHtml(message.leadingReferenceLines, "ceai-reference-block--leading");
+    const trailingReferencesMarkup = buildReferenceBlockHtml(message.trailingReferenceLines, "ceai-reference-block--trailing");
+    const plainTextMarkup = message.text ? `  <pre>${escapeHtml(message.text || "")}</pre>` : "";
+    const richMarkup = message.safeHtml ? `  <div class="ceai-rich">${message.safeHtml || ""}</div>` : "";
 
     if (settings.textFormatting === root.constants.TEXT_FORMATTING.CLEAN) {
       return [
         `<section class="ceai-message ${roleClass}">`,
         headerMarkup,
-        `  <pre>${escapeHtml(message.text || "")}</pre>`,
+        leadingReferencesMarkup,
+        plainTextMarkup,
+        trailingReferencesMarkup,
         "</section>"
-      ].join("\n");
+      ].filter(Boolean).join("\n");
     }
 
     return [
       `<section class="ceai-message ${roleClass}">`,
       headerMarkup,
-      `  <div class="ceai-rich">${message.safeHtml || ""}</div>`,
+      leadingReferencesMarkup,
+      richMarkup,
+      trailingReferencesMarkup,
       "</section>"
-    ].join("\n");
+    ].filter(Boolean).join("\n");
   }
 
   function messagePdfHtml(message, settings) {
     const escapeHtml = root.sanitize.escapeHtml;
     const roleClass = `role-${escapeHtml(message.role || "unknown")}`;
     const text = escapeHtml(message.text || "");
+    const leadingReferencesMarkup = buildReferenceBlockHtml(message.leadingReferenceLines, "ceai-reference-block--leading");
+    const trailingReferencesMarkup = buildReferenceBlockHtml(message.trailingReferenceLines, "ceai-reference-block--trailing");
+    const textMarkup = message.text ? `  <pre>${text}</pre>` : "";
 
     return [
       `<section class="ceai-message ${roleClass}">`,
       buildMessageHeader(message, settings),
-      `  <pre>${text}</pre>`,
+      leadingReferencesMarkup,
+      textMarkup,
+      trailingReferencesMarkup,
       "</section>"
-    ].join("\n");
+    ].filter(Boolean).join("\n");
   }
 
   function buildHtmlStyle() {
@@ -352,6 +397,10 @@
       ".ceai-message h2 { margin: 0; font-size: 1rem; }",
       ".ceai-message-id { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; padding: 0.2rem 0.55rem; border-radius: 999px; background: #e7eefc; color: #1d4ed8; font-size: 0.78rem; font-weight: 700; line-height: 1; }",
       ".ceai-message-time { color: #64748b; font-size: 0.82rem; white-space: nowrap; }",
+      ".ceai-reference-block { margin: 0 0 10px; }",
+      ".ceai-reference-block p { margin: 0 0 6px; color: #334155; font-size: 0.92rem; font-weight: 600; }",
+      ".ceai-reference-block--trailing { margin-top: 10px; margin-bottom: 0; }",
+      ".ceai-reference-block--trailing p:last-child, .ceai-reference-block--leading p:last-child { margin-bottom: 0; }",
       ".ceai-message.role-human { border-left: 6px solid #2166f3; }",
       ".ceai-message.role-assistant { border-left: 6px solid #0f9d58; }",
       ".ceai-message.role-system { border-left: 6px solid #7c3aed; }",
@@ -390,6 +439,10 @@
       ".ceai-message h2 { margin: 0; font-size: 14px; }",
       ".ceai-message-id { display: inline-flex; align-items: center; justify-content: center; min-width: 38px; padding: 0.15rem 0.45rem; border-radius: 999px; background: #e7eefc; color: #1d4ed8; font-size: 10px; font-weight: 700; line-height: 1; }",
       ".ceai-message-time { color: #667085; font-size: 11px; white-space: nowrap; }",
+      ".ceai-reference-block { margin: 0 0 8px; }",
+      ".ceai-reference-block p { margin: 0 0 4px; color: #475467; font-size: 11px; font-weight: 600; }",
+      ".ceai-reference-block--trailing { margin-top: 8px; margin-bottom: 0; }",
+      ".ceai-reference-block--trailing p:last-child, .ceai-reference-block--leading p:last-child { margin-bottom: 0; }",
       ".ceai-message.role-human { border-left: 5px solid #2563eb; }",
       ".ceai-message.role-assistant { border-left: 5px solid #16a34a; }",
       ".ceai-message.role-system { border-left: 5px solid #7c3aed; }",

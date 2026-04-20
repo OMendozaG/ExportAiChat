@@ -10,6 +10,7 @@
   const THINKING_LABEL_REGEX = /\b(?:thinking|reasoning|reasoned|thought for|reasoned for)\b/i;
   const THINKING_SECONDS_REGEX = /(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s)\b/i;
   const SHARE_LABEL_REGEX = /\b(?:share|compartir)\b/i;
+  const SOURCES_LABEL_REGEX = /^(?:fuentes?|sources?)$/i;
   const TIME_TEXT_REGEX = /\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|A\.M\.|P\.M\.)?\b/i;
   const CONVERSATION_PATH_REGEX = /\/c\/([^/?#]+)/i;
   const PROJECT_PATH_REGEX = /(\/g\/[^/]+)\/c\/[^/?#]+/i;
@@ -155,8 +156,10 @@
   function extractVisibleFileTileLabel(node) {
     const candidates = [
       node.getAttribute("aria-label"),
+      node.getAttribute("title"),
       node.querySelector(".font-semibold")?.textContent,
       node.querySelector("[class*='font-semibold']")?.textContent,
+      node.querySelector("p.truncate")?.textContent,
       node.querySelector(".truncate")?.textContent,
       node.textContent
     ];
@@ -171,13 +174,52 @@
     return "";
   }
 
+  function isIgnoredReferenceLabel(label) {
+    return !label
+      || SOURCES_LABEL_REGEX.test(label)
+      || /^(\+\d+|pdf|documento|document)$/i.test(label);
+  }
+
+  function extractButtonReferenceLabel(node) {
+    if (!node) {
+      return "";
+    }
+
+    const candidates = [
+      node.getAttribute("aria-label"),
+      node.getAttribute("title"),
+      node.querySelector("p.truncate")?.textContent,
+      node.querySelector(".truncate")?.textContent,
+      node.querySelector(".font-semibold")?.textContent,
+      node.querySelector("[class*='font-semibold']")?.textContent,
+      node.querySelector(".not-prose")?.textContent,
+      node.textContent
+    ];
+
+    for (const candidate of candidates) {
+      const label = normalizeReferenceLabel(candidate);
+      if (!label || isIgnoredReferenceLabel(label) || label.length > 180) {
+        continue;
+      }
+
+      if (isLikelyAttachmentLabel(label) || /\s/.test(label) || /[A-Za-zÀ-ÿ]/.test(label)) {
+        return label;
+      }
+    }
+
+    return "";
+  }
+
   function extractUserAttachmentTiles(messageNode) {
     const tileNodes = Array.from(
       messageNode.querySelectorAll(
         [
           '[role="group"][aria-label]',
           '[class*="file-tile"][aria-label]',
+          '[class*="group/file-tile"]',
           '[data-default-action="true"] button[aria-label]',
+          '[data-default-action="true"] button',
+          'button[aria-haspopup="dialog"]',
           '.font-semibold',
           '[class*="font-semibold"]'
         ].join(", ")
@@ -252,6 +294,59 @@
     }).filter(Boolean);
 
     return dedupeReferences(items);
+  }
+
+  function extractAssistantButtonReferences(messageNode, contentRoot) {
+    const scope = contentRoot || messageNode;
+    const buttons = Array.from(
+      scope.querySelectorAll(
+        [
+          'button[aria-haspopup="dialog"]',
+          'button .truncate',
+          'button .not-prose',
+          'button [class*="truncate"]',
+          'button [class*="font-semibold"]'
+        ].join(", ")
+      )
+    ).map((node) => node.closest("button")).filter(Boolean);
+
+    const items = buttons.map((button) => {
+      const label = extractButtonReferenceLabel(button);
+      if (!label) {
+        return null;
+      }
+
+      return {
+        kind: isLikelyAttachmentLabel(label) ? "attachment" : "reference",
+        label,
+        url: ""
+      };
+    }).filter(Boolean);
+
+    return dedupeReferences(items);
+  }
+
+  function prepareAssistantContentRootForSanitize(contentRoot) {
+    const clone = contentRoot?.cloneNode?.(true);
+    if (!clone) {
+      return contentRoot;
+    }
+
+    const buttons = Array.from(clone.querySelectorAll("button"));
+    for (const button of buttons) {
+      const label = extractButtonReferenceLabel(button);
+
+      if (!label) {
+        button.remove();
+        continue;
+      }
+
+      const replacement = clone.ownerDocument.createElement("span");
+      replacement.textContent = `[${label}]`;
+      button.replaceWith(replacement);
+    }
+
+    return clone;
   }
 
   function findFirstVisibleMatch(selectors, regex, maxLength = 80) {
@@ -642,14 +737,20 @@
       }
 
       const contentRoot = pickMessageContentRoot(node, rawRole);
-      const sanitized = root.sanitize.sanitizeMessageNode(contentRoot, {
+      const sanitizeRoot = rawRole === "assistant"
+        ? prepareAssistantContentRootForSanitize(contentRoot)
+        : contentRoot;
+      const sanitized = root.sanitize.sanitizeMessageNode(sanitizeRoot, {
         mediaHandling: settings.mediaHandling
       });
       const userAttachments = rawRole === "user" && settings.showUserAttachmentNames
         ? extractUserAttachmentReferences(node)
         : [];
       const assistantReferences = rawRole === "assistant" && settings.showAssistantReferences
-        ? extractAssistantReferences(node, contentRoot)
+        ? dedupeReferences([
+            ...extractAssistantReferences(node, contentRoot),
+            ...extractAssistantButtonReferences(node, contentRoot)
+          ])
         : [];
 
       const stripped = normalizeText((sanitized.safeHtml || "").replace(/<[^>]*>/g, " "));

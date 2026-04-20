@@ -66,38 +66,6 @@
     return label || url;
   }
 
-  function prependUserAttachmentLines(safeHtml, attachments) {
-    const visibleAttachments = dedupeVisibleReferences(attachments);
-
-    if (!visibleAttachments.length) {
-      return safeHtml;
-    }
-
-    const lines = visibleAttachments
-      .map((attachment) => buildReferenceDescriptor(attachment))
-      .filter(Boolean)
-      .map((text) => `<p>[${escapeReferenceLine(text)}]</p>`)
-      .join("");
-
-    return `${lines}${safeHtml}`;
-  }
-
-  function appendAssistantReferenceLines(safeHtml, references) {
-    const hiddenReferences = filterHiddenReferences(safeHtml, references);
-
-    if (!hiddenReferences.length) {
-      return safeHtml;
-    }
-
-    const lines = hiddenReferences
-      .map((reference) => buildReferenceDescriptor(reference))
-      .filter(Boolean)
-      .map((text) => `<p>[${escapeReferenceLine(text)}]</p>`)
-      .join("");
-
-    return `${safeHtml}${lines}`;
-  }
-
   function filterHiddenReferences(safeHtml, references) {
     const haystack = String(safeHtml || "").toLowerCase();
 
@@ -129,6 +97,18 @@
       seen.add(descriptor);
       return true;
     });
+  }
+
+  function collectReferenceLines(references) {
+    return dedupeVisibleReferences(references)
+      .map((reference) => buildReferenceDescriptor(reference))
+      .filter(Boolean);
+  }
+
+  function collectHiddenReferenceLines(safeHtml, references) {
+    return filterHiddenReferences(safeHtml, references)
+      .map((reference) => buildReferenceDescriptor(reference))
+      .filter(Boolean);
   }
 
   function resolveSpeakerLabel(message, names, settings) {
@@ -338,12 +318,15 @@
     const processedMessages = (rawConversation.messages || [])
       .map((message, index) => {
         const safeHtml = message.safeHtml || "";
-        const enrichedSafeHtml = message.role === ROLES.HUMAN
-          ? prependUserAttachmentLines(safeHtml, message.attachments)
-          : appendAssistantReferenceLines(safeHtml, message.references);
         const text = settings.textFormatting === TEXT_FORMATTING.MARKDOWN
-          ? root.textConverter.htmlToMarkdown(enrichedSafeHtml, settings)
-          : root.textConverter.htmlToPlainText(enrichedSafeHtml, settings);
+          ? root.textConverter.htmlToMarkdown(safeHtml, settings)
+          : root.textConverter.htmlToPlainText(safeHtml, settings);
+        const leadingReferenceLines = message.role === ROLES.HUMAN
+          ? collectReferenceLines(message.attachments)
+          : [];
+        const trailingReferenceLines = message.role === ROLES.ASSISTANT
+          ? collectHiddenReferenceLines(safeHtml, message.references)
+          : [];
 
         return {
           id: message.id || `msg-${index + 1}`,
@@ -352,14 +335,21 @@
           speakerLabel: resolveSpeakerLabel(message, names, settings),
           timeLabel: resolveMessageTimeLabel(message, settings),
           timeMs: Number.isFinite(Number(message.timeMs)) ? Number(message.timeMs) : null,
-          safeHtml: enrichedSafeHtml,
+          safeHtml,
           text,
+          leadingReferenceLines,
+          trailingReferenceLines,
           hasMedia: Boolean(message.hasMedia),
           isThinking: Boolean(message.isThinking),
           thinkingSeconds: message.thinkingSeconds || null
         };
       })
-      .filter((message) => message.text || message.safeHtml);
+      .filter((message) => {
+        return message.text
+          || message.safeHtml
+          || (Array.isArray(message.leadingReferenceLines) && message.leadingReferenceLines.length)
+          || (Array.isArray(message.trailingReferenceLines) && message.trailingReferenceLines.length);
+      });
 
     const summary = buildConversationSummary(rawConversation, processedMessages, provider);
 

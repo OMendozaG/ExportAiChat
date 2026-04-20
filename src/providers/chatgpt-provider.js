@@ -512,6 +512,25 @@
     return "ChatGPT Chat";
   }
 
+  function extractWindowTitle() {
+    const rawTitle = normalizeText(document.title || document.querySelector("title")?.textContent);
+
+    if (!rawTitle) {
+      return "";
+    }
+
+    const cleanedTitle = rawTitle
+      .replace(/\s*[-|·•]\s*chatgpt$/i, "")
+      .replace(/^chatgpt\s*[-|·•]\s*/i, "")
+      .trim();
+
+    if (!cleanedTitle || /^chatgpt$/i.test(cleanedTitle)) {
+      return "";
+    }
+
+    return cleanedTitle;
+  }
+
   function extractConversationName() {
     return extractConversationNameFromSidebar() || extractConversationTitle();
   }
@@ -775,7 +794,7 @@
       sourceUrl: location.href,
       folderName: extractConversationFolder(),
       chatName: extractConversationName(),
-      title: extractConversationTitle(),
+      title: extractWindowTitle() || extractConversationTitle(),
       modelName: extractModelName(),
       messages
     };

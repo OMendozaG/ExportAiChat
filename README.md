@@ -104,6 +104,7 @@ The settings page supports:
 
 Supported file naming keywords:
 - `<ChatTitle>`
+- `<WindowTitle>`
 - `<ChatName>`
 - `<ChatFolder>`
 - `<Model>`
@@ -128,9 +129,11 @@ Supported direct date and time tokens:
 - `ss`
 
 Default file name template:
-- `YY.MM.DD <ChatName>`
+- `YY.MM.DD <ChatTitle>`
 
-Keyword placeholders are protected before date-token replacement, so single-letter date tokens no longer corrupt `<ChatName>`, `<ChatTitle>`, or the other file-name keywords.
+`<ChatTitle>` now resolves to the browser window/tab title for the conversation. `<WindowTitle>` is an explicit alias for the same value, while `<ChatName>` stays bound to the provider-visible chat name.
+
+Keyword placeholders are protected before date-token replacement, so single-letter date tokens no longer corrupt `<ChatName>`, `<ChatTitle>`, `<WindowTitle>`, or the other file-name keywords.
 
 ## Privacy Model
 

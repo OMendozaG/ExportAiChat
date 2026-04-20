@@ -93,6 +93,7 @@
 
     return {
       "<ChatTitle>": compactName(conversation.title || conversation.chatName || "chat", replacement),
+      "<WindowTitle>": compactName(conversation.title || conversation.chatName || "chat", replacement),
       "<ChatName>": compactName(conversation.chatName || conversation.title || "chat", replacement),
       "<ChatFolder>": compactName(conversation.folderName || "", replacement, ""),
       "<Model>": compactName(conversation.modelName || "", replacement, ""),
@@ -121,7 +122,7 @@
     const settings = conversation.settings || root.defaults.settings;
     const timeParts = timestampParts(new Date(conversation.extractedAtIso || Date.now()));
     const templateSource = settings.autoFileName
-      ? (settings.fileNameTemplate || "YY.MM.DD <ChatName>")
+      ? (settings.fileNameTemplate || "YY.MM.DD <ChatTitle>")
       : (settings.fileNameTemplate || "chat");
     const keywords = keywordValueMap(conversation);
     const { protectedTemplate, replacements } = protectKeywordMarkers(templateSource, keywords);

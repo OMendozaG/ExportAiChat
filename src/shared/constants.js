@@ -53,7 +53,7 @@
       EXPORTED_AT: "Date",
       DEVICE_USER: "PC/User",
       FOLDER: "Chat Folder",
-      TITLE: "Chat Title",
+      TITLE: "Window Title",
       MODEL: "Chat Model",
       URL: "Chat URL",
       PROVIDER: "Provider",

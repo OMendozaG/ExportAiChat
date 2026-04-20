@@ -50,6 +50,8 @@ Settings must support relevant shared behavior, including:
 - save mode: auto-save or ask for location.
 
 Document naming keywords in settings. Supported keywords should include:
+- `<ChatTitle>` as the browser window/tab title for the current conversation,
+- `<WindowTitle>` as an explicit alias of `<ChatTitle>`,
 - `<ChatName>`
 - `<ChatFolder>`
 - `<Model>`
@@ -57,7 +59,9 @@ Document naming keywords in settings. Supported keywords should include:
 - `<Date>`
 - `<Time>`
 
-Default file naming should use `<ChatName>`.
+`<ChatName>` should stay bound to the provider-visible conversation name.
+
+Default file naming should use `<ChatTitle>`.
 
 ## Metadata Rules
 Metadata must be configurable per field and reusable across TXT, HTML, MHT, and PDF exports.
@@ -66,11 +70,11 @@ Supported metadata fields include:
 - date / time,
 - PC / user,
 - chat folder,
-- chat title,
+- window title,
 - chat model,
 - chat URL.
 
-`Chat Folder` and `Chat Title` must be treated as different metadata fields.
+`Chat Folder`, `ChatName`, and `Window Title` must be treated as different fields.
 
 ## Inline UI Rules
 Do not inject random floating controls into the page layout.

@@ -80,7 +80,7 @@
   function updateFileNameFieldState() {
     const isAutomatic = autoFileNameCheckbox.checked;
     fileNameTemplateInput.disabled = false;
-    fileNameTemplateInput.placeholder = isAutomatic ? "YY.MM.DD <ChatName>" : "chat";
+    fileNameTemplateInput.placeholder = isAutomatic ? "YY.MM.DD <ChatTitle>" : "chat";
   }
 
   function updateAutosaveConflictFieldState() {

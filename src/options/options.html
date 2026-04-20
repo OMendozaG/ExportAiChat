@@ -178,7 +178,7 @@
 
           <label class="field checkbox-field">
             <input id="metadataTitle" name="metadataTitle" type="checkbox">
-            <span>Chat Title</span>
+            <span>Window Title</span>
           </label>
 
           <label class="field checkbox-field">
@@ -276,7 +276,7 @@
 
           <label class="field">
             <span>File name template</span>
-            <input id="fileNameTemplate" name="fileNameTemplate" type="text" maxlength="200" placeholder="YY.MM.DD <ChatName>">
+            <input id="fileNameTemplate" name="fileNameTemplate" type="text" maxlength="200" placeholder="YY.MM.DD <ChatTitle>">
           </label>
 
           <label class="field">
@@ -285,12 +285,13 @@
           </label>
 
           <p class="field-help">
-            Characters that are not valid in file names are replaced with this value when `<ChatTitle>`, `<ChatName>`, `<ChatFolder>`, or the final file name contains them.
+            Characters that are not valid in file names are replaced with this value when `<ChatTitle>`, `<WindowTitle>`, `<ChatName>`, `<ChatFolder>`, or the final file name contains them.
           </p>
 
           <div class="keyword-box">
             <strong>Keywords</strong>
             <code>&lt;ChatTitle&gt;</code>
+            <code>&lt;WindowTitle&gt;</code>
             <code>&lt;ChatName&gt;</code>
             <code>&lt;ChatFolder&gt;</code>
             <code>&lt;Model&gt;</code>

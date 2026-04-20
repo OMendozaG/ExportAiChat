@@ -107,6 +107,8 @@ Before finishing work, use this order:
 
 If the git tree contains unexpected unrelated changes, stop and ask before pushing.
 
+When working from a WSL/bash-style path and Git authentication or push behavior fails there, also try the same git flow from `cmd.exe` using the Windows repo path. If `cmd.exe` can push successfully while bash/WSL cannot, prefer the `cmd.exe` route for the final push.
+
 ## Current Baseline
 - ChatGPT is the current implemented provider.
 - The extension is designed so more LLM providers can be added without rewriting exporters or settings.

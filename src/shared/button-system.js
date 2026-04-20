@@ -6,18 +6,18 @@
   const root = globalThis.ChatExportAi;
   const STYLE_ID = "ceai-shared-button-style";
 
-  function spinnerMarkup() {
+  function spinnerMarkup(className = "ceai-button__spinner") {
     return [
-      '<svg viewBox="0 0 24 24" role="img" aria-hidden="true">',
+      `<svg class="${className}" viewBox="0 0 24 24" role="img" aria-hidden="true">`,
       '  <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-opacity="0.28" stroke-width="3"></circle>',
       '  <path d="M12 4a8 8 0 0 1 8 8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"></path>',
       '</svg>'
     ].join("");
   }
 
-  function downloadGlyphMarkup() {
+  function downloadGlyphMarkup(className = "ceai-button__icon") {
     return [
-      '<svg viewBox="0 0 24 24" role="img" aria-hidden="true">',
+      `<svg class="${className}" viewBox="0 0 24 24" role="img" aria-hidden="true">`,
       '  <path d="M12 7.5v5.1" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.85"></path>',
       '  <path d="M9.8 11.5 12 13.9l2.2-2.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.85"></path>',
       '  <path d="M9.2 16.2h5.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.85"></path>',
@@ -103,6 +103,11 @@
   opacity: 0;
   animation: ceai-button-spin 0.85s linear infinite;
 }
+.ceai-button__icon svg,
+.ceai-button__spinner svg {
+  width: 100%;
+  height: 100%;
+}
 .ceai-button__label {
   display: block;
   line-height: 1.05;
@@ -142,8 +147,8 @@
 
   function buildContentMarkup(label, stacked) {
     return stacked
-      ? `<span class="ceai-button__content ceai-button__stack">${downloadGlyphMarkup()}<span class="ceai-button__label">${label}</span></span>${spinnerMarkup().replace('<svg ', '<svg class="ceai-button__spinner" ')}`
-      : `<span class="ceai-button__content"><span class="ceai-button__label">${label}</span></span>${spinnerMarkup().replace('<svg ', '<svg class="ceai-button__spinner" ')}`;
+      ? `<span class="ceai-button__content ceai-button__stack">${downloadGlyphMarkup()}<span class="ceai-button__label">${label}</span></span>${spinnerMarkup()}`
+      : `<span class="ceai-button__content"><span class="ceai-button__label">${label}</span></span>${spinnerMarkup()}`;
   }
 
   function decorateButton(button, options = {}) {

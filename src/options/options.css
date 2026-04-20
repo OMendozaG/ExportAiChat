@@ -211,6 +211,20 @@ body {
   line-height: 1.45;
 }
 
+.credits-link {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.credits-link:hover {
+  text-decoration: underline;
+}
+
+:root[data-resolved-theme="dark"] .credits-link {
+  color: #8eb8ff;
+}
+
 .checkbox-field {
   display: flex;
   align-items: flex-start;

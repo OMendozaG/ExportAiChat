@@ -23,7 +23,9 @@
   let exportInProgress = false;
 
   function setStatus(message) {
-    statusNode.textContent = message;
+    const text = String(message || "").trim();
+    statusNode.textContent = text;
+    statusNode.hidden = !text;
   }
 
   function setActionsVisible(visible) {
@@ -112,14 +114,15 @@
       });
 
       if (!response || !response.supported) {
-        setStatus("Current page is not supported yet (ChatGPT only).");
+        setActionsVisible(false);
+        setStatus("This tab does not contain a LLM Chat.");
         setSummaryVisible(false);
         return;
       }
 
       if (!response.isChatPage || !response.messageCount) {
         setActionsVisible(false);
-        setStatus("No active LLM conversation was detected on this page.");
+        setStatus("This tab does not contain a LLM Chat.");
         setSummaryVisible(false);
         return;
       }
@@ -132,11 +135,12 @@
       }
 
       setSummary(response.summary || null);
-      setStatus(`Provider: ${response.providerName}. Messages: ${response.summary?.messagesDisplay || response.messageCount}.`);
+      setStatus("");
       setActionsVisible(true);
       setButtonsEnabled(true);
     } catch (_error) {
-      setStatus("This tab does not have an active content script.");
+      setActionsVisible(false);
+      setStatus("This tab does not contain a LLM Chat.");
       setSummaryVisible(false);
     }
   }

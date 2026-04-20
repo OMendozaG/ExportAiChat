@@ -148,9 +148,53 @@
     return /\/files?\//i.test(href) || /download/i.test(href);
   }
 
+  function isLikelyAttachmentLabel(label) {
+    return /\.[a-z0-9]{2,8}(?:\b|$)/i.test(label);
+  }
+
+  function extractVisibleFileTileLabel(node) {
+    const candidates = [
+      node.getAttribute("aria-label"),
+      node.querySelector(".font-semibold")?.textContent,
+      node.querySelector("[class*='font-semibold']")?.textContent,
+      node.querySelector(".truncate")?.textContent,
+      node.textContent
+    ];
+
+    for (const candidate of candidates) {
+      const label = normalizeReferenceLabel(candidate);
+      if (label && isLikelyAttachmentLabel(label)) {
+        return label;
+      }
+    }
+
+    return "";
+  }
+
+  function extractUserAttachmentTiles(messageNode) {
+    const tileNodes = Array.from(
+      messageNode.querySelectorAll('[role="group"][aria-label], [class*="file-tile"][aria-label]')
+    );
+
+    const items = tileNodes.map((node) => {
+      const label = extractVisibleFileTileLabel(node);
+      if (!label) {
+        return null;
+      }
+
+      return {
+        kind: "attachment",
+        label,
+        url: ""
+      };
+    }).filter(Boolean);
+
+    return dedupeReferences(items);
+  }
+
   function extractUserAttachmentReferences(messageNode) {
     const anchors = Array.from(messageNode.querySelectorAll("a[href], [download]"));
-    const items = anchors.map((node) => {
+    const linkItems = anchors.map((node) => {
       const href = normalizeText(node.getAttribute("href"));
       const label = normalizeReferenceLabel(
         node.getAttribute("download")
@@ -163,7 +207,7 @@
         return null;
       }
 
-      if (!isLikelyAttachmentHref(href) && !/\.[a-z0-9]{2,8}\b/i.test(label)) {
+      if (!isLikelyAttachmentHref(href) && !isLikelyAttachmentLabel(label)) {
         return null;
       }
 
@@ -173,8 +217,9 @@
         url: href || ""
       };
     }).filter(Boolean);
+    const tileItems = extractUserAttachmentTiles(messageNode);
 
-    return dedupeReferences(items);
+    return dedupeReferences([...linkItems, ...tileItems]);
   }
 
   function extractAssistantReferences(messageNode, contentRoot) {
@@ -586,7 +631,7 @@
         : [];
 
       const stripped = normalizeText((sanitized.safeHtml || "").replace(/<[^>]*>/g, " "));
-      if (!stripped) {
+      if (!stripped && !userAttachments.length && !assistantReferences.length) {
         continue;
       }
 

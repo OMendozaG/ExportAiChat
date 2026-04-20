@@ -37,9 +37,14 @@
     return undefined;
   }
 
-  function formatShortDate(timestampMs) {
+  function formatMetadataExportedAt(timestampMs) {
+    // Keep system locale ordering/separators, but force a full year and include time.
     return new Intl.DateTimeFormat(getPreferredLocales(), {
-      dateStyle: "short"
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
     }).format(new Date(timestampMs));
   }
 
@@ -256,7 +261,7 @@
     const extractedAt = new Date(extractedAtIso);
 
     if (settings.metadataExportedAt) {
-      pushMetadata(items, METADATA_LABELS.EXPORTED_AT, formatShortDate(extractedAt));
+      pushMetadata(items, METADATA_LABELS.EXPORTED_AT, formatMetadataExportedAt(extractedAt));
     }
 
     if (settings.metadataDeviceUser) {

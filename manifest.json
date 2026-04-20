@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Chat Export AI",
-  "description": "Export AI chats to TXT, HTML, MHT and PDF with a modular provider architecture.",
+  "description": "Export AI chats to TXT, HTML, MHT and PDF.",
   "version": "0.1.39",
   "icons": {
     "16": "src/assets/robot-download-16.png",

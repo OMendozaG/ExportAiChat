@@ -1,0 +1,74 @@
+/* Quick popup styles. */
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  background: #f4f6fb;
+  color: #0f172a;
+}
+
+.popup {
+  width: 320px;
+  padding: 14px;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 10px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.status {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.actions button {
+  flex: 1 1 68px;
+  min-height: 58px;
+  border: 0;
+  border-radius: 8px;
+  background: #0b57d0;
+  color: #fff;
+  padding: 8px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.actions button:hover,
+.icon-button:hover {
+  background: #0849af;
+}
+
+.icon-button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: #0b57d0;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.icon-button svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}

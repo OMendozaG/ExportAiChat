@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Chat Export AI icon">
+  <defs>
+    <linearGradient id="robotGradient" x1="20" y1="16" x2="108" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="55%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#0f766e"/>
+    </linearGradient>
+    <linearGradient id="glassGradient" x1="38" y1="28" x2="90" y2="72" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f8fbff" stop-opacity="0.98"/>
+      <stop offset="100%" stop-color="#cfe9ff" stop-opacity="0.9"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M43 18c0-6.1 4.9-11 11-11h20c6.1 0 11 4.9 11 11v6H43v-6Z" fill="url(#robotGradient)"/>
+  <rect x="28" y="24" width="72" height="54" rx="20" fill="url(#robotGradient)"/>
+  <rect x="36" y="31" width="56" height="24" rx="12" fill="url(#glassGradient)"/>
+  <circle cx="53" cy="43" r="6" fill="#0f172a"/>
+  <circle cx="75" cy="43" r="6" fill="#0f172a"/>
+  <path d="M52 63c4.3 4.1 19.7 4.1 24 0" fill="none" stroke="#eaf6ff" stroke-linecap="round" stroke-width="5"/>
+  <rect x="24" y="82" width="80" height="26" rx="13" fill="url(#robotGradient)"/>
+  <path d="M41 95h46" fill="none" stroke="#eff8ff" stroke-linecap="round" stroke-width="5"/>
+  <path d="M64 47v44" fill="none" stroke="#ffffff" stroke-linecap="round" stroke-width="10"/>
+  <path d="M47 76 64 93 81 76" fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="10"/>
+  <path d="M50 19h28" fill="none" stroke="#dbf4ff" stroke-linecap="round" stroke-width="4"/>
+</svg>

@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Settings - Chat Export AI</title>
+  <link rel="stylesheet" href="./options.css">
+</head>
+<body>
+  <main class="options-page">
+    <header class="title-row">
+      <h1>Chat Export AI Settings</h1>
+      <div class="settings-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" role="img" aria-label="settings">
+          <path d="M19.14,12.94 C19.19,12.64 19.22,12.32 19.22,12C19.22,11.68 19.19,11.36 19.14,11.06L21.2,9.37C21.39,9.22 21.45,8.96 21.34,8.74L19.49,5.26C19.38,5.05 19.13,4.95 18.9,5.02L16.48,5.9C16.01,5.56 15.5,5.27 14.93,5.05L14.5,2.53C14.47,2.3 14.27,2.14 14.03,2.14H9.97C9.73,2.14 9.53,2.3 9.5,2.53L9.07,5.05C8.5,5.27 7.99,5.56 7.52,5.9L5.1,5.02C4.87,4.95 4.62,5.05 4.51,5.26L2.66,8.74C2.55,8.95 2.61,9.21 2.8,9.37L4.86,11.06C4.81,11.36 4.78,11.68 4.78,12C4.78,12.32 4.81,12.64 4.86,12.94L2.8,14.63C2.61,14.78 2.55,15.04 2.66,15.26L4.51,18.74C4.62,18.95 4.87,19.05 5.1,18.98L7.52,18.1C7.99,18.44 8.5,18.73 9.07,18.95L9.5,21.47C9.53,21.7 9.73,21.86 9.97,21.86H14.03C14.27,21.86 14.47,21.7 14.5,21.47L14.93,18.95C15.5,18.73 16.01,18.44 16.48,18.1L18.9,18.98C19.13,19.05 19.38,18.95 19.49,18.74L21.34,15.26C21.45,15.05 21.39,14.79 21.2,14.63L19.14,12.94ZM12,15.5C10.07,15.5 8.5,13.93 8.5,12C8.5,10.07 10.07,8.5 12,8.5C13.93,8.5 15.5,10.07 15.5,12C15.5,13.93 13.93,15.5 12,15.5Z"></path>
+        </svg>
+      </div>
+    </header>
+    <p class="intro">Settings auto-save on change and apply to all supported providers.</p>
+
+    <form id="settingsForm">
+      <nav class="tabs" aria-label="Settings tabs">
+        <button type="button" class="tab-button is-active" data-tab="general">General</button>
+        <button type="button" class="tab-button" data-tab="export">Export</button>
+        <button type="button" class="tab-button" data-tab="files">Files</button>
+        <button type="button" class="tab-button" data-tab="integration">Integration</button>
+      </nav>
+
+      <section class="tab-panel is-active" data-panel="general">
+        <section class="card">
+          <h2>Visible names</h2>
+
+          <label class="field">
+            <span>Human name</span>
+            <input id="humanName" name="humanName" type="text" maxlength="80" placeholder="Human">
+          </label>
+
+          <div class="field">
+            <span>AI display name</span>
+            <label><input type="radio" name="aiNameMode" value="provider"> Use provider name (example: ChatGPT)</label>
+            <label><input type="radio" name="aiNameMode" value="custom"> Use custom name</label>
+          </div>
+
+          <label class="field">
+            <span>Custom AI name</span>
+            <input id="aiCustomName" name="aiCustomName" type="text" maxlength="80" placeholder="AI">
+          </label>
+        </section>
+
+        <section class="card">
+          <h2>Reasoning and time</h2>
+
+          <label class="field checkbox-field">
+            <input id="includeThinking" name="includeThinking" type="checkbox">
+            <span>Include visible thinking/reasoning blocks when the provider shows them in the chat log</span>
+          </label>
+
+          <label class="field checkbox-field">
+            <input id="includeMessageTime" name="includeMessageTime" type="checkbox">
+            <span>Include the message date and time when the provider can extract it</span>
+          </label>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="export" hidden>
+        <section class="card">
+          <h2>Text formatting</h2>
+
+          <label class="field">
+            <span>Bold, italic and markdown support</span>
+            <select id="textFormatting" name="textFormatting">
+              <option value="clean">Convert to plain text</option>
+              <option value="markdown">Keep markdown formatting</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Quotes and separators</span>
+            <select id="quoteDividerStyle" name="quoteDividerStyle">
+              <option value="markdown">Markdown style (&gt; and ---)</option>
+              <option value="tabular">Tabular style (| and ------)</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Multiline TXT/PDF continuation</span>
+            <select id="multilineFormat" name="multilineFormat">
+              <option value="tab">Indent with tab</option>
+              <option value="name">Repeat speaker name</option>
+              <option value="none">No prefix</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Message separator for TXT exports</span>
+            <textarea id="messageSeparator" name="messageSeparator" rows="4" spellcheck="false"></textarea>
+          </label>
+        </section>
+
+        <section class="card">
+          <h2>Media and non-text content</h2>
+
+          <label class="field">
+            <span>How to handle non-text elements</span>
+            <select id="mediaHandling" name="mediaHandling">
+              <option value="ignore">Ignore them</option>
+              <option value="placeholder">Include placeholders in text/HTML</option>
+              <option value="mht">Preserve in MHT</option>
+            </select>
+          </label>
+
+          <label class="field checkbox-field">
+            <input id="companionMhtOnMedia" name="companionMhtOnMedia" type="checkbox">
+            <span>When exporting TXT/HTML with media, also generate an MHT copy</span>
+          </label>
+        </section>
+
+        <section class="card">
+          <h2>Metadata</h2>
+
+          <label class="field checkbox-field">
+            <input id="metadataExportedAt" name="metadataExportedAt" type="checkbox">
+            <span>Date / Time</span>
+          </label>
+
+          <label class="field checkbox-field">
+            <input id="metadataDeviceUser" name="metadataDeviceUser" type="checkbox">
+            <span>PC / User</span>
+          </label>
+
+          <label class="field checkbox-field">
+            <input id="metadataFolder" name="metadataFolder" type="checkbox">
+            <span>Chat Folder</span>
+          </label>
+
+          <label class="field checkbox-field">
+            <input id="metadataTitle" name="metadataTitle" type="checkbox">
+            <span>Chat Title</span>
+          </label>
+
+          <label class="field checkbox-field">
+            <input id="metadataModel" name="metadataModel" type="checkbox">
+            <span>Chat Model</span>
+          </label>
+
+          <label class="field checkbox-field">
+            <input id="metadataUrl" name="metadataUrl" type="checkbox">
+            <span>Chat URL</span>
+          </label>
+        </section>
+
+        <section class="card">
+          <h2>Visible export buttons</h2>
+
+          <label class="field checkbox-field">
+            <input id="showExportPdf" name="showExportPdf" type="checkbox">
+            <span>Show `.PDF`</span>
+          </label>
+
+          <label class="field checkbox-field">
+            <input id="showExportMht" name="showExportMht" type="checkbox">
+            <span>Show `.MHT`</span>
+          </label>
+
+          <label class="field checkbox-field">
+            <input id="showExportHtml" name="showExportHtml" type="checkbox">
+            <span>Show `.HTML`</span>
+          </label>
+
+          <label class="field checkbox-field">
+            <input id="showExportTxt" name="showExportTxt" type="checkbox">
+            <span>Show `.TXT`</span>
+          </label>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="files" hidden>
+        <section class="card">
+          <h2>Download behavior</h2>
+
+          <div class="field">
+            <span>Download mode</span>
+            <label><input type="radio" name="saveMode" value="autosave"> Auto-save</label>
+            <label><input type="radio" name="saveMode" value="ask"> Ask for location</label>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>File name</h2>
+
+          <label class="field checkbox-field">
+            <input id="autoFileName" name="autoFileName" type="checkbox">
+            <span>Name files automatically from the template below</span>
+          </label>
+
+          <label class="field">
+            <span>File name template</span>
+            <input id="fileNameTemplate" name="fileNameTemplate" type="text" maxlength="200" placeholder="<ChatName>">
+          </label>
+
+          <div class="keyword-box">
+            <strong>Keywords</strong>
+            <code>&lt;ChatName&gt;</code>
+            <code>&lt;ChatFolder&gt;</code>
+            <code>&lt;Model&gt;</code>
+            <code>&lt;Provider&gt;</code>
+            <code>&lt;Date&gt;</code>
+            <code>&lt;Time&gt;</code>
+          </div>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="integration" hidden>
+        <section class="card">
+          <h2>Page button</h2>
+
+          <label class="field checkbox-field">
+            <input id="showHeaderExportButton" name="showHeaderExportButton" type="checkbox">
+            <span>Show the inline `EXPORT...` button next to the ChatGPT share action</span>
+          </label>
+        </section>
+      </section>
+
+      <section class="actions">
+        <button id="resetButton" type="button" class="secondary">Reset defaults</button>
+      </section>
+
+      <p id="status" class="status" aria-live="polite"></p>
+    </form>
+  </main>
+
+  <script src="../shared/namespace.js"></script>
+  <script src="../shared/constants.js"></script>
+  <script src="../shared/default-settings.js"></script>
+  <script src="../shared/chrome-helpers.js"></script>
+  <script src="../shared/storage.js"></script>
+  <script src="./options.js"></script>
+</body>
+</html>

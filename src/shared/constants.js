@@ -74,6 +74,13 @@
     AI_NAME_MODE: {
       PROVIDER: "provider",
       CUSTOM: "custom"
+    },
+
+    // Theme mode for popup/options and extension-owned controls.
+    APP_THEME: {
+      AUTO: "auto",
+      LIGHT: "light",
+      DARK: "dark"
     }
   };
 })();

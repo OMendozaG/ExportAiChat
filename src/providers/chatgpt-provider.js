@@ -128,23 +128,47 @@
     return "";
   }
 
+  function isExcludedTitleElement(element) {
+    return Boolean(element?.closest("nav, aside, [role='navigation'], dialog"));
+  }
+
   function extractConversationTitle() {
+    const folderName = extractConversationFolder();
     const titleSelectors = [
-      'header h1',
+      'main [data-testid*="conversation-title"]',
+      'main [data-testid*="conversation"] h1',
+      'main header h1',
       'main h1',
-      '[data-testid*="conversation"] h1'
+      'main h2'
     ];
 
     for (const selector of titleSelectors) {
-      const element = document.querySelector(selector);
-      const text = normalizeText(element?.textContent);
+      const elements = Array.from(document.querySelectorAll(selector));
 
-      if (text) {
+      for (const element of elements) {
+        if (!isVisibleElement(element) || isExcludedTitleElement(element)) {
+          continue;
+        }
+
+        const text = normalizeText(element.textContent);
+
+        if (!text || text.length > 180) {
+          continue;
+        }
+
+        if (folderName && text === folderName) {
+          continue;
+        }
+
+        if (MODEL_NAME_REGEX.test(text) || SHARE_LABEL_REGEX.test(text)) {
+          continue;
+        }
+
         return text;
       }
     }
 
-    return document.title || "ChatGPT Chat";
+    return "ChatGPT Chat";
   }
 
   function extractConversationFolder() {

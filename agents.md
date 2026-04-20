@@ -77,7 +77,7 @@ Do not inject random floating controls into the page layout.
 
 For ChatGPT:
 - if inline integration is enabled, the entry point should live in the header area near the share action,
-- the trigger should be a stable export icon button,
+- the trigger should be a stable inline `Export To...` button that fits the host page header style,
 - its export menu should render as an absolute or fixed overlay so it is not clipped by the host page layout.
 
 When a new provider is added:

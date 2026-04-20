@@ -170,11 +170,7 @@
     await sendDebuggerCommand(target, "Runtime.evaluate", {
       expression: `(
         async () => {
-          if (document.fonts && document.fonts.ready) {
-            await document.fonts.ready;
-          }
-
-          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          await new Promise((resolve) => requestAnimationFrame(resolve));
           return true;
         }
       )()`,

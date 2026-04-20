@@ -213,6 +213,19 @@
     ].join("\n");
   }
 
+  function messagePdfHtml(message) {
+    const escapeHtml = root.sanitize.escapeHtml;
+    const roleClass = `role-${escapeHtml(message.role || "unknown")}`;
+    const text = escapeHtml(message.text || "");
+
+    return [
+      `<section class="ceai-message ${roleClass}">`,
+      buildMessageHeader(message),
+      `  <pre>${text}</pre>`,
+      "</section>"
+    ].join("\n");
+  }
+
   function buildHtmlStyle() {
     return [
       "@page { size: A4; margin: 14mm; }",
@@ -250,6 +263,35 @@
     ].join("\n");
   }
 
+  function buildPdfHtmlStyle() {
+    return [
+      "@page { size: A4; margin: 12mm; }",
+      ":root { color-scheme: light; }",
+      "* { box-sizing: border-box; }",
+      "html, body { background: #ffffff; color: #101828; margin: 0; }",
+      "body { font-family: \"Segoe UI Emoji\", \"Apple Color Emoji\", \"Segoe UI\", Tahoma, sans-serif; }",
+      "main { padding: 0; }",
+      ".ceai-header, .ceai-meta, .ceai-message { border: 1px solid #d7deea; border-radius: 12px; background: #ffffff; }",
+      ".ceai-header { padding: 16px 18px; margin: 0 0 12px; }",
+      ".ceai-header h1 { margin: 0; font-size: 20px; line-height: 1.2; }",
+      ".ceai-meta { padding: 12px 14px; margin: 0 0 12px; }",
+      ".ceai-meta h2 { margin: 0 0 8px; font-size: 14px; }",
+      ".ceai-meta dl { margin: 0; }",
+      ".ceai-meta-row { display: grid; grid-template-columns: 150px 1fr; gap: 10px; padding: 4px 0; border-top: 1px solid #edf1f5; }",
+      ".ceai-meta-row:first-child { border-top: 0; }",
+      ".ceai-meta dt { font-weight: 700; color: #475467; }",
+      ".ceai-meta dd { margin: 0; word-break: break-word; }",
+      ".ceai-message { padding: 12px 14px; margin: 0 0 10px; break-inside: auto; page-break-inside: auto; }",
+      ".ceai-message-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }",
+      ".ceai-message h2 { margin: 0; font-size: 14px; }",
+      ".ceai-message-time { color: #667085; font-size: 11px; white-space: nowrap; }",
+      ".ceai-message.role-human { border-left: 5px solid #2563eb; }",
+      ".ceai-message.role-assistant { border-left: 5px solid #16a34a; }",
+      ".ceai-message.role-system { border-left: 5px solid #7c3aed; }",
+      ".ceai-message pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: \"Segoe UI Emoji\", \"Apple Color Emoji\", \"Segoe UI\", Tahoma, sans-serif; line-height: 1.45; }"
+    ].join("\n");
+  }
+
   function toHtmlDocument(conversation, settings) {
     const escapeHtml = root.sanitize.escapeHtml;
     const messageMarkup = (conversation.messages || [])
@@ -264,6 +306,32 @@
       "  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
       `  <title>${escapeHtml(conversation.title)}</title>`,
       `  <style>${buildHtmlStyle()}</style>`,
+      "</head>",
+      "<body>",
+      "  <main>",
+      buildHtmlHeader(conversation),
+      buildMetadataHtml(conversation),
+      messageMarkup,
+      "  </main>",
+      "</body>",
+      "</html>"
+    ].join("\n");
+  }
+
+  function toPdfDocument(conversation) {
+    const escapeHtml = root.sanitize.escapeHtml;
+    const messageMarkup = (conversation.messages || [])
+      .map((message) => messagePdfHtml(message))
+      .join("\n");
+
+    return [
+      "<!doctype html>",
+      "<html lang=\"en\">",
+      "<head>",
+      "  <meta charset=\"utf-8\">",
+      "  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
+      `  <title>${escapeHtml(conversation.title)}</title>`,
+      `  <style>${buildPdfHtmlStyle()}</style>`,
       "</head>",
       "<body>",
       "  <main>",
@@ -308,6 +376,7 @@
     toIrcText: toChatText,
     toChatText,
     toHtmlDocument,
+    toPdfDocument,
     toMhtDocument
   };
 })();

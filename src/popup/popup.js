@@ -67,7 +67,9 @@
   async function loadStatus() {
     setActionsVisible(false);
     setButtonsEnabled(false);
-    applyButtonVisibility(await root.storage.getSettings());
+    const settings = await root.storage.getSettings();
+    root.appTheme.applyThemeDocument(settings.appTheme);
+    applyButtonVisibility(settings);
 
     const tab = await queryActiveTab();
 

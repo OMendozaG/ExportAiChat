@@ -124,6 +124,10 @@
       return;
     }
 
+    if (root.appTheme && typeof ui.setTheme === "function") {
+      ui.setTheme(root.appTheme.resolveThemeMode(settings.appTheme));
+    }
+
     ui.setVisibleFormats({
       showExportPdf: Boolean(settings.showExportPdf),
       showExportMht: Boolean(settings.showExportMht),
@@ -221,9 +225,11 @@
         htmlDocument = exporter.toHtmlDocument(processedConversation, settings);
         content = exporter.toMhtDocument(htmlDocument, processedConversation);
         filename = exporter.buildFileName(processedConversation, "mht");
-        mimeType = "message/rfc822;charset=utf-8";
+        mimeType = "application/octet-stream";
       } else if (format === EXPORT_FORMATS.PDF) {
-        htmlDocument = exporter.toHtmlDocument(processedConversation, settings);
+        htmlDocument = typeof exporter.toPdfDocument === "function"
+          ? exporter.toPdfDocument(processedConversation, settings)
+          : exporter.toHtmlDocument(processedConversation, settings);
         filename = exporter.buildFileName(processedConversation, "pdf");
       } else {
         throw new Error("Unsupported format: " + format);
@@ -272,7 +278,7 @@
         await withTimeout(
           requestFileDownload({
             filename: exporter.buildFileName(processedConversation, "mht"),
-            mimeType: "message/rfc822;charset=utf-8",
+            mimeType: "application/octet-stream",
             content: mhtContent,
             saveAs: settings.saveMode === "ask"
           }),

@@ -60,6 +60,19 @@
             <span>Include the message date and time when the provider can extract it</span>
           </label>
         </section>
+
+        <section class="card">
+          <h2>App theme</h2>
+
+          <label class="field">
+            <span>Theme mode</span>
+            <select id="appTheme" name="appTheme">
+              <option value="auto">Auto</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </label>
+        </section>
       </section>
 
       <section class="tab-panel" data-panel="export" hidden>
@@ -216,7 +229,7 @@
 
           <label class="field checkbox-field">
             <input id="showHeaderExportButtonChatgpt" name="showHeaderExportButtonChatgpt" type="checkbox">
-            <span>ChatGPT: show the inline export icon button near the share action</span>
+            <span>ChatGPT: show the inline `Export To...` button near the share action</span>
           </label>
         </section>
 
@@ -258,6 +271,7 @@
   <script src="../shared/default-settings.js"></script>
   <script src="../shared/chrome-helpers.js"></script>
   <script src="../shared/storage.js"></script>
+  <script src="../shared/app-theme.js"></script>
   <script src="./options.js"></script>
 </body>
 </html>

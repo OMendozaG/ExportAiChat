@@ -1,13 +1,92 @@
-/* Options panel style. */
+/* Options panel style with shared theme tokens. */
 :root {
   color-scheme: light;
+  --page-bg: #eef3fb;
+  --text: #0f172a;
+  --muted: #475569;
+  --card-bg: #ffffff;
+  --card-border: #d6dfec;
+  --field-bg: #ffffff;
+  --field-border: #c7d0de;
+  --button-bg: #4f8cff;
+  --button-border: #2f6ff2;
+  --button-base: #224fb4;
+  --button-text: #ffffff;
+  --secondary-bg: #8b98ab;
+  --secondary-base: #667388;
+  --secondary-border: #7a8799;
+  --tab-bg: #ffffff;
+  --tab-border: #c7d0de;
+  --tab-text: #0f172a;
+  --tab-active-bg: #4f8cff;
+  --tab-active-border: #2f6ff2;
+  --tab-active-text: #ffffff;
+  --gear-bg: #ffffff;
+  --gear-border: #d6dfec;
+  --gear-text: #1f2937;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="auto"] {
+    color-scheme: dark;
+    --page-bg: #0f172a;
+    --text: #e5edf8;
+    --muted: #a8bad2;
+    --card-bg: #162131;
+    --card-border: #233247;
+    --field-bg: #111b2a;
+    --field-border: #2a3d57;
+    --button-bg: #67a2ff;
+    --button-border: #4d8cf0;
+    --button-base: #2f5daa;
+    --button-text: #08111f;
+    --secondary-bg: #7d8da6;
+    --secondary-base: #5c6b82;
+    --secondary-border: #72819a;
+    --tab-bg: #162131;
+    --tab-border: #2a3d57;
+    --tab-text: #dbe6f4;
+    --tab-active-bg: #67a2ff;
+    --tab-active-border: #4d8cf0;
+    --tab-active-text: #08111f;
+    --gear-bg: #162131;
+    --gear-border: #2a3d57;
+    --gear-text: #e5edf8;
+  }
+}
+
+:root[data-resolved-theme="dark"] {
+  color-scheme: dark;
+  --page-bg: #0f172a;
+  --text: #e5edf8;
+  --muted: #a8bad2;
+  --card-bg: #162131;
+  --card-border: #233247;
+  --field-bg: #111b2a;
+  --field-border: #2a3d57;
+  --button-bg: #67a2ff;
+  --button-border: #4d8cf0;
+  --button-base: #2f5daa;
+  --button-text: #08111f;
+  --secondary-bg: #7d8da6;
+  --secondary-base: #5c6b82;
+  --secondary-border: #72819a;
+  --tab-bg: #162131;
+  --tab-border: #2a3d57;
+  --tab-text: #dbe6f4;
+  --tab-active-bg: #67a2ff;
+  --tab-active-border: #4d8cf0;
+  --tab-active-text: #08111f;
+  --gear-bg: #162131;
+  --gear-border: #2a3d57;
+  --gear-text: #e5edf8;
 }
 
 body {
   margin: 0;
   font-family: "Segoe UI", Tahoma, sans-serif;
-  background: #f4f6fb;
-  color: #0f172a;
+  background: var(--page-bg);
+  color: var(--text);
 }
 
 .options-page {
@@ -30,10 +109,12 @@ body {
 }
 
 .settings-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
-  background: #0b57d0;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  border: 1px solid var(--gear-border);
+  background: var(--gear-bg);
+  color: var(--gear-text);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -42,12 +123,12 @@ body {
 .settings-icon svg {
   width: 16px;
   height: 16px;
-  fill: #fff;
+  fill: currentColor;
 }
 
 .intro {
   margin: 0 0 16px;
-  color: #334155;
+  color: var(--muted);
 }
 
 .tabs {
@@ -58,19 +139,19 @@ body {
 }
 
 .tab-button {
-  border: 1px solid #c7d0de;
+  border: 1px solid var(--tab-border);
   border-radius: 999px;
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--tab-bg);
+  color: var(--tab-text);
   padding: 8px 14px;
   font-size: 0.92rem;
   cursor: pointer;
 }
 
 .tab-button.is-active {
-  background: #0b57d0;
-  border-color: #0b57d0;
-  color: #ffffff;
+  background: var(--tab-active-bg);
+  border-color: var(--tab-active-border);
+  color: var(--tab-active-text);
 }
 
 .tab-panel[hidden] {
@@ -78,9 +159,9 @@ body {
 }
 
 .card {
-  background: #fff;
-  border: 1px solid #d0d8e4;
-  border-radius: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
   padding: 14px;
   margin-bottom: 14px;
 }
@@ -102,13 +183,15 @@ body {
 }
 
 .field input[type="text"],
+.field input[type="number"],
 .field textarea,
 .field select {
-  border: 1px solid #c7d0de;
-  border-radius: 8px;
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
   padding: 9px 10px;
   font-size: 0.92rem;
-  background: #fff;
+  background: var(--field-bg);
+  color: var(--text);
 }
 
 .field textarea {
@@ -123,15 +206,15 @@ body {
   font-size: 0.9rem;
 }
 
-.field-help {
-  margin: 8px 0 0;
-  color: #475569;
-  font-size: 0.9rem;
-  line-height: 1.45;
-}
-
 .field code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.field-help {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 
 .checkbox-field {
@@ -150,9 +233,9 @@ body {
   gap: 8px;
   align-items: center;
   padding: 10px 12px;
-  border: 1px dashed #c7d0de;
+  border: 1px dashed var(--field-border);
   border-radius: 10px;
-  background: #f8fafc;
+  background: color-mix(in srgb, var(--card-bg) 80%, var(--page-bg) 20%);
   font-size: 0.9rem;
 }
 
@@ -163,8 +246,8 @@ body {
 .keyword-box code {
   padding: 3px 6px;
   border-radius: 6px;
-  background: #ffffff;
-  border: 1px solid #d7dee8;
+  background: var(--field-bg);
+  border: 1px solid var(--field-border);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -176,22 +259,60 @@ body {
 }
 
 .actions button {
-  border: 0;
-  border-radius: 8px;
+  position: relative;
+  margin-bottom: 4px;
+  border: 1px solid var(--button-border);
+  border-radius: 12px;
   padding: 10px 14px;
   font-size: 0.92rem;
+  font-weight: 700;
   cursor: pointer;
-  background: #0b57d0;
-  color: #fff;
+  background: var(--button-bg);
+  color: var(--button-text);
+}
+
+.actions button::after {
+  content: "";
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  bottom: -5px;
+  height: 5px;
+  border-radius: 0 0 12px 12px;
+  background: var(--button-base);
+  z-index: -1;
 }
 
 .actions button.secondary {
-  background: #475569;
+  background: var(--secondary-bg);
+  border-color: var(--secondary-border);
+}
+
+.actions button.secondary::after {
+  background: var(--secondary-base);
+}
+
+.actions button:hover {
+  transform: translateY(1px);
+}
+
+.actions button:hover::after {
+  bottom: -4px;
+  height: 4px;
+}
+
+.actions button:active {
+  transform: translateY(4px);
+}
+
+.actions button:active::after {
+  bottom: -1px;
+  height: 1px;
 }
 
 .status {
   margin-top: 12px;
   min-height: 1.4em;
-  color: #0f5132;
+  color: var(--muted);
   font-weight: 600;
 }

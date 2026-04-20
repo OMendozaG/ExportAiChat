@@ -9,23 +9,11 @@
   const MENU_ID = "ceai-inline-export-menu";
   const STYLE_ID = "ceai-inline-export-style";
 
-  function robotButtonIconMarkup() {
-    return [
-      "<svg viewBox=\"0 0 128 128\" role=\"img\" aria-hidden=\"true\">",
-      "  <rect x=\"24\" y=\"20\" width=\"80\" height=\"56\" rx=\"19\" fill=\"currentColor\"/>",
-      "  <rect x=\"31\" y=\"31\" width=\"66\" height=\"20\" rx=\"10\" fill=\"#1f2937\" fill-opacity=\"0.28\"/>",
-      "  <circle cx=\"51\" cy=\"41\" r=\"5\" fill=\"#ffffff\"/>",
-      "  <circle cx=\"77\" cy=\"41\" r=\"5\" fill=\"#ffffff\"/>",
-      "  <path d=\"M58 55h12v27h14L64 106 44 82h14z\" fill=\"#ffffff\" stroke=\"#ffffff\" stroke-width=\"2.5\" stroke-linejoin=\"round\"/>",
-      "</svg>"
-    ].join("");
-  }
-
   function spinnerIconMarkup() {
     return [
       "<svg viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\">",
-      "  <circle cx=\"12\" cy=\"12\" r=\"8\" fill=\"none\" stroke=\"rgba(255,255,255,0.28)\" stroke-width=\"3\"></circle>",
-      "  <path d=\"M12 4a8 8 0 0 1 8 8\" fill=\"none\" stroke=\"#ffffff\" stroke-linecap=\"round\" stroke-width=\"3\"></path>",
+      "  <circle cx=\"12\" cy=\"12\" r=\"8\" fill=\"none\" stroke=\"currentColor\" stroke-opacity=\"0.28\" stroke-width=\"3\"></circle>",
+      "  <path d=\"M12 4a8 8 0 0 1 8 8\" fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-width=\"3\"></path>",
       "</svg>"
     ].join("");
   }
@@ -47,23 +35,29 @@
   display: none !important;
 }
 #${UI_ROOT_ID} .ceai-inline-btn {
-  width: 42px;
-  height: 42px;
-  border: 0;
-  background: linear-gradient(180deg, #ff4d6d 0%, #ff8a00 18%, #ffd60a 36%, #2fd46b 54%, #34c4ff 72%, #5b6cff 88%, #c45bff 100%);
-  color: #ffffff;
-  border-radius: 14px;
-  padding: 0;
+  border: 1px solid #d0d7e2;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 999px;
+  padding: 8px 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.2);
+  min-height: 36px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
 }
 #${UI_ROOT_ID} .ceai-inline-btn svg {
-  width: 24px;
-  height: 24px;
+  width: 16px;
+  height: 16px;
   display: block;
+}
+#${UI_ROOT_ID} .ceai-inline-btn .ceai-inline-btn-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 #${UI_ROOT_ID} .ceai-inline-btn:hover {
   filter: saturate(1.04) brightness(1.02);
@@ -76,6 +70,13 @@
   cursor: default;
 }
 #${MENU_ID} {
+  --ceai-menu-bg: #ffffff;
+  --ceai-menu-border: #d0d7e2;
+  --ceai-menu-shadow: rgba(15, 23, 42, 0.16);
+  --ceai-menu-button-bg: #67a2ff;
+  --ceai-menu-button-border: #4d8cf0;
+  --ceai-menu-button-base: #2f5daa;
+  --ceai-menu-button-text: #08111f;
   position: fixed;
   top: 0;
   left: 0;
@@ -84,30 +85,64 @@
   align-items: center;
   padding: 8px;
   border-radius: 12px;
-  border: 1px solid #d0d7e2;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+  border: 1px solid var(--ceai-menu-border);
+  background: var(--ceai-menu-bg);
+  box-shadow: 0 10px 24px var(--ceai-menu-shadow);
   backdrop-filter: blur(10px);
   white-space: nowrap;
   z-index: 2147483647;
+}
+#${MENU_ID}[data-theme="dark"] {
+  --ceai-menu-bg: rgba(19, 29, 43, 0.98);
+  --ceai-menu-border: #2a3d57;
+  --ceai-menu-shadow: rgba(2, 6, 23, 0.42);
+  --ceai-menu-button-bg: #67a2ff;
+  --ceai-menu-button-border: #4d8cf0;
+  --ceai-menu-button-base: #2f5daa;
+  --ceai-menu-button-text: #08111f;
 }
 #${MENU_ID}.is-open {
   display: flex;
 }
 #${MENU_ID} button {
-  border: 0;
+  position: relative;
+  margin-bottom: 4px;
+  border: 1px solid var(--ceai-menu-button-border);
   border-radius: 10px;
-  background: #f5f7fb;
-  color: #111827;
+  background: var(--ceai-menu-button-bg);
+  color: var(--ceai-menu-button-text);
   min-width: 64px;
   min-height: 56px;
   padding: 8px 12px;
   cursor: pointer;
   font-size: 13px;
+  font-weight: 700;
   white-space: nowrap;
 }
+#${MENU_ID} button::after {
+  content: "";
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  bottom: -5px;
+  height: 5px;
+  border-radius: 0 0 10px 10px;
+  background: var(--ceai-menu-button-base);
+  z-index: -1;
+}
 #${MENU_ID} button:hover {
-  background: #e8edf8;
+  transform: translateY(1px);
+}
+#${MENU_ID} button:hover::after {
+  bottom: -4px;
+  height: 4px;
+}
+#${MENU_ID} button:active {
+  transform: translateY(4px);
+}
+#${MENU_ID} button:active::after {
+  bottom: -1px;
+  height: 1px;
 }
 #${MENU_ID} button[hidden] {
   display: none !important;
@@ -147,7 +182,7 @@
     mainButton.className = "ceai-inline-btn";
     mainButton.setAttribute("aria-label", "Export current chat");
     mainButton.title = "Export current chat";
-    mainButton.innerHTML = robotButtonIconMarkup();
+    mainButton.innerHTML = "<span class=\"ceai-inline-btn-label\">Export To...</span>";
 
     const menuNode = document.createElement("div");
     menuNode.id = MENU_ID;
@@ -190,6 +225,48 @@
       menuNode.style.top = `${desiredTop}px`;
     }
 
+    function setTheme(themeMode) {
+      menuNode.dataset.theme = themeMode === "dark" ? "dark" : "light";
+    }
+
+    function applyReferenceButtonStyle(referenceNode) {
+      if (!referenceNode) {
+        mainButton.style.cssText = "";
+        return;
+      }
+
+      const computed = window.getComputedStyle(referenceNode);
+      const properties = [
+        "background",
+        "backgroundColor",
+        "border",
+        "borderRadius",
+        "color",
+        "font",
+        "fontFamily",
+        "fontSize",
+        "fontWeight",
+        "lineHeight",
+        "padding",
+        "height",
+        "minHeight",
+        "boxShadow"
+      ];
+
+      properties.forEach((propertyName) => {
+        const value = computed[propertyName];
+        if (value) {
+          mainButton.style[propertyName] = value;
+        }
+      });
+
+      mainButton.style.display = "inline-flex";
+      mainButton.style.alignItems = "center";
+      mainButton.style.justifyContent = "center";
+      mainButton.style.whiteSpace = "nowrap";
+      mainButton.style.cursor = "pointer";
+    }
+
     function mount(anchor) {
       const referenceNode = anchor?.referenceNode || null;
       const container = referenceNode?.parentElement || anchor?.container || null;
@@ -206,7 +283,7 @@
         container.appendChild(rootNode);
       }
 
-      syncMenuPosition();
+      applyReferenceButtonStyle(referenceNode);
       return true;
     }
 
@@ -242,7 +319,9 @@
     function setLoading(loading) {
       isLoading = Boolean(loading);
       mainButton.classList.toggle("is-loading", isLoading);
-      mainButton.innerHTML = isLoading ? spinnerIconMarkup() : robotButtonIconMarkup();
+      mainButton.innerHTML = isLoading
+        ? spinnerIconMarkup()
+        : "<span class=\"ceai-inline-btn-label\">Export To...</span>";
       mainButton.disabled = isLoading;
       formatButtons.forEach((button) => {
         button.disabled = isLoading || button.hidden;
@@ -269,8 +348,9 @@
         return;
       }
 
-      syncMenuPosition();
       menuNode.classList.add("is-open");
+      syncMenuPosition();
+      window.requestAnimationFrame(syncMenuPosition);
     });
 
     window.addEventListener("resize", syncMenuPosition);
@@ -288,6 +368,7 @@
 
     return {
       mount,
+      setTheme,
       setVisibleFormats,
       hasVisibleFormats,
       setVisible,

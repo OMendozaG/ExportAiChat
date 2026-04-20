@@ -35,6 +35,9 @@
       // Download mode: autosave directly or ask for location every time.
       saveMode: "autosave",
 
+      // App chrome theme: auto follows the browser/system preference.
+      appTheme: "auto",
+
       // Shared metadata toggles for TXT, HTML, MHT and PDF exports.
       metadataExportedAt: true,
       metadataDeviceUser: true,

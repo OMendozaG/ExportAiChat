@@ -17,6 +17,7 @@
   const quoteDividerStyleSelect = document.getElementById("quoteDividerStyle");
   const multilineFormatSelect = document.getElementById("multilineFormat");
   const messageSeparatorTextarea = document.getElementById("messageSeparator");
+  const appThemeSelect = document.getElementById("appTheme");
   const autoFileNameCheckbox = document.getElementById("autoFileName");
   const fileNameTemplateInput = document.getElementById("fileNameTemplate");
   const mediaHandlingSelect = document.getElementById("mediaHandling");
@@ -94,6 +95,7 @@
     quoteDividerStyleSelect.value = settings.quoteDividerStyle;
     multilineFormatSelect.value = settings.multilineFormat;
     messageSeparatorTextarea.value = settings.messageSeparator || "";
+    appThemeSelect.value = settings.appTheme || "auto";
     autoFileNameCheckbox.checked = Boolean(settings.autoFileName);
     fileNameTemplateInput.value = settings.fileNameTemplate || "";
     mediaHandlingSelect.value = settings.mediaHandling;
@@ -135,6 +137,7 @@
       quoteDividerStyle: quoteDividerStyleSelect.value,
       multilineFormat: multilineFormatSelect.value,
       messageSeparator: messageSeparatorTextarea.value,
+      appTheme: appThemeSelect.value,
       autoFileName: autoFileNameCheckbox.checked,
       fileNameTemplate: fileNameTemplateInput.value,
       saveMode: getSaveModeFromForm(),
@@ -160,6 +163,7 @@
 
   async function loadSettings() {
     const settings = await root.storage.getSettings();
+    root.appTheme.applyThemeDocument(settings.appTheme);
     applySettingsToForm(settings);
     showStatus("Settings loaded.");
   }
@@ -168,11 +172,13 @@
     const next = readSettingsFromForm();
 
     await root.storage.saveSettings(next);
+    root.appTheme.applyThemeDocument(next.appTheme);
     showStatus("Saved automatically.");
   }
 
   async function resetSettings() {
     const settings = await root.storage.resetSettings();
+    root.appTheme.applyThemeDocument(settings.appTheme);
     applySettingsToForm(settings);
     showStatus("Settings reset to defaults.");
   }
@@ -205,6 +211,9 @@
   });
 
   autoFileNameCheckbox.addEventListener("change", updateFileNameFieldState);
+  appThemeSelect.addEventListener("change", () => {
+    root.appTheme.applyThemeDocument(appThemeSelect.value);
+  });
   exportTimeoutSecondsInput.addEventListener("change", () => {
     exportTimeoutSecondsInput.value = String(clampTimeoutSeconds(exportTimeoutSecondsInput.value));
   });

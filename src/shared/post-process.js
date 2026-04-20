@@ -86,7 +86,7 @@
     if (settings.metadataTitle) {
       items.push({
         label: METADATA_LABELS.TITLE,
-        value: rawConversation.title || document.title || "chat"
+        value: rawConversation.title || "chat"
       });
     }
 
@@ -137,7 +137,7 @@
       providerName: provider?.displayName || "Unknown Provider",
       sourceUrl: rawConversation.sourceUrl || location.href,
       folderName: rawConversation.folderName || "",
-      title: rawConversation.title || document.title || "chat",
+      title: rawConversation.title || "chat",
       modelName: rawConversation.modelName || provider?.displayName || "Unknown",
       extractedAtIso,
       settings,

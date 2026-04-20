@@ -92,7 +92,8 @@
     const replacement = conversation.settings?.invalidFileNameReplacement;
 
     return {
-      "<ChatTitle>": compactName(conversation.title || conversation.chatName || "chat", replacement),
+      // Keep <ChatTitle> as a backward-compatible alias of <ChatName> for existing templates.
+      "<ChatTitle>": compactName(conversation.chatName || conversation.title || "chat", replacement),
       "<WindowTitle>": compactName(conversation.title || conversation.chatName || "chat", replacement),
       "<ChatName>": compactName(conversation.chatName || conversation.title || "chat", replacement),
       "<ChatFolder>": compactName(conversation.folderName || "", replacement, ""),
@@ -122,7 +123,7 @@
     const settings = conversation.settings || root.defaults.settings;
     const timeParts = timestampParts(new Date(conversation.extractedAtIso || Date.now()));
     const templateSource = settings.autoFileName
-      ? (settings.fileNameTemplate || "YY.MM.DD <ChatTitle>")
+      ? (settings.fileNameTemplate || "YY.MM.DD <ChatName>")
       : (settings.fileNameTemplate || "chat");
     const keywords = keywordValueMap(conversation);
     const { protectedTemplate, replacements } = protectKeywordMarkers(templateSource, keywords);

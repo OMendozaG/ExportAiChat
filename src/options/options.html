@@ -276,7 +276,7 @@
 
           <label class="field">
             <span>File name template</span>
-            <input id="fileNameTemplate" name="fileNameTemplate" type="text" maxlength="200" placeholder="YY.MM.DD <ChatTitle>">
+            <input id="fileNameTemplate" name="fileNameTemplate" type="text" maxlength="200" placeholder="YY.MM.DD <ChatName>">
           </label>
 
           <label class="field">
@@ -290,7 +290,6 @@
 
           <div class="keyword-box">
             <strong>Keywords</strong>
-            <code>&lt;ChatTitle&gt;</code>
             <code>&lt;WindowTitle&gt;</code>
             <code>&lt;ChatName&gt;</code>
             <code>&lt;ChatFolder&gt;</code>
@@ -299,6 +298,10 @@
             <code>&lt;Date&gt;</code>
             <code>&lt;Time&gt;</code>
           </div>
+
+          <p class="field-help">
+            `&lt;ChatTitle&gt;` remains available as a legacy alias of `&lt;ChatName&gt;` for existing templates.
+          </p>
 
           <div class="keyword-box">
             <strong>Date / Time tokens</strong>

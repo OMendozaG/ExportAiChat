@@ -87,6 +87,7 @@ The settings page supports:
 - Separate metadata toggles for provider, chat name, and message summary
 - `Provider` metadata disabled by default
 - `PC/User` metadata disabled by default
+- `Window Title` metadata disabled by default
 - Metadata `Date` and conversation timeline labels follow the browser/system locale short date format
 - Global metadata toggle to remove the entire metadata section from all export formats
 - Popup provider/chat/message summary with total messages and H/AI counts
@@ -104,7 +105,6 @@ The settings page supports:
 - Credits tab with the public GitHub repository link
 
 Supported file naming keywords:
-- `<ChatTitle>`
 - `<WindowTitle>`
 - `<ChatName>`
 - `<ChatFolder>`
@@ -130,11 +130,11 @@ Supported direct date and time tokens:
 - `ss`
 
 Default file name template:
-- `YY.MM.DD <ChatTitle>`
+- `YY.MM.DD <ChatName>`
 
-`<ChatTitle>` now resolves to the browser window/tab title for the conversation. `<WindowTitle>` is an explicit alias for the same value, while `<ChatName>` stays bound to the provider-visible chat name.
+`<ChatName>` is the provider-visible conversation name. `<WindowTitle>` is the browser window/tab title. `<ChatTitle>` stays supported as a legacy alias of `<ChatName>` for existing templates.
 
-Keyword placeholders are protected before date-token replacement, so single-letter date tokens no longer corrupt `<ChatName>`, `<ChatTitle>`, `<WindowTitle>`, or the other file-name keywords.
+Keyword placeholders are protected before date-token replacement, so single-letter date tokens no longer corrupt `<ChatName>`, `<WindowTitle>`, `<ChatTitle>`, or the other file-name keywords.
 
 ## Privacy Model
 

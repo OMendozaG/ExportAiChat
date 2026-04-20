@@ -7,8 +7,8 @@
   const { ROLES } = root.constants;
 
   const MODEL_NAME_REGEX = /\b(?:ChatGPT\s*)?(?:GPT[-\s]?\d(?:\.\d+)?|GPT[-\s]?4o|GPT[-\s]?4\.1|GPT[-\s]?5|o[1345](?:-mini|-pro)?|4o(?:-mini)?|4\.1(?:-mini)?|gpt-[a-z0-9.-]+)\b/i;
-  const THINKING_LABEL_REGEX = /\b(?:thinking|reasoning|reasoned|thought for|reasoned for)\b/i;
-  const THINKING_SECONDS_REGEX = /(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s)\b/i;
+  const THINKING_LABEL_REGEX = /\b(?:thinking|reasoning|reasoned|thought for|reasoned for|pensando|pens[oó]|pensamiento|razonando|razonamiento|reflexionando|reflexi[oó]n)\b/i;
+  const THINKING_SECONDS_REGEX = /(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s|segundos?|seg)\b/i;
   const SHARE_LABEL_REGEX = /\b(?:share|compartir)\b/i;
   const SOURCES_LABEL_REGEX = /^(?:fuentes?|sources?)$/i;
   const TIME_TEXT_REGEX = /\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|A\.M\.|P\.M\.)?\b/i;
@@ -682,22 +682,55 @@
     }
 
     const candidates = Array.from(
-      messageNode.querySelectorAll('details, summary, button, [role="button"], [data-testid*="think"], [data-testid*="reason"]')
+      messageNode.querySelectorAll(
+        [
+          "summary",
+          "details",
+          "button",
+          '[role="button"]',
+          '[data-testid*="think"]',
+          '[data-testid*="reason"]',
+          '[aria-label*="think" i]',
+          '[aria-label*="reason" i]',
+          '[aria-label*="pens" i]',
+          '[aria-label*="razon" i]',
+          '[title*="think" i]',
+          '[title*="reason" i]',
+          '[title*="pens" i]',
+          '[title*="razon" i]'
+        ].join(", ")
+      )
     );
 
     let indicatorNode = null;
     let indicatorText = "";
+    let bestScore = -1;
 
     for (const candidate of candidates) {
-      const text = normalizeText(candidate.textContent);
-      if (!text || text.length > 180) {
+      const candidateTexts = [
+        candidate.getAttribute("aria-label"),
+        candidate.getAttribute("title"),
+        candidate.getAttribute("data-testid"),
+        candidate.textContent
+      ]
+        .map((value) => normalizeText(value))
+        .filter(Boolean);
+      const matchText = candidateTexts.find((text) => THINKING_LABEL_REGEX.test(text));
+
+      if (!matchText) {
         continue;
       }
 
-      if (THINKING_LABEL_REGEX.test(text)) {
+      const score = (
+        (candidate.matches("summary") ? 3 : 0)
+        + (candidate.matches("details") ? 2 : 0)
+        + (candidate.closest("details") ? 1 : 0)
+      );
+
+      if (score > bestScore) {
+        bestScore = score;
         indicatorNode = candidate;
-        indicatorText = text;
-        break;
+        indicatorText = matchText;
       }
     }
 
@@ -711,7 +744,10 @@
     });
 
     const stripped = normalizeText((sanitized.safeHtml || "").replace(/<[^>]*>/g, " "));
-    const secondsMatch = indicatorText.match(THINKING_SECONDS_REGEX);
+    const secondsMatch = (
+      indicatorText.match(THINKING_SECONDS_REGEX)
+      || normalizeText((sanitized.safeHtml || "").replace(/<[^>]*>/g, " ")).match(THINKING_SECONDS_REGEX)
+    );
 
     if (!stripped && !indicatorText) {
       return null;

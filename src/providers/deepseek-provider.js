@@ -105,6 +105,56 @@
     );
   }
 
+  function isHorizontalActionContainer(element) {
+    if (!element || !isVisibleElement(element)) {
+      return false;
+    }
+
+    const style = window.getComputedStyle(element);
+    const display = normalizeText(style.display).toLowerCase();
+    const flexDirection = normalizeText(style.flexDirection).toLowerCase();
+
+    if (display !== "flex" && display !== "inline-flex") {
+      return false;
+    }
+
+    if (flexDirection.startsWith("column")) {
+      return false;
+    }
+
+    return element.children.length >= 2;
+  }
+
+  function resolveInlineInsertionTarget(referenceNode) {
+    if (!referenceNode) {
+      return {
+        container: null,
+        referenceNode: null
+      };
+    }
+
+    // Walk up to find a real horizontal action row; this avoids attaching
+    // to an inner wrapper that stacks siblings vertically.
+    let current = referenceNode;
+    for (let depth = 0; depth < 5 && current && current.parentElement; depth += 1) {
+      const parent = current.parentElement;
+
+      if (isHorizontalActionContainer(parent)) {
+        return {
+          container: parent,
+          referenceNode: current
+        };
+      }
+
+      current = parent;
+    }
+
+    return {
+      container: referenceNode.parentElement || null,
+      referenceNode
+    };
+  }
+
   function hasShareIconGlyph(element) {
     const pathNodes = Array.from(element.querySelectorAll("svg path[d]"));
 
@@ -404,9 +454,12 @@
         return null;
       }
 
+      const insertionTarget = resolveInlineInsertionTarget(referenceNode);
+
       return {
-        container: referenceNode.parentElement,
-        referenceNode,
+        container: insertionTarget.container,
+        referenceNode: insertionTarget.referenceNode,
+        styleReferenceNode: referenceNode,
         // DeepSeek integration requirement: place export ahead of the share icon.
         preferBefore: true
       };

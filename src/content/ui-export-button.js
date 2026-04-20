@@ -259,6 +259,7 @@
 
     function mount(anchor) {
       const referenceNode = anchor?.referenceNode || null;
+      const styleReferenceNode = anchor?.styleReferenceNode || referenceNode;
       const container = referenceNode?.parentElement || anchor?.container || null;
       const shouldInsertBefore = Boolean(anchor?.preferBefore && referenceNode);
 
@@ -278,7 +279,7 @@
         container.appendChild(rootNode);
       }
 
-      applyReferenceButtonStyle(referenceNode);
+      applyReferenceButtonStyle(styleReferenceNode);
       return true;
     }
 

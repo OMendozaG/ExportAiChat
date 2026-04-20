@@ -24,6 +24,7 @@
   const autosaveConflictActionSelect = document.getElementById("autosaveConflictAction");
   const mediaHandlingSelect = document.getElementById("mediaHandling");
   const companionMhtOnMediaCheckbox = document.getElementById("companionMhtOnMedia");
+  const metadataEnabledCheckbox = document.getElementById("metadataEnabled");
   const metadataExportedAtCheckbox = document.getElementById("metadataExportedAt");
   const metadataDeviceUserCheckbox = document.getElementById("metadataDeviceUser");
   const metadataFolderCheckbox = document.getElementById("metadataFolder");
@@ -86,6 +87,26 @@
     autosaveConflictActionSelect.disabled = getSaveModeFromForm() !== "autosave";
   }
 
+  function updateMetadataFieldState() {
+    const enabled = metadataEnabledCheckbox.checked;
+    [
+      metadataExportedAtCheckbox,
+      metadataDeviceUserCheckbox,
+      metadataFolderCheckbox,
+      metadataTitleCheckbox,
+      metadataModelCheckbox,
+      metadataUrlCheckbox,
+      metadataSummaryProviderCheckbox,
+      metadataSummaryChatNameCheckbox,
+      metadataSummaryMessagesCheckbox,
+      metadataStartTimeCheckbox,
+      metadataEndTimeCheckbox,
+      metadataDurationCheckbox
+    ].forEach((input) => {
+      input.disabled = !enabled;
+    });
+  }
+
   function activateTab(tabId) {
     tabButtons.forEach((button) => {
       button.classList.toggle("is-active", button.dataset.tab === tabId);
@@ -118,6 +139,7 @@
     autosaveConflictActionSelect.value = settings.autosaveConflictAction || "overwrite";
     mediaHandlingSelect.value = settings.mediaHandling;
     companionMhtOnMediaCheckbox.checked = Boolean(settings.companionMhtOnMedia);
+    metadataEnabledCheckbox.checked = Boolean(settings.metadataEnabled ?? true);
     metadataExportedAtCheckbox.checked = Boolean(settings.metadataExportedAt);
     metadataDeviceUserCheckbox.checked = Boolean(settings.metadataDeviceUser);
     metadataFolderCheckbox.checked = Boolean(settings.metadataFolder);
@@ -155,6 +177,7 @@
     updateAiCustomFieldState();
     updateFileNameFieldState();
     updateAutosaveConflictFieldState();
+    updateMetadataFieldState();
   }
 
   function readSettingsFromForm() {
@@ -174,6 +197,7 @@
       autosaveConflictAction: autosaveConflictActionSelect.value,
       mediaHandling: mediaHandlingSelect.value,
       companionMhtOnMedia: companionMhtOnMediaCheckbox.checked,
+      metadataEnabled: metadataEnabledCheckbox.checked,
       metadataExportedAt: metadataExportedAtCheckbox.checked,
       metadataDeviceUser: metadataDeviceUserCheckbox.checked,
       metadataFolder: metadataFolderCheckbox.checked,
@@ -244,6 +268,10 @@
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
+  });
+
+  metadataEnabledCheckbox.addEventListener("change", () => {
+    updateMetadataFieldState();
   });
 
   resetButton.addEventListener("click", () => {

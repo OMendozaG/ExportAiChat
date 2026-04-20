@@ -41,6 +41,7 @@
       appTheme: "auto",
 
       // Shared metadata toggles for TXT, HTML, MHT and PDF exports.
+      metadataEnabled: true,
       metadataExportedAt: true,
       metadataDeviceUser: false,
       metadataFolder: false,

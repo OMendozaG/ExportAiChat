@@ -248,6 +248,10 @@
   }
 
   function buildMetadata(rawConversation, summary, settings, provider, extractedAtIso) {
+    if (!settings.metadataEnabled) {
+      return [];
+    }
+
     const items = [];
     const extractedAt = new Date(extractedAtIso);
 

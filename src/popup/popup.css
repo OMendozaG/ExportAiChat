@@ -132,6 +132,10 @@ h1 {
   font-size: 12px;
 }
 
+.actions button[hidden] {
+  display: none !important;
+}
+
 .icon-button {
   width: 34px;
   height: 34px;

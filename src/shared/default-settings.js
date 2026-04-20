@@ -30,7 +30,7 @@
 
       // Automatic file naming and default naming template.
       autoFileName: true,
-      fileNameTemplate: "YY.MM.DD <ChatTitle>",
+      fileNameTemplate: "YY.MM.DD <ChatName>",
       invalidFileNameReplacement: ".",
 
       // Download mode: autosave directly or ask for location every time.

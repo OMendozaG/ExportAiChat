@@ -124,7 +124,9 @@ Supported direct date and time tokens:
 - `ss`
 
 Default file name template:
-- `YY.MM.DD <ChatTitle>`
+- `YY.MM.DD <ChatName>`
+
+Keyword placeholders are protected before date-token replacement, so single-letter date tokens no longer corrupt `<ChatName>`, `<ChatTitle>`, or the other file-name keywords.
 
 ## Privacy Model
 

@@ -92,8 +92,8 @@
     const replacement = conversation.settings?.invalidFileNameReplacement;
 
     return {
-      "<ChatTitle>": compactName(conversation.title || "chat", replacement),
-      "<ChatName>": compactName(conversation.title || "chat", replacement),
+      "<ChatTitle>": compactName(conversation.title || conversation.chatName || "chat", replacement),
+      "<ChatName>": compactName(conversation.chatName || conversation.title || "chat", replacement),
       "<ChatFolder>": compactName(conversation.folderName || "", replacement, ""),
       "<Model>": compactName(conversation.modelName || "", replacement, ""),
       "<Provider>": compactName(conversation.providerName || "", replacement, ""),
@@ -102,23 +102,42 @@
     };
   }
 
+  function protectKeywordMarkers(template, keywords) {
+    let protectedTemplate = String(template);
+    const replacements = [];
+    let index = 0;
+
+    for (const [keyword, value] of Object.entries(keywords)) {
+      const marker = `[[${index}]]`;
+      protectedTemplate = protectedTemplate.split(keyword).join(marker);
+      replacements.push([marker, value]);
+      index += 1;
+    }
+
+    return { protectedTemplate, replacements };
+  }
+
   function resolveFileBaseName(conversation) {
     const settings = conversation.settings || root.defaults.settings;
     const timeParts = timestampParts(new Date(conversation.extractedAtIso || Date.now()));
     const templateSource = settings.autoFileName
-      ? (settings.fileNameTemplate || "YY.MM.DD <ChatTitle>")
+      ? (settings.fileNameTemplate || "YY.MM.DD <ChatName>")
       : (settings.fileNameTemplate || "chat");
     const keywords = keywordValueMap(conversation);
-    let resolved = applyDateTokens(String(templateSource), timeParts);
+    const { protectedTemplate, replacements } = protectKeywordMarkers(templateSource, keywords);
+    let resolved = applyDateTokens(protectedTemplate, timeParts);
 
-    for (const [keyword, value] of Object.entries(keywords)) {
-      resolved = resolved.split(keyword).join(value);
+    for (const [marker, value] of replacements) {
+      resolved = resolved.split(marker).join(value);
     }
 
     resolved = compactName(resolved, settings.invalidFileNameReplacement);
 
     const normalizedResolved = resolved && resolved.normalize ? resolved.normalize("NFC") : resolved;
-    return normalizedResolved || compactName(conversation.title || "chat", settings.invalidFileNameReplacement);
+    return normalizedResolved || compactName(
+      conversation.chatName || conversation.title || "chat",
+      settings.invalidFileNameReplacement
+    );
   }
 
   function buildFileName(conversation, format) {

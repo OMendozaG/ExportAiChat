@@ -72,10 +72,16 @@
 
   function applyButtonVisibility(settings) {
     popupSettings = settings;
-    exportPdfButton.hidden = !settings.showExportPdf;
-    exportMhtButton.hidden = !settings.showExportMht;
-    exportHtmlButton.hidden = !settings.showExportHtml;
-    exportTxtButton.hidden = !settings.showExportTxt;
+    [
+      [exportPdfButton, settings.showExportPdf],
+      [exportMhtButton, settings.showExportMht],
+      [exportHtmlButton, settings.showExportHtml],
+      [exportTxtButton, settings.showExportTxt]
+    ].forEach(([button, visible]) => {
+      button.hidden = !visible;
+      button.style.display = visible ? "" : "none";
+      button.setAttribute("aria-hidden", visible ? "false" : "true");
+    });
   }
 
   async function queryActiveTab() {

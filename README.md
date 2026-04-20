@@ -56,6 +56,7 @@ The TXT export is designed as a readable chat log:
 - Reset defaults now asks for confirmation before overwriting the current settings
 - Shared Chrome API helpers no longer throw path-based missing-API errors
 - Current builds load a dedicated `extension-bridge.js` wrapper for Chrome APIs, while the legacy helper path is kept as a harmless shim for stale tabs
+- Both the active bridge and the legacy helper path now resolve safe fallbacks instead of surfacing uncaught missing-API errors
 - Local-first export flow with no server-side processing
 
 ## Export Options

@@ -58,70 +58,70 @@
   }
 
   function runtimeSendMessage(message) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const chromeRoot = getChromeRoot();
       if (!chromeRoot?.runtime?.sendMessage) {
-        reject(new Error("Chrome runtime messaging is unavailable in this context."));
+        resolve(null);
         return;
       }
 
       try {
         chromeRoot.runtime.sendMessage(message, (response) => {
           if (chromeRoot.runtime?.lastError) {
-            reject(new Error(chromeRoot.runtime.lastError.message));
+            resolve(null);
             return;
           }
 
-          resolve(response);
+          resolve(response ?? null);
         });
-      } catch (error) {
-        reject(error);
+      } catch (_error) {
+        resolve(null);
       }
     });
   }
 
   function tabsQuery(queryInfo) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const chromeRoot = getChromeRoot();
       if (!chromeRoot?.tabs?.query) {
-        reject(new Error("Chrome tabs query is unavailable in this context."));
+        resolve([]);
         return;
       }
 
       try {
         chromeRoot.tabs.query(queryInfo, (tabs) => {
           if (chromeRoot.runtime?.lastError) {
-            reject(new Error(chromeRoot.runtime.lastError.message));
+            resolve([]);
             return;
           }
 
-          resolve(tabs || []);
+          resolve(Array.isArray(tabs) ? tabs : []);
         });
-      } catch (error) {
-        reject(error);
+      } catch (_error) {
+        resolve([]);
       }
     });
   }
 
   function tabsSendMessage(tabId, message) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const chromeRoot = getChromeRoot();
       if (!chromeRoot?.tabs?.sendMessage) {
-        reject(new Error("Chrome tabs messaging is unavailable in this context."));
+        resolve(null);
         return;
       }
 
       try {
         chromeRoot.tabs.sendMessage(tabId, message, (response) => {
           if (chromeRoot.runtime?.lastError) {
-            reject(new Error(chromeRoot.runtime.lastError.message));
+            resolve(null);
             return;
           }
 
-          resolve(response);
+          resolve(response ?? null);
         });
-      } catch (error) {
-        reject(error);
+      } catch (_error) {
+        resolve(null);
       }
     });
   }

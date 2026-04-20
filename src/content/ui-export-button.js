@@ -54,6 +54,7 @@
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
+  position: relative;
 }
 #${UI_ROOT_ID} .ceai-inline-btn .ceai-inline-btn-label {
   line-height: 1;
@@ -88,21 +89,29 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  transition: opacity 120ms ease;
 }
 #${UI_ROOT_ID} .ceai-inline-btn:hover {
   filter: saturate(1.05) brightness(1.05);
 }
 #${UI_ROOT_ID} .ceai-inline-btn .ceai-inline-btn-spinner {
-  display: none;
+  display: block;
   width: 15px;
   height: 15px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
 }
 #${UI_ROOT_ID} .ceai-inline-btn.is-loading .ceai-inline-btn-spinner {
-  display: block;
+  opacity: 1;
   animation: ceai-spin 0.85s linear infinite;
 }
 #${UI_ROOT_ID} .ceai-inline-btn.is-loading .ceai-inline-btn-label {
-  opacity: 0.7;
+  opacity: 0;
 }
 #${UI_ROOT_ID} .ceai-inline-btn[disabled] {
   opacity: 0.55;
@@ -407,6 +416,7 @@
     function setLoading(loading) {
       isLoading = Boolean(loading);
       mainButton.classList.toggle("is-loading", isLoading);
+      mainButton.setAttribute("aria-busy", isLoading ? "true" : "false");
       mainButton.disabled = isLoading;
       formatButtons.forEach((button) => {
         button.disabled = isLoading || button.hidden;

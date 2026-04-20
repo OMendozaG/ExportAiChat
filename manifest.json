@@ -2,12 +2,12 @@
   "manifest_version": 3,
   "name": "Chat Export AI",
   "description": "Export AI chats to TXT, HTML, MHT and PDF with a modular provider architecture.",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "icons": {
-    "16": "src/assets/robot-download.svg",
-    "32": "src/assets/robot-download.svg",
-    "48": "src/assets/robot-download.svg",
-    "128": "src/assets/robot-download.svg"
+    "16": "src/assets/robot-download-16.png",
+    "32": "src/assets/robot-download-32.png",
+    "48": "src/assets/robot-download-48.png",
+    "128": "src/assets/robot-download-128.png"
   },
   "permissions": [
     "storage",
@@ -49,10 +49,10 @@
   "action": {
     "default_title": "Chat Export AI",
     "default_icon": {
-      "16": "src/assets/robot-download.svg",
-      "32": "src/assets/robot-download.svg",
-      "48": "src/assets/robot-download.svg",
-      "128": "src/assets/robot-download.svg"
+      "16": "src/assets/robot-download-16.png",
+      "32": "src/assets/robot-download-32.png",
+      "48": "src/assets/robot-download-48.png",
+      "128": "src/assets/robot-download-128.png"
     },
     "default_popup": "src/popup/popup.html"
   },

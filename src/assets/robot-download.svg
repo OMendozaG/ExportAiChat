@@ -1,25 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Chat Export AI icon">
   <defs>
-    <linearGradient id="robotGradient" x1="20" y1="16" x2="108" y2="112" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#38bdf8"/>
-      <stop offset="55%" stop-color="#2563eb"/>
-      <stop offset="100%" stop-color="#0f766e"/>
+    <linearGradient id="rainbowDown" x1="64" y1="6" x2="64" y2="122" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ff4d6d"/>
+      <stop offset="18%" stop-color="#ff8a00"/>
+      <stop offset="36%" stop-color="#ffd60a"/>
+      <stop offset="54%" stop-color="#2fd46b"/>
+      <stop offset="72%" stop-color="#34c4ff"/>
+      <stop offset="88%" stop-color="#5b6cff"/>
+      <stop offset="100%" stop-color="#c45bff"/>
     </linearGradient>
-    <linearGradient id="glassGradient" x1="38" y1="28" x2="90" y2="72" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#f8fbff" stop-opacity="0.98"/>
-      <stop offset="100%" stop-color="#cfe9ff" stop-opacity="0.9"/>
+    <linearGradient id="visorShine" x1="34" y1="34" x2="94" y2="62" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.34"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.08"/>
     </linearGradient>
   </defs>
 
-  <path d="M43 18c0-6.1 4.9-11 11-11h20c6.1 0 11 4.9 11 11v6H43v-6Z" fill="url(#robotGradient)"/>
-  <rect x="28" y="24" width="72" height="54" rx="20" fill="url(#robotGradient)"/>
-  <rect x="36" y="31" width="56" height="24" rx="12" fill="url(#glassGradient)"/>
-  <circle cx="53" cy="43" r="6" fill="#0f172a"/>
-  <circle cx="75" cy="43" r="6" fill="#0f172a"/>
-  <path d="M52 63c4.3 4.1 19.7 4.1 24 0" fill="none" stroke="#eaf6ff" stroke-linecap="round" stroke-width="5"/>
-  <rect x="24" y="82" width="80" height="26" rx="13" fill="url(#robotGradient)"/>
-  <path d="M41 95h46" fill="none" stroke="#eff8ff" stroke-linecap="round" stroke-width="5"/>
-  <path d="M64 47v44" fill="none" stroke="#ffffff" stroke-linecap="round" stroke-width="10"/>
-  <path d="M47 76 64 93 81 76" fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="10"/>
-  <path d="M50 19h28" fill="none" stroke="#dbf4ff" stroke-linecap="round" stroke-width="4"/>
+  <path d="M62 10h4v13h-4z" fill="url(#rainbowDown)"/>
+  <circle cx="64" cy="7" r="5" fill="url(#rainbowDown)"/>
+  <circle cx="21" cy="48" r="7" fill="url(#rainbowDown)"/>
+  <circle cx="107" cy="48" r="7" fill="url(#rainbowDown)"/>
+  <rect x="24" y="20" width="80" height="56" rx="19" fill="url(#rainbowDown)"/>
+  <rect x="31" y="31" width="66" height="20" rx="10" fill="#172033" fill-opacity="0.86"/>
+  <rect x="31" y="31" width="66" height="20" rx="10" fill="url(#visorShine)"/>
+  <circle cx="51" cy="41" r="5" fill="#ffffff"/>
+  <circle cx="77" cy="41" r="5" fill="#ffffff"/>
+  <rect x="50" y="58" width="28" height="5" rx="2.5" fill="#ffffff" fill-opacity="0.95"/>
+  <rect x="36" y="78" width="56" height="12" rx="6" fill="url(#rainbowDown)"/>
+  <path d="M58 55h12v27h14L64 106 44 82h14z" fill="url(#rainbowDown)" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/>
 </svg>

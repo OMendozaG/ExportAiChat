@@ -50,6 +50,9 @@
       // Include visible reasoning/thinking blocks when the provider exposes them.
       includeThinking: true,
 
+      // Include the visible thinking duration when the provider exposes it.
+      includeThinkingDuration: true,
+
       // Include the message time when the provider can extract it reliably.
       includeMessageTime: false,
 

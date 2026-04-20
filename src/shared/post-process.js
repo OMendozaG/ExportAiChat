@@ -25,7 +25,7 @@
     return `${platform} / ${browser}`;
   }
 
-  function resolveSpeakerLabel(message, names) {
+  function resolveSpeakerLabel(message, names, settings) {
     let baseLabel = "Unknown";
 
     if (message.role === ROLES.HUMAN) {
@@ -40,7 +40,7 @@
       return baseLabel;
     }
 
-    if (message.thinkingSeconds) {
+    if (settings.includeThinkingDuration && message.thinkingSeconds) {
       return `${baseLabel} (Thinking+${message.thinkingSeconds}s)`;
     }
 
@@ -121,7 +121,7 @@
         return {
           id: message.id || `msg-${index + 1}`,
           role: message.role || ROLES.UNKNOWN,
-          speakerLabel: resolveSpeakerLabel(message, names),
+          speakerLabel: resolveSpeakerLabel(message, names, settings),
           timeLabel: resolveMessageTimeLabel(message, settings),
           safeHtml,
           text,

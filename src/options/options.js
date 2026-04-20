@@ -30,6 +30,7 @@
   const metadataModelCheckbox = document.getElementById("metadataModel");
   const metadataUrlCheckbox = document.getElementById("metadataUrl");
   const includeThinkingCheckbox = document.getElementById("includeThinking");
+  const includeThinkingDurationCheckbox = document.getElementById("includeThinkingDuration");
   const includeMessageTimeCheckbox = document.getElementById("includeMessageTime");
   const showHeaderExportButtonChatgptCheckbox = document.getElementById("showHeaderExportButtonChatgpt");
   const exportTimeoutSecondsInput = document.getElementById("exportTimeoutSeconds");
@@ -109,6 +110,7 @@
     metadataModelCheckbox.checked = Boolean(settings.metadataModel);
     metadataUrlCheckbox.checked = Boolean(settings.metadataUrl);
     includeThinkingCheckbox.checked = Boolean(settings.includeThinking);
+    includeThinkingDurationCheckbox.checked = Boolean(settings.includeThinkingDuration);
     includeMessageTimeCheckbox.checked = Boolean(settings.includeMessageTime);
     showHeaderExportButtonChatgptCheckbox.checked = Boolean(
       settings.showHeaderExportButtonChatgpt ?? settings.showHeaderExportButton
@@ -153,6 +155,7 @@
       metadataModel: metadataModelCheckbox.checked,
       metadataUrl: metadataUrlCheckbox.checked,
       includeThinking: includeThinkingCheckbox.checked,
+      includeThinkingDuration: includeThinkingDurationCheckbox.checked,
       includeMessageTime: includeMessageTimeCheckbox.checked,
       showHeaderExportButton: showHeaderExportButtonChatgptCheckbox.checked,
       showHeaderExportButtonChatgpt: showHeaderExportButtonChatgptCheckbox.checked,

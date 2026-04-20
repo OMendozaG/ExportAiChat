@@ -10,6 +10,7 @@
   const THINKING_SECONDS_REGEX = /(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s|segundos?|seg)\b/i;
   const THINKING_DURATION_LABEL_REGEX = /(?:thought|thinking|reasoning|pensado|pensando|pensamiento|razonando|razonamiento)(?:\s*(?:for|durante))?\s+([0-9hms.: ]+)/i;
   const THINKING_LABEL_REGEX = /\b(?:pens[oó]\s+durante|thinking|reasoning)\b/i;
+  const THINKING_ONLY_TEXT_REGEX = /^(?:pens[oó]\s+por\s+.+|thought(?:\s+for)?\s+.+|thinking(?:\s+for)?\s+.+|reasoning(?:\s+for)?\s+.+)$/i;
   const SHARE_LABEL_REGEX = /\b(?:share|compartir)\b/i;
   const SHARE_ICON_PATH_MARKERS = [
     // DeepSeek "share" glyph markers captured from the provided HTML logs.
@@ -289,6 +290,19 @@
       thinkingLabel: thinkingLabel || "",
       thinkingDurationLabel: durationMatch ? normalizeText(durationMatch[1]) : ""
     };
+  }
+
+  function isThinkingOnlyAssistantText(text) {
+    const normalized = normalizeText(text);
+    if (!normalized) {
+      return false;
+    }
+
+    if (normalized.length > 120) {
+      return false;
+    }
+
+    return THINKING_ONLY_TEXT_REGEX.test(normalized);
   }
 
   function dedupeByLabelAndUrl(items) {
@@ -622,6 +636,12 @@
           ? extractAssistantReferences(turnNode, contentRoot)
           : [];
         const textContent = normalizeText((sanitized.safeHtml || "").replace(/<[^>]*>/g, " "));
+
+        // Avoid generating a separate assistant message for the thinking label
+        // when DeepSeek exposes it outside the answer body.
+        if (isThinkingOnlyAssistantText(textContent) && !sanitized.hasMedia && !references.length) {
+          continue;
+        }
 
         if (!textContent && !references.length) {
           continue;

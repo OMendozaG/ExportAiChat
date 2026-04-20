@@ -301,7 +301,10 @@
   function buildTextMessageBlock(message, settings, conversation) {
     const contentLines = [];
     const messageHeader = resolveTxtMessageHeader(message, settings, conversation);
-    const shouldUseSpeakerPrefix = !normalizeTemplateValue(messageHeader).trim();
+    const hasBodyText = Boolean(String(message.text || "").trim());
+    // Attachment-only blocks should still keep the speaker prefix, even when
+    // a TXT role header template is configured.
+    const shouldUseSpeakerPrefix = !normalizeTemplateValue(messageHeader).trim() || !hasBodyText;
     const prefix = shouldUseSpeakerPrefix ? rolePrefix(message, settings) : "";
     const thinkingNoteLines = String(message.thinkingNote || "")
       .split("\n")

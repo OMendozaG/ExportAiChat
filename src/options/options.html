@@ -22,7 +22,7 @@
         <button type="button" class="tab-button" data-tab="counters">Counters</button>
         <button type="button" class="tab-button" data-tab="integration">Integration</button>
         <button type="button" class="tab-button" data-tab="credits">Credits</button>
-        <button id="resetButton" type="button" class="secondary tabs-reset-button">Reset defaults</button>
+        <button id="resetButton" type="button" class="tab-button tab-button--danger tabs-reset-button">Reset defaults</button>
       </nav>
 
       <section class="tab-panel is-active" data-panel="general">
@@ -340,7 +340,7 @@
 
           <label class="field">
             <span>File name template</span>
-            <input id="fileNameTemplate" name="fileNameTemplate" type="text" maxlength="200" placeholder="YY.MM-<ChatNameCount*3> <ChatName>">
+            <input id="fileNameTemplate" name="fileNameTemplate" type="text" maxlength="200" placeholder="<ChatNameCount*3>. <ChatName>">
           </label>
 
           <label class="field">
@@ -405,7 +405,7 @@
             <code>&lt;ChatNameCount*3&gt;</code>
           </div>
           <p class="field-help">
-            Default template: <code>YY.MM-&lt;ChatNameCount*3&gt; &lt;ChatName&gt;</code>
+            Default template: <code>&lt;ChatNameCount*3&gt;. &lt;ChatName&gt;</code>
           </p>
         </section>
 

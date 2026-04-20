@@ -188,7 +188,11 @@
   }
 
   function isChatPage() {
-    return Boolean(document.querySelector("[data-virtual-list-item-key]"));
+    return Boolean(
+      document.querySelector(
+        "[data-virtual-list-item-key], .ds-virtual-list, textarea[placeholder*='DeepSeek' i]"
+      )
+    );
   }
 
   function extractWindowTitle() {
@@ -359,11 +363,215 @@
     return markdownNodes[markdownNodes.length - 1] || turnNode;
   }
 
-  function pickUserContentRoot(turnNode) {
-    return turnNode.querySelector(".fbb737a4") || turnNode;
+  function hasAssistantRenderableContent(turnNode) {
+    return Boolean(
+      turnNode.querySelector(
+        [
+          ".ds-markdown",
+          ".ds-think-content",
+          ".ds-markdown-image",
+          "img",
+          "video",
+          "canvas",
+          ".katex",
+          ".ds-markdown-code-block"
+        ].join(", ")
+      )
+    );
   }
 
-  function extractConversation(settings) {
+  function isAssistantTurn(turnNode) {
+    if (!turnNode) {
+      return false;
+    }
+
+    if (turnNode.classList?.contains("_4f9bf79") || turnNode.querySelector("._4f9bf79")) {
+      return true;
+    }
+
+    return hasAssistantRenderableContent(turnNode) && !turnNode.querySelector(".fbb737a4");
+  }
+
+  function pickUserContentRoot(turnNode) {
+    return turnNode.querySelector(".fbb737a4, [class*='fbb737a4'], ._72b6158") || turnNode;
+  }
+
+  function hasUserRenderableContent(turnNode) {
+    const userRoot = pickUserContentRoot(turnNode);
+    if (!userRoot) {
+      return false;
+    }
+
+    const text = normalizeText(userRoot.textContent);
+    return Boolean(text || userRoot.querySelector("img, video, audio, canvas"));
+  }
+
+  function isUserTurn(turnNode) {
+    if (!turnNode) {
+      return false;
+    }
+
+    if (turnNode.classList?.contains("_9663006") || turnNode.querySelector("._9663006")) {
+      return true;
+    }
+
+    return hasUserRenderableContent(turnNode) && !turnNode.querySelector(".ds-markdown");
+  }
+
+  function extractTurnOrder(turnNode, fallbackIndex) {
+    const key = normalizeText(turnNode.getAttribute("data-virtual-list-item-key"));
+    const numericFromKey = Number(key);
+    if (Number.isFinite(numericFromKey)) {
+      return numericFromKey;
+    }
+
+    return fallbackIndex + 1;
+  }
+
+  function entryWeight(turnNode) {
+    if (!turnNode) {
+      return 0;
+    }
+
+    const textWeight = normalizeText(turnNode.textContent).length;
+    const mediaWeight = turnNode.querySelectorAll("img, video, audio, canvas").length * 30;
+    const richWeight = turnNode.querySelectorAll("p, li, pre, blockquote, table").length * 8;
+    return textWeight + mediaWeight + richWeight;
+  }
+
+  function readVisibleTurnEntries() {
+    const nodes = Array.from(document.querySelectorAll("[data-virtual-list-item-key]"));
+    return nodes.map((node, index) => {
+      const key = normalizeText(node.getAttribute("data-virtual-list-item-key")) || `idx-${index + 1}`;
+      return {
+        key,
+        order: extractTurnOrder(node, index),
+        weight: entryWeight(node),
+        node: node.cloneNode(true)
+      };
+    });
+  }
+
+  function getConversationScrollContainer() {
+    const probe = document.querySelector("[data-virtual-list-item-key]");
+    let current = probe?.parentElement || null;
+
+    while (current) {
+      const style = window.getComputedStyle(current);
+      const overflowY = String(style.overflowY || "").toLowerCase();
+      const canScroll = (overflowY.includes("auto") || overflowY.includes("scroll") || overflowY.includes("overlay"))
+        && current.scrollHeight > current.clientHeight + 60;
+
+      if (canScroll) {
+        return current;
+      }
+
+      current = current.parentElement;
+    }
+
+    const scrollingRoot = document.scrollingElement || document.documentElement;
+    return scrollingRoot instanceof HTMLElement ? scrollingRoot : null;
+  }
+
+  function scrollTopOf(container) {
+    return Number(container?.scrollTop || 0);
+  }
+
+  function scrollHeightOf(container) {
+    return Number(container?.scrollHeight || 0);
+  }
+
+  function clientHeightOf(container) {
+    return Number(container?.clientHeight || window.innerHeight || 0);
+  }
+
+  function setScrollTop(container, value) {
+    if (!container) {
+      return;
+    }
+
+    container.scrollTop = Number(value || 0);
+  }
+
+  function waitForRender(ms = 84) {
+    return new Promise((resolve) => {
+      window.setTimeout(() => {
+        window.requestAnimationFrame(() => resolve());
+      }, ms);
+    });
+  }
+
+  async function collectTurnEntries(options = {}) {
+    const visibleEntries = readVisibleTurnEntries();
+
+    if (
+      options.hydrateVirtualized === false
+      || visibleEntries.length <= 0
+    ) {
+      return visibleEntries;
+    }
+
+    const scrollContainer = getConversationScrollContainer();
+    if (!scrollContainer) {
+      return visibleEntries;
+    }
+
+    const originalTop = scrollTopOf(scrollContainer);
+    const collectedByKey = new Map();
+    const mergeEntries = (entries) => {
+      entries.forEach((entry) => {
+        const key = String(entry.key || "");
+        if (!key) {
+          return;
+        }
+
+        const existing = collectedByKey.get(key);
+        if (!existing || entry.weight > existing.weight) {
+          collectedByKey.set(key, entry);
+        }
+      });
+    };
+
+    try {
+      mergeEntries(visibleEntries);
+      setScrollTop(scrollContainer, scrollHeightOf(scrollContainer));
+      await waitForRender();
+      mergeEntries(readVisibleTurnEntries());
+
+      const stepSize = Math.max(420, Math.round(clientHeightOf(scrollContainer) * 0.78));
+      let stagnantPasses = 0;
+      let previousCount = collectedByKey.size;
+
+      for (let guard = 0; guard < 120; guard += 1) {
+        const currentTop = scrollTopOf(scrollContainer);
+        if (currentTop <= 0) {
+          break;
+        }
+
+        setScrollTop(scrollContainer, Math.max(0, currentTop - stepSize));
+        await waitForRender();
+        mergeEntries(readVisibleTurnEntries());
+
+        if (collectedByKey.size === previousCount) {
+          stagnantPasses += 1;
+          if (stagnantPasses >= 5) {
+            break;
+          }
+        } else {
+          previousCount = collectedByKey.size;
+          stagnantPasses = 0;
+        }
+      }
+
+      const merged = Array.from(collectedByKey.values())
+        .sort((left, right) => left.order - right.order);
+      return merged.length ? merged : visibleEntries;
+    } finally {
+      setScrollTop(scrollContainer, originalTop);
+    }
+  }
+
+  async function extractConversation(settings) {
     const shouldExtractAssistantReferences = Boolean(
       settings.showAssistantUserAttachmentReferences
       || settings.showAssistantGeneratedAttachmentReferences
@@ -371,20 +579,22 @@
       || settings.showAssistantReferences
     );
 
-    const turnNodes = Array.from(document.querySelectorAll("[data-virtual-list-item-key]"));
+    const turnEntries = await collectTurnEntries({ hydrateVirtualized: true });
     const messages = [];
 
-    for (let index = 0; index < turnNodes.length; index += 1) {
-      const turnNode = turnNodes[index];
+    for (let index = 0; index < turnEntries.length; index += 1) {
+      const turnNode = turnEntries[index].node;
       const messageId = `deepseek-${index + 1}`;
-      const hasAssistantContent = Boolean(turnNode.querySelector(".ds-markdown"));
-      const hasUserContent = Boolean(turnNode.querySelector(".fbb737a4"));
+      const hasAssistantContent = hasAssistantRenderableContent(turnNode);
+      const hasUserContent = hasUserRenderableContent(turnNode);
+      const assistantTurn = isAssistantTurn(turnNode);
+      const userTurn = isUserTurn(turnNode);
 
       if (!hasAssistantContent && !hasUserContent) {
         continue;
       }
 
-      if (hasAssistantContent) {
+      if (assistantTurn || (hasAssistantContent && !userTurn)) {
         const thinkingMessage = buildThinkingMessage(turnNode, settings, messageId);
         if (thinkingMessage) {
           messages.push(thinkingMessage);
@@ -421,7 +631,7 @@
       });
       const textContent = normalizeText((sanitized.safeHtml || "").replace(/<[^>]*>/g, " "));
 
-      if (!textContent) {
+      if (!textContent && !sanitized.hasMedia) {
         continue;
       }
 
@@ -450,7 +660,9 @@
 
   function getLiveStatus() {
     const turnNodes = Array.from(document.querySelectorAll("[data-virtual-list-item-key]"));
-    const conversationTurns = turnNodes.filter((turnNode) => turnNode.querySelector(".ds-markdown, .fbb737a4"));
+    const conversationTurns = turnNodes.filter((turnNode) => (
+      hasAssistantRenderableContent(turnNode) || hasUserRenderableContent(turnNode)
+    ));
 
     return {
       isChatPage: isChatPage(),

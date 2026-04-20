@@ -72,7 +72,7 @@ Numeric naming keywords must support zero-left padding via `*N`
 
 `<ChatName>` should stay bound to the provider-visible conversation name.
 
-Default file naming should use `YY.MM-<ChatNameCount*3> <ChatName>`.
+Default file naming should use `<ChatNameCount*3>. <ChatName>`.
 
 ## Metadata Rules
 Metadata must be configurable per field and reusable across TXT, HTML, MHT, and PDF exports.

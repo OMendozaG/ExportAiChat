@@ -127,7 +127,7 @@
   function updateFileNameFieldState() {
     const isAutomatic = autoFileNameCheckbox.checked;
     fileNameTemplateInput.disabled = false;
-    fileNameTemplateInput.placeholder = isAutomatic ? "YY.MM-<ChatNameCount*3> <ChatName>" : "chat";
+    fileNameTemplateInput.placeholder = isAutomatic ? "<ChatNameCount*3>. <ChatName>" : "chat";
   }
 
   function updateDownloadModeFieldState() {
@@ -226,16 +226,12 @@
 
     counterMapBodyNode.innerHTML = entries.map((entry) => {
       const safeMappingKey = escapeHtml(entry.key || "");
-      const safeFolder = escapeHtml(entry.folderName || "");
       const safeChatNameInputValue = escapeAttribute(entry.chatName || entry.chatPath || "");
-      const folderLine = safeFolder
-        ? `<div class="counter-chat-folder">${safeFolder}</div>`
-        : "";
       return [
         "<tr>",
         `  <td class="counter-id-cell"><input class="counter-id-input" type="number" min="1" step="1" value="${escapeHtml(entry.count)}" data-counter-key="${safeMappingKey}" aria-label="ChatNameCount id"></td>`,
         `  <td class="counter-provider-cell"><select class="counter-provider-select" data-counter-key="${safeMappingKey}" aria-label="Provider">${providerOptionsMarkup(entry.providerName)}</select></td>`,
-        `  <td class="counter-chat-cell"><input class="counter-chat-input" type="text" maxlength="220" value="${safeChatNameInputValue}" data-counter-key="${safeMappingKey}" aria-label="Chat name">${folderLine}</td>`,
+        `  <td class="counter-chat-cell"><input class="counter-chat-input" type="text" maxlength="220" value="${safeChatNameInputValue}" data-counter-key="${safeMappingKey}" aria-label="Chat name"></td>`,
         `  <td class="counter-action-cell"><button type="button" class="counter-inline-delete" data-counter-key="${safeMappingKey}" aria-label="Delete ChatNameCount association">Delete</button></td>`,
         "</tr>"
       ].join("");
@@ -475,10 +471,6 @@
     root.appTheme.applyThemeDocument(settings.appTheme);
     root.buttonSystem.ensureDocumentStyles(document);
     applySettingsToForm(settings);
-    root.buttonSystem.decorateButton(resetButton, {
-      label: "Reset defaults",
-      secondary: true
-    });
     if (applyCounterValuesButton) {
       root.buttonSystem.decorateButton(applyCounterValuesButton, {
         label: "Apply counter values"

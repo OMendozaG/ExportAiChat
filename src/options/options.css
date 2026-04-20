@@ -14,9 +14,6 @@
   --tab-active-bg: #4f8cff;
   --tab-active-border: #2f6ff2;
   --tab-active-text: #ffffff;
-  --gear-bg: #ffffff;
-  --gear-border: #d6dfec;
-  --gear-text: #1f2937;
   --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6.25 8 10l4-3.75' fill='none' stroke='%2364758b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8'/%3E%3C/svg%3E");
 }
 
@@ -36,9 +33,6 @@
     --tab-active-bg: #67a2ff;
     --tab-active-border: #4d8cf0;
     --tab-active-text: #08111f;
-    --gear-bg: #162131;
-    --gear-border: #2a3d57;
-    --gear-text: #e5edf8;
     --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6.25 8 10l4-3.75' fill='none' stroke='%23c6d4e6' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8'/%3E%3C/svg%3E");
   }
 }
@@ -58,9 +52,6 @@
   --tab-active-bg: #67a2ff;
   --tab-active-border: #4d8cf0;
   --tab-active-text: #08111f;
-  --gear-bg: #162131;
-  --gear-border: #2a3d57;
-  --gear-text: #e5edf8;
   --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6.25 8 10l4-3.75' fill='none' stroke='%23c6d4e6' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8'/%3E%3C/svg%3E");
 }
 
@@ -132,6 +123,34 @@ body {
   background: var(--tab-active-bg);
   border-color: var(--tab-active-border);
   color: var(--tab-active-text);
+}
+
+.tab-button--danger {
+  border-color: #ef4444;
+  color: #b91c1c;
+  background: #fff1f2;
+}
+
+.tab-button--danger:hover {
+  background: #ffe4e6;
+}
+
+.tab-button--danger:active {
+  background: #fecdd3;
+}
+
+:root[data-resolved-theme="dark"] .tab-button--danger {
+  border-color: #f87171;
+  color: #fecaca;
+  background: #3f111a;
+}
+
+:root[data-resolved-theme="dark"] .tab-button--danger:hover {
+  background: #4e1521;
+}
+
+:root[data-resolved-theme="dark"] .tab-button--danger:active {
+  background: #621b29;
 }
 
 .tabs-reset-button {
@@ -299,36 +318,28 @@ body {
 
 .status {
   margin: 0;
-  min-height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  font-size: 0.82rem;
+  min-height: 20px;
+  display: inline-block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 0.9rem;
   font-weight: 700;
-  text-align: center;
-  max-width: 340px;
-  line-height: 1.15;
+  text-align: right;
+  max-width: 360px;
+  line-height: 1.2;
 }
 
 .status.status--info {
-  color: #0f3f8a;
-  border-color: #6ea2ff;
-  background: #ddebff;
+  color: #2563eb;
 }
 
 .status.status--success {
-  color: #0a5f36;
-  border-color: #43c57d;
-  background: #d8fbe8;
+  color: #0f9f58;
 }
 
 .status.status--error {
-  color: #8a1328;
-  border-color: #ff6d8f;
-  background: #ffe0e8;
+  color: #dc2626;
 }
 
 .counter-actions {
@@ -436,16 +447,15 @@ body {
 }
 
 .counter-chat-input {
-  width: 100%;
-  max-width: 280px;
+  width: calc(100% - 10px);
+  max-width: none;
   border: 1px solid var(--field-border);
   border-radius: 8px;
   padding: 6px 8px;
   background: var(--field-bg);
   color: var(--text);
   font-size: 0.88rem;
-  margin-right: 12px;
-  margin-bottom: 6px;
+  margin-right: 10px;
 }
 
 .counter-chat-name {

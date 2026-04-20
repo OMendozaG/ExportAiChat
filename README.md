@@ -194,7 +194,7 @@ Supported direct date and time tokens:
 - `ss`
 
 Default file name template:
-- `YY.MM-<ChatNameCount*3> <ChatName>`
+- `<ChatNameCount*3>. <ChatName>`
 
 `<ChatName>` is the provider-visible conversation name. `<WindowTitle>` is the browser window/tab title.
 

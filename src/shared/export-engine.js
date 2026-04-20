@@ -174,7 +174,7 @@
     const timeParts = timestampParts(new Date(conversation.extractedAtIso || Date.now()));
     const counters = resolveCounterSnapshot(conversation);
     const templateSource = settings.autoFileName
-      ? (settings.fileNameTemplate || "YY.MM-<ChatNameCount*3> <ChatName>")
+      ? (settings.fileNameTemplate || "<ChatNameCount*3>. <ChatName>")
       : (settings.fileNameTemplate || "chat");
     const keywords = keywordValueMap(conversation, counters);
     const { protectedTemplate, replacements } = protectKeywordMarkers(templateSource, keywords);

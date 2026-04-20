@@ -78,7 +78,7 @@
   --ceai-menu-button-border-strong: #a9c6fd;
   --ceai-menu-button-base: #86a9ea;
   --ceai-menu-button-glow: rgba(120, 166, 255, 0.42);
-  --ceai-menu-button-text: #14325f;
+  --ceai-menu-button-text: #0d2342;
   position: fixed;
   top: 0;
   left: 0;
@@ -103,7 +103,7 @@
   --ceai-menu-button-border-strong: #d5e4ff;
   --ceai-menu-button-base: #6c8fd1;
   --ceai-menu-button-glow: rgba(195, 219, 255, 0.34);
-  --ceai-menu-button-text: #10233f;
+  --ceai-menu-button-text: #0b1830;
 }
 #${MENU_ID}.is-open {
   display: flex;

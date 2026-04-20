@@ -38,6 +38,7 @@ The TXT export is designed as a readable chat log:
 - Theme-aware raised export buttons in the popup and inline export menu
 - Refined line-art robot export icon with transparent background assets
 - Unicode-friendly file naming and a blank-line default TXT separator
+- Higher-contrast export button labels for better readability
 - Local-first export flow with no server-side processing
 
 ## Export Options

@@ -35,6 +35,7 @@
 
       // Download mode: autosave directly or ask for location every time.
       saveMode: "autosave",
+      autosaveConflictAction: "overwrite",
 
       // App chrome theme: auto follows the browser/system preference.
       appTheme: "auto",
@@ -46,7 +47,9 @@
       metadataTitle: true,
       metadataModel: true,
       metadataUrl: false,
-      metadataConversationSummary: true,
+      metadataSummaryProvider: true,
+      metadataSummaryChatName: true,
+      metadataSummaryMessages: true,
       metadataStartTime: false,
       metadataEndTime: false,
       metadataDuration: false,
@@ -108,6 +111,20 @@
       incoming.showHeaderExportButton !== undefined
     ) {
       next.showHeaderExportButtonChatgpt = Boolean(incoming.showHeaderExportButton);
+    }
+
+    if (incoming.metadataConversationSummary !== undefined) {
+      if (incoming.metadataSummaryProvider === undefined) {
+        next.metadataSummaryProvider = Boolean(incoming.metadataConversationSummary);
+      }
+
+      if (incoming.metadataSummaryChatName === undefined) {
+        next.metadataSummaryChatName = Boolean(incoming.metadataConversationSummary);
+      }
+
+      if (incoming.metadataSummaryMessages === undefined) {
+        next.metadataSummaryMessages = Boolean(incoming.metadataConversationSummary);
+      }
     }
 
     const numericTimeout = Number(next.exportTimeoutSeconds);

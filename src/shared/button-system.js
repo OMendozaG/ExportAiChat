@@ -51,7 +51,7 @@
 }
 .ceai-button:hover:not([disabled]) {
   background: var(--ceai-btn-bg-hover);
-  filter: saturate(1.03) brightness(1.02);
+  filter: saturate(1.05) brightness(1.03);
 }
 .ceai-button:active:not([disabled]) {
   background: var(--ceai-btn-bg-active);
@@ -81,10 +81,9 @@
   width: 100%;
 }
 .ceai-button__stack {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  justify-items: center;
+  align-content: center;
   gap: 3px;
   width: 100%;
 }
@@ -106,7 +105,8 @@
 }
 .ceai-button__label {
   display: block;
-  line-height: 1;
+  line-height: 1.05;
+  text-align: center;
 }
 .ceai-button--stacked .ceai-button__label {
   letter-spacing: 0.02em;

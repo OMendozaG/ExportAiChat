@@ -59,14 +59,24 @@
     return rawValue.normalize ? rawValue.normalize("NFC") : rawValue;
   }
 
-  function downloadByUrl(url, filename, saveAs = false) {
+  function normalizeConflictAction(value) {
+    return value === "uniquify" ? "uniquify" : "overwrite";
+  }
+
+  function downloadByUrl(url, filename, saveAs = false, conflictAction = "overwrite") {
     return new Promise((resolve, reject) => {
+      const downloadOptions = {
+        url,
+        filename: normalizeDownloadFilename(filename),
+        saveAs: Boolean(saveAs)
+      };
+
+      if (!saveAs) {
+        downloadOptions.conflictAction = normalizeConflictAction(conflictAction);
+      }
+
       chrome.downloads.download(
-        {
-          url,
-          filename: normalizeDownloadFilename(filename),
-          saveAs: Boolean(saveAs)
-        },
+        downloadOptions,
         (downloadId) => {
           const error = chrome.runtime.lastError;
 
@@ -317,7 +327,12 @@
       }
 
       return withTimeout(
-        downloadByUrl("data:application/pdf;base64," + result.data, payload.filename, payload.saveAs),
+        downloadByUrl(
+          "data:application/pdf;base64," + result.data,
+          payload.filename,
+          payload.saveAs,
+          payload.conflictAction
+        ),
         timeoutMs,
         "Timed out while saving the PDF download."
       );
@@ -338,7 +353,8 @@
     return downloadByUrl(
       textToDataUrl(payload.content, payload.mimeType),
       payload.filename,
-      payload.saveAs
+      payload.saveAs,
+      payload.conflictAction
     );
   }
 

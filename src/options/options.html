@@ -181,8 +181,18 @@
           </label>
 
           <label class="field checkbox-field">
-            <input id="metadataConversationSummary" name="metadataConversationSummary" type="checkbox">
-            <span>Provider, chat name, and message counts summary</span>
+            <input id="metadataSummaryProvider" name="metadataSummaryProvider" type="checkbox">
+            <span>Provider</span>
+          </label>
+
+          <label class="field checkbox-field">
+            <input id="metadataSummaryChatName" name="metadataSummaryChatName" type="checkbox">
+            <span>Chat Name</span>
+          </label>
+
+          <label class="field checkbox-field">
+            <input id="metadataSummaryMessages" name="metadataSummaryMessages" type="checkbox">
+            <span>Messages summary</span>
           </label>
 
           <label class="field checkbox-field">
@@ -235,6 +245,14 @@
             <label><input type="radio" name="saveMode" value="autosave"> Auto-save</label>
             <label><input type="radio" name="saveMode" value="ask"> Ask for location</label>
           </div>
+
+          <label class="field">
+            <span>When auto-save finds an existing file</span>
+            <select id="autosaveConflictAction" name="autosaveConflictAction">
+              <option value="overwrite">Overwrite the existing file</option>
+              <option value="uniquify">Add a count to the file name</option>
+            </select>
+          </label>
         </section>
 
         <section class="card">

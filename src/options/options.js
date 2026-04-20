@@ -21,6 +21,7 @@
   const autoFileNameCheckbox = document.getElementById("autoFileName");
   const fileNameTemplateInput = document.getElementById("fileNameTemplate");
   const invalidFileNameReplacementInput = document.getElementById("invalidFileNameReplacement");
+  const autosaveConflictActionSelect = document.getElementById("autosaveConflictAction");
   const mediaHandlingSelect = document.getElementById("mediaHandling");
   const companionMhtOnMediaCheckbox = document.getElementById("companionMhtOnMedia");
   const metadataExportedAtCheckbox = document.getElementById("metadataExportedAt");
@@ -29,7 +30,9 @@
   const metadataTitleCheckbox = document.getElementById("metadataTitle");
   const metadataModelCheckbox = document.getElementById("metadataModel");
   const metadataUrlCheckbox = document.getElementById("metadataUrl");
-  const metadataConversationSummaryCheckbox = document.getElementById("metadataConversationSummary");
+  const metadataSummaryProviderCheckbox = document.getElementById("metadataSummaryProvider");
+  const metadataSummaryChatNameCheckbox = document.getElementById("metadataSummaryChatName");
+  const metadataSummaryMessagesCheckbox = document.getElementById("metadataSummaryMessages");
   const metadataStartTimeCheckbox = document.getElementById("metadataStartTime");
   const metadataEndTimeCheckbox = document.getElementById("metadataEndTime");
   const metadataDurationCheckbox = document.getElementById("metadataDuration");
@@ -78,6 +81,10 @@
     fileNameTemplateInput.placeholder = isAutomatic ? "YY.MM.DD <ChatTitle>" : "chat";
   }
 
+  function updateAutosaveConflictFieldState() {
+    autosaveConflictActionSelect.disabled = getSaveModeFromForm() !== "autosave";
+  }
+
   function activateTab(tabId) {
     tabButtons.forEach((button) => {
       button.classList.toggle("is-active", button.dataset.tab === tabId);
@@ -107,6 +114,7 @@
     autoFileNameCheckbox.checked = Boolean(settings.autoFileName);
     fileNameTemplateInput.value = settings.fileNameTemplate || "";
     invalidFileNameReplacementInput.value = settings.invalidFileNameReplacement || ".";
+    autosaveConflictActionSelect.value = settings.autosaveConflictAction || "overwrite";
     mediaHandlingSelect.value = settings.mediaHandling;
     companionMhtOnMediaCheckbox.checked = Boolean(settings.companionMhtOnMedia);
     metadataExportedAtCheckbox.checked = Boolean(settings.metadataExportedAt);
@@ -115,7 +123,9 @@
     metadataTitleCheckbox.checked = Boolean(settings.metadataTitle);
     metadataModelCheckbox.checked = Boolean(settings.metadataModel);
     metadataUrlCheckbox.checked = Boolean(settings.metadataUrl);
-    metadataConversationSummaryCheckbox.checked = Boolean(settings.metadataConversationSummary);
+    metadataSummaryProviderCheckbox.checked = Boolean(settings.metadataSummaryProvider);
+    metadataSummaryChatNameCheckbox.checked = Boolean(settings.metadataSummaryChatName);
+    metadataSummaryMessagesCheckbox.checked = Boolean(settings.metadataSummaryMessages);
     metadataStartTimeCheckbox.checked = Boolean(settings.metadataStartTime);
     metadataEndTimeCheckbox.checked = Boolean(settings.metadataEndTime);
     metadataDurationCheckbox.checked = Boolean(settings.metadataDuration);
@@ -142,6 +152,7 @@
 
     updateAiCustomFieldState();
     updateFileNameFieldState();
+    updateAutosaveConflictFieldState();
   }
 
   function readSettingsFromForm() {
@@ -158,6 +169,7 @@
       fileNameTemplate: fileNameTemplateInput.value,
       invalidFileNameReplacement: invalidFileNameReplacementInput.value,
       saveMode: getSaveModeFromForm(),
+      autosaveConflictAction: autosaveConflictActionSelect.value,
       mediaHandling: mediaHandlingSelect.value,
       companionMhtOnMedia: companionMhtOnMediaCheckbox.checked,
       metadataExportedAt: metadataExportedAtCheckbox.checked,
@@ -166,7 +178,9 @@
       metadataTitle: metadataTitleCheckbox.checked,
       metadataModel: metadataModelCheckbox.checked,
       metadataUrl: metadataUrlCheckbox.checked,
-      metadataConversationSummary: metadataConversationSummaryCheckbox.checked,
+      metadataSummaryProvider: metadataSummaryProviderCheckbox.checked,
+      metadataSummaryChatName: metadataSummaryChatNameCheckbox.checked,
+      metadataSummaryMessages: metadataSummaryMessagesCheckbox.checked,
       metadataStartTime: metadataStartTimeCheckbox.checked,
       metadataEndTime: metadataEndTimeCheckbox.checked,
       metadataDuration: metadataDurationCheckbox.checked,
@@ -240,6 +254,9 @@
   });
 
   autoFileNameCheckbox.addEventListener("change", updateFileNameFieldState);
+  saveModeRadios.forEach((radio) => {
+    radio.addEventListener("change", updateAutosaveConflictFieldState);
+  });
   appThemeSelect.addEventListener("change", () => {
     root.appTheme.applyThemeDocument(appThemeSelect.value);
   });

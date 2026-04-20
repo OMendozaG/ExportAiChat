@@ -263,9 +263,15 @@
       pushMetadata(items, METADATA_LABELS.URL, rawConversation.sourceUrl || location.href);
     }
 
-    if (settings.metadataConversationSummary) {
+    if (settings.metadataSummaryProvider) {
       pushMetadata(items, METADATA_LABELS.PROVIDER, summary.providerName);
+    }
+
+    if (settings.metadataSummaryChatName) {
       pushMetadata(items, METADATA_LABELS.CHAT_NAME, summary.chatPath);
+    }
+
+    if (settings.metadataSummaryMessages) {
       pushMetadata(items, METADATA_LABELS.MESSAGE_TOTAL, summary.messagesDisplay);
     }
 

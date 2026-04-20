@@ -255,6 +255,7 @@
               filename,
               html: htmlDocument,
               saveAs: settings.saveMode === "ask",
+              conflictAction: settings.autosaveConflictAction,
               timeoutMs
             }
           }),
@@ -271,7 +272,8 @@
             filename,
             mimeType,
             content,
-            saveAs: settings.saveMode === "ask"
+            saveAs: settings.saveMode === "ask",
+            conflictAction: settings.autosaveConflictAction
           }),
           timeoutMs,
           `The ${format.toUpperCase()} export exceeded the ${settings.exportTimeoutSeconds}s timeout.`
@@ -294,7 +296,8 @@
             filename: companionFilename,
             mimeType: "application/octet-stream",
             content: mhtContent,
-            saveAs: settings.saveMode === "ask"
+            saveAs: settings.saveMode === "ask",
+            conflictAction: settings.autosaveConflictAction
           }),
           timeoutMs,
           `The companion MHT export exceeded the ${settings.exportTimeoutSeconds}s timeout.`

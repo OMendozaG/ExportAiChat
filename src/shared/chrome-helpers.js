@@ -5,10 +5,21 @@
 (() => {
   const root = globalThis.ChatExportAi;
 
+  function getChromeRoot() {
+    return globalThis.chrome && typeof globalThis.chrome === "object"
+      ? globalThis.chrome
+      : null;
+  }
+
+  function getChromeApi(path) {
+    const chromeRoot = getChromeRoot();
+    return path.reduce((acc, key) => (acc ? acc[key] : undefined), chromeRoot);
+  }
+
   function ensureChromeApi(path) {
-    const target = path.reduce((acc, key) => (acc ? acc[key] : undefined), chrome);
+    const target = getChromeApi(path);
     if (!target) {
-      throw new Error(`Chrome API no disponible: ${path.join(".")}`);
+      throw new Error(`Chrome API unavailable in this context: ${path.join(".")}`);
     }
     return target;
   }

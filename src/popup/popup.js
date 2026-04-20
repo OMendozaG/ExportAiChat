@@ -119,7 +119,7 @@
 
       if (!response.isChatPage || !response.messageCount) {
         setActionsVisible(false);
-        setStatus("Open an active LLM conversation.");
+        setStatus("No active LLM conversation was detected on this page.");
         setSummaryVisible(false);
         return;
       }

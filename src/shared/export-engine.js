@@ -314,7 +314,6 @@
     const trailingLines = Array.isArray(message.trailingReferenceLines)
       ? message.trailingReferenceLines.map((line) => `[${line}]`)
       : [];
-    contentLines.push(...thinkingNoteLines);
     contentLines.push(...leadingLines);
 
     if (message.text) {
@@ -324,6 +323,12 @@
     contentLines.push(...trailingLines);
 
     const outputLines = [];
+
+    // Thinking labels are rendered as a hint below the header but do not consume
+    // the role prefix position for the actual message content.
+    for (const line of thinkingNoteLines) {
+      outputLines.push(line.trimEnd());
+    }
 
     for (let index = 0; index < contentLines.length; index += 1) {
       const line = contentLines[index];

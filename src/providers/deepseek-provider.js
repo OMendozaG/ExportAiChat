@@ -360,7 +360,17 @@
       return answerMarkdownNodes[answerMarkdownNodes.length - 1];
     }
 
-    return markdownNodes[markdownNodes.length - 1] || turnNode;
+    // Fallback for non-markdown assistant replies (for example media-only turns)
+    // while ignoring elements nested inside the thinking container.
+    const mediaNode = Array.from(turnNode.querySelectorAll("img, video, canvas, svg, figure, picture"))
+      .find((node) => !node.closest(".ds-think-content"));
+    if (mediaNode) {
+      return mediaNode.closest("figure, picture, div") || mediaNode;
+    }
+
+    // If there is no answer content outside thinking, avoid duplicating
+    // the thinking note as a separate assistant message.
+    return null;
   }
 
   function hasAssistantRenderableContent(turnNode) {
@@ -601,6 +611,10 @@
         }
 
         const contentRoot = pickAssistantContentRoot(turnNode);
+        if (!contentRoot) {
+          continue;
+        }
+
         const sanitized = root.sanitize.sanitizeMessageNode(contentRoot, {
           mediaHandling: settings.mediaHandling
         });

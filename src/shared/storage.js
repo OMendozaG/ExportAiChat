@@ -124,6 +124,24 @@
     };
   }
 
+  function nextChatNameCountFromMap(chatNameMap) {
+    if (!chatNameMap || typeof chatNameMap !== "object") {
+      return 1;
+    }
+
+    let maxAssignedCount = 0;
+    Object.values(chatNameMap).forEach((entry) => {
+      const normalizedEntry = normalizeCounterEntry(entry);
+      if (!normalizedEntry) {
+        return;
+      }
+
+      maxAssignedCount = Math.max(maxAssignedCount, toPositiveInteger(normalizedEntry.count, 1));
+    });
+
+    return Math.max(1, maxAssignedCount + 1);
+  }
+
   function normalizeCounterState(incoming) {
     const defaults = defaultCounterState();
     if (!incoming || typeof incoming !== "object") {
@@ -142,7 +160,6 @@
       ? incoming.chatNameMap
       : {};
 
-    let maxAssignedCount = 0;
     Object.entries(sourceMap).forEach(([rawKey, rawEntry]) => {
       const key = deriveCounterMapKey(rawKey, rawEntry);
       if (!key) {
@@ -165,12 +182,10 @@
       } else {
         next.chatNameMap[key] = normalizedEntry;
       }
-
-      const savedEntry = next.chatNameMap[key];
-      maxAssignedCount = Math.max(maxAssignedCount, toPositiveInteger(savedEntry?.count, 1));
     });
 
-    next.nextChatNameCount = Math.max(next.nextChatNameCount, maxAssignedCount + 1);
+    // New ChatNameCount ids are always assigned from the highest current id + 1.
+    next.nextChatNameCount = nextChatNameCountFromMap(next.chatNameMap);
     return next;
   }
 
@@ -202,7 +217,8 @@
       return { key, entry: normalizedExisting };
     }
 
-    const nextCount = toPositiveInteger(state.nextChatNameCount, 1);
+    // Always assign new ids from current maximum + 1.
+    const nextCount = nextChatNameCountFromMap(state.chatNameMap);
     const newEntry = normalizeCounterEntry({
       count: nextCount,
       chatName: conversation?.chatName || conversation?.title || "chat",
@@ -212,7 +228,7 @@
       lastUsedAtIso: nowIso
     }, conversation);
     state.chatNameMap[key] = newEntry;
-    state.nextChatNameCount = nextCount + 1;
+    state.nextChatNameCount = nextChatNameCountFromMap(state.chatNameMap);
     return { key, entry: newEntry };
   }
 
@@ -488,7 +504,7 @@
     const isSameDay = state.dayKey === todayKey;
     const key = buildChatNameCounterKey(conversation);
     const existingEntry = state.chatNameMap[key];
-    const chatNameCount = existingEntry?.count || state.nextChatNameCount;
+    const chatNameCount = existingEntry?.count || nextChatNameCountFromMap(state.chatNameMap);
 
     return {
       totalCount: state.totalCount + 1,

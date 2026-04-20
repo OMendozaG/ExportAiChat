@@ -115,7 +115,9 @@ The settings page supports:
 - Editable TXT per-role message header templates for Human and AI messages
 - TXT template placeholders: `<HumanName>`, `<AiName>`, `<enter>`
 - TXT header placeholders resolve Human/AI names from the General tab settings
+- TXT speaker prefixes (`<Human>`, `<AI>`) are omitted when a TXT header template is present for that role
 - Dedicated HTML/PDF/MHT appearance section with AI and Human border colors (default AI blue, Human orange)
+- Visible export format toggles are configured in the General tab
 - Media handling rules
 - Metadata toggles
 - Export title toggle (default on) that prints `Chat Name` as the first line/header
@@ -143,6 +145,7 @@ The settings page supports:
 - Dedicated `Counters` tab to configure counter values and inspect `ChatNameCount` associations
 - `Counters` tab supports editing each `ChatNameCount` id directly (unique ids only) and deleting rows
 - `Counters` tab supports clearing all `ChatNameCount` associations with confirmation
+- New `ChatNameCount` ids are always assigned from the current highest id + 1
 - Only manually changed settings are pinned; untouched fields keep following new version defaults after updates
 - Default-valued overrides are auto-pruned from storage so reverted fields follow future default updates again
 - Settings auto-save skips writes when there are no real field changes

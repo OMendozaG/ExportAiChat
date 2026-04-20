@@ -223,11 +223,11 @@
 
   function continuationPrefix(prefix, settings, isFirstLine) {
     if (isFirstLine) {
-      return `${prefix} `;
+      return prefix ? `${prefix} ` : "";
     }
 
     if (settings.multilineFormat === root.constants.MULTILINE_FORMAT.NAME) {
-      return `${prefix} `;
+      return prefix ? `${prefix} ` : "";
     }
 
     if (settings.multilineFormat === root.constants.MULTILINE_FORMAT.NONE) {
@@ -301,9 +301,10 @@
   }
 
   function buildTextMessageBlock(message, settings, conversation) {
-    const prefix = rolePrefix(message, settings);
     const contentLines = [];
     const messageHeader = resolveTxtMessageHeader(message, settings, conversation);
+    const shouldUseSpeakerPrefix = !normalizeTemplateValue(messageHeader).trim();
+    const prefix = shouldUseSpeakerPrefix ? rolePrefix(message, settings) : "";
     const leadingLines = Array.isArray(message.leadingReferenceLines)
       ? message.leadingReferenceLines.map((line) => `[${line}]`)
       : [];

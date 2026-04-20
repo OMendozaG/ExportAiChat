@@ -106,11 +106,10 @@ body {
 }
 
 .settings-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
-  border: 1px solid var(--gear-border);
-  background: var(--gear-bg);
+  width: 20px;
+  height: 20px;
+  border: 0;
+  background: transparent;
   color: var(--gear-text);
   display: inline-flex;
   align-items: center;
@@ -118,8 +117,8 @@ body {
 }
 
 .settings-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   fill: currentColor;
 }
 

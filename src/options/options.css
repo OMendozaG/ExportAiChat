@@ -296,3 +296,45 @@ body {
   color: var(--muted);
   font-weight: 600;
 }
+
+.counter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.counter-actions .ceai-button {
+  min-height: 38px;
+  padding: 10px 14px;
+}
+
+.counter-map-wrap {
+  overflow: auto;
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  background: var(--field-bg);
+}
+
+.counter-map-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.counter-map-table th,
+.counter-map-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--field-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.counter-map-table th {
+  background: color-mix(in srgb, var(--card-bg) 84%, var(--page-bg) 16%);
+  font-weight: 700;
+}
+
+.counter-map-table tbody tr:last-child td {
+  border-bottom: 0;
+}

@@ -9,6 +9,10 @@
   const MENU_ID = "ceai-inline-export-menu";
   const STYLE_ID = "ceai-inline-export-style";
 
+  function normalizeText(value) {
+    return String(value || "").replace(/\s+/g, " ").trim();
+  }
+
   function spinnerIconMarkup() {
     return [
       "<svg viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\">",
@@ -226,6 +230,23 @@
       }
 
       const computed = window.getComputedStyle(referenceNode);
+      const referenceRect = referenceNode.getBoundingClientRect();
+      const textLabel = normalizeText(
+        referenceNode.getAttribute("aria-label")
+        || referenceNode.getAttribute("title")
+        || referenceNode.textContent
+      );
+      const hasIcon = Boolean(referenceNode.querySelector("svg"));
+      const isIconOnlyReference = hasIcon && (!textLabel || textLabel.length <= 2);
+      const isCompactReference = referenceRect.width <= 44 || referenceRect.height <= 36;
+
+      if (isIconOnlyReference || isCompactReference) {
+        // Keep base inline button styling when the anchor is an icon button
+        // so "Export To..." does not collapse/wrap into a square icon slot.
+        mainButton.style.cssText = "";
+        return;
+      }
+
       const properties = [
         "background",
         "backgroundColor",
@@ -253,6 +274,8 @@
       mainButton.style.display = "inline-flex";
       mainButton.style.alignItems = "center";
       mainButton.style.justifyContent = "center";
+      mainButton.style.width = "auto";
+      mainButton.style.minWidth = "fit-content";
       mainButton.style.whiteSpace = "nowrap";
       mainButton.style.cursor = "pointer";
     }
@@ -260,14 +283,14 @@
     function mount(anchor) {
       const referenceNode = anchor?.referenceNode || null;
       const styleReferenceNode = anchor?.styleReferenceNode || referenceNode;
-      const container = referenceNode?.parentElement || anchor?.container || null;
-      const shouldInsertBefore = Boolean(anchor?.preferBefore && referenceNode);
+      const container = anchor?.container || referenceNode?.parentElement || null;
+      const shouldInsertBefore = Boolean(anchor?.preferBefore && referenceNode && referenceNode.parentElement === container);
 
       if (!container) {
         return false;
       }
 
-      if (referenceNode && referenceNode.parentElement) {
+      if (referenceNode && referenceNode.parentElement === container) {
         if (rootNode.parentElement !== referenceNode.parentElement) {
           referenceNode.insertAdjacentElement(shouldInsertBefore ? "beforebegin" : "afterend", rootNode);
         } else if (shouldInsertBefore && rootNode.nextElementSibling !== referenceNode) {

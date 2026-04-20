@@ -76,6 +76,28 @@
     return root.postProcess.processConversation(rawConversation, settings, provider);
   }
 
+  function applyCounterSnapshotToConversation(conversation, counterSnapshot) {
+    if (!conversation || !counterSnapshot || typeof counterSnapshot !== "object") {
+      return conversation;
+    }
+
+    conversation.exportCounters = {
+      totalCount: Number(counterSnapshot.totalCount || 0),
+      dayCount: Number(counterSnapshot.dayCount || 0),
+      chatNameCount: Number(counterSnapshot.chatNameCount || 1),
+      dayKey: String(counterSnapshot.dayKey || "")
+    };
+
+    // Keep popup summary/file-name preview aligned with the same counter snapshot.
+    if (conversation.summary && typeof root.exporters?.resolveFileBaseName === "function") {
+      const fileNameBase = root.exporters.resolveFileBaseName(conversation);
+      conversation.summary.fileNameBase = fileNameBase;
+      conversation.summary.fileName = fileNameBase;
+    }
+
+    return conversation;
+  }
+
   async function requestFileDownload(payload) {
     const response = await root.chromeHelpers.runtimeSendMessage({
       type: MSG_DOWNLOAD_FILE,
@@ -263,6 +285,15 @@
         throw new Error("No exportable messages found in current chat.");
       }
 
+      if (typeof root.storage.reserveExportCounters === "function") {
+        try {
+          const counterSnapshot = await root.storage.reserveExportCounters(processedConversation);
+          applyCounterSnapshotToConversation(processedConversation, counterSnapshot);
+        } catch (_error) {
+          // Keep exporting even if counter persistence fails unexpectedly.
+        }
+      }
+
       let filename = "";
       let mimeType = "text/plain;charset=utf-8";
       let content = "";
@@ -407,6 +438,14 @@
     if (liveStatus.isChatPage && Number(liveStatus.messageCount || 0) > 0) {
       try {
         const processedConversation = buildProcessedConversation(provider, settings);
+        if (typeof root.storage.previewExportCounters === "function") {
+          try {
+            const previewSnapshot = await root.storage.previewExportCounters(processedConversation);
+            applyCounterSnapshotToConversation(processedConversation, previewSnapshot);
+          } catch (_error) {
+            // Keep status available even when counter preview fails.
+          }
+        }
         summary = processedConversation.summary || null;
       } catch (_error) {
         summary = null;

@@ -87,34 +87,96 @@
     });
   }
 
-  function keywordValueMap(conversation) {
+  function normalizeCounterValue(value, fallback = 0) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      return Math.max(0, Math.round(fallback));
+    }
+
+    return Math.max(0, Math.round(numericValue));
+  }
+
+  function resolveCounterSnapshot(conversation) {
+    const snapshot = conversation?.exportCounters && typeof conversation.exportCounters === "object"
+      ? conversation.exportCounters
+      : {};
+
+    return {
+      totalCount: normalizeCounterValue(snapshot.totalCount, 0),
+      dayCount: normalizeCounterValue(snapshot.dayCount, 0),
+      chatNameCount: Math.max(1, normalizeCounterValue(snapshot.chatNameCount, 1))
+    };
+  }
+
+  function keywordValueMap(conversation, counters) {
     const timeParts = timestampParts(new Date(conversation.extractedAtIso || Date.now()));
     const replacement = conversation.settings?.invalidFileNameReplacement;
 
     return {
       // Keep <ChatTitle> as a backward-compatible alias of <ChatName> for existing templates.
-      "<ChatTitle>": compactName(conversation.chatName || conversation.title || "chat", replacement),
-      "<WindowTitle>": compactName(conversation.title || conversation.chatName || "chat", replacement),
-      "<ChatName>": compactName(conversation.chatName || conversation.title || "chat", replacement),
-      "<ChatFolder>": compactName(conversation.folderName || "", replacement, ""),
-      "<Model>": compactName(conversation.modelName || "", replacement, ""),
-      "<Provider>": compactName(conversation.providerName || "", replacement, ""),
-      "<Date>": timeParts.date,
-      "<Time>": timeParts.time
+      ChatTitle: compactName(conversation.chatName || conversation.title || "chat", replacement),
+      WindowTitle: compactName(conversation.title || conversation.chatName || "chat", replacement),
+      ChatName: compactName(conversation.chatName || conversation.title || "chat", replacement),
+      ChatFolder: compactName(conversation.folderName || "", replacement, ""),
+      Model: compactName(conversation.modelName || "", replacement, ""),
+      Provider: compactName(conversation.providerName || "", replacement, ""),
+      Date: timeParts.date,
+      Time: timeParts.time,
+      TotalCount: String(counters.totalCount),
+      DayCount: String(counters.dayCount),
+      ChatNameCount: String(counters.chatNameCount)
     };
+  }
+
+  function applyNumericPadding(value, rawPaddingLength) {
+    const paddingLength = Number(rawPaddingLength);
+    if (!Number.isFinite(paddingLength) || paddingLength <= 0) {
+      return String(value ?? "");
+    }
+
+    const normalized = String(value ?? "");
+    if (!/^\d+$/.test(normalized)) {
+      return normalized;
+    }
+
+    return normalized.padStart(paddingLength, "0");
   }
 
   function protectKeywordMarkers(template, keywords) {
     let protectedTemplate = String(template);
     const replacements = [];
     let index = 0;
+    const keywordLookup = new Map(
+      Object.entries(keywords).map(([keyword, value]) => [keyword.toLowerCase(), String(value ?? "")])
+    );
 
-    for (const [keyword, value] of Object.entries(keywords)) {
+    protectedTemplate = protectedTemplate.replace(/<([A-Za-z][A-Za-z0-9]*)(?:\*(\d+))?>/g, (match, rawKeyword, rawPaddingLength) => {
+      const normalizedKeyword = String(rawKeyword || "").toLowerCase();
+      if (!normalizedKeyword) {
+        return match;
+      }
+
+      // Compatibility shorthand requested by users:
+      // <ChatName*3> resolves to a zero-padded ChatNameCount when *N is present.
+      const fallbackValue = (
+        normalizedKeyword === "chatname"
+        && rawPaddingLength
+        && keywordLookup.has("chatnamecount")
+      )
+        ? keywordLookup.get("chatnamecount")
+        : null;
+      const resolvedKeywordValue = fallbackValue ?? keywordLookup.get(normalizedKeyword);
+
+      if (resolvedKeywordValue === undefined || resolvedKeywordValue === null) {
+        return match;
+      }
+
       const marker = `[[${index}]]`;
-      protectedTemplate = protectedTemplate.split(keyword).join(marker);
-      replacements.push([marker, value]);
+      const paddedValue = applyNumericPadding(resolvedKeywordValue, rawPaddingLength);
+      replacements.push([marker, paddedValue]);
       index += 1;
-    }
+      return marker;
+    });
 
     return { protectedTemplate, replacements };
   }
@@ -122,10 +184,11 @@
   function resolveFileBaseName(conversation) {
     const settings = conversation.settings || root.defaults.settings;
     const timeParts = timestampParts(new Date(conversation.extractedAtIso || Date.now()));
+    const counters = resolveCounterSnapshot(conversation);
     const templateSource = settings.autoFileName
-      ? (settings.fileNameTemplate || "YY.MM.DD <ChatName>")
+      ? (settings.fileNameTemplate || "YY.MM-<ChatNameCount> <ChatName*3>")
       : (settings.fileNameTemplate || "chat");
-    const keywords = keywordValueMap(conversation);
+    const keywords = keywordValueMap(conversation, counters);
     const { protectedTemplate, replacements } = protectKeywordMarkers(templateSource, keywords);
     let resolved = applyDateTokens(protectedTemplate, timeParts);
 

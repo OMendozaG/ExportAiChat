@@ -113,12 +113,19 @@
     const style = window.getComputedStyle(element);
     const display = normalizeText(style.display).toLowerCase();
     const flexDirection = normalizeText(style.flexDirection).toLowerCase();
+    const flexWrap = normalizeText(style.flexWrap).toLowerCase();
 
     if (display !== "flex" && display !== "inline-flex") {
       return false;
     }
 
     if (flexDirection.startsWith("column")) {
+      return false;
+    }
+
+    // Wrapped rows can place the export button above/below Share.
+    // Keep climbing until we find a non-wrapping row.
+    if (flexWrap && flexWrap !== "nowrap") {
       return false;
     }
 

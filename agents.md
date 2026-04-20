@@ -58,10 +58,17 @@ Document naming keywords in settings. Supported keywords should include:
 - `<Provider>`
 - `<Date>`
 - `<Time>`
+- `<TotalCount>`
+- `<DayCount>`
+- `<ChatNameCount>`
+
+Numeric naming keywords must support zero-left padding via `*N`
+(for example `<TotalCount*4>`). Keep compatibility with `<ChatName*3>`
+as a shorthand for `<ChatNameCount*3>`.
 
 `<ChatName>` should stay bound to the provider-visible conversation name.
 
-Default file naming should use `<ChatName>`.
+Default file naming should use `YY.MM-<ChatNameCount> <ChatName*3>`.
 
 ## Metadata Rules
 Metadata must be configurable per field and reusable across TXT, HTML, MHT, and PDF exports.
@@ -83,6 +90,10 @@ For ChatGPT:
 - if inline integration is enabled, the entry point should live in the header area near the share action,
 - the trigger should be a stable inline `Export To...` button that fits the host page header style,
 - its export menu should render as an absolute or fixed overlay so it is not clipped by the host page layout.
+
+For icon-only share anchors (common in DeepSeek and similar UIs):
+- avoid cloning compact icon-only width/height styles into `Export To...`,
+- resolve a non-wrapping horizontal action row so the button does not stack above/below Share.
 
 When a new provider is added:
 - add a dedicated integration checkbox for that provider in Settings, defaulting to `true`,

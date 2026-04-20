@@ -23,6 +23,7 @@
         <button type="button" class="tab-button is-active" data-tab="general">General</button>
         <button type="button" class="tab-button" data-tab="export">Export</button>
         <button type="button" class="tab-button" data-tab="files">Files</button>
+        <button type="button" class="tab-button" data-tab="counters">Counters</button>
         <button type="button" class="tab-button" data-tab="integration">Integration</button>
         <button type="button" class="tab-button" data-tab="credits">Credits</button>
       </nav>
@@ -303,7 +304,7 @@
 
           <label class="field">
             <span>File name template</span>
-            <input id="fileNameTemplate" name="fileNameTemplate" type="text" maxlength="200" placeholder="YY.MM.DD <ChatName>">
+            <input id="fileNameTemplate" name="fileNameTemplate" type="text" maxlength="200" placeholder="YY.MM-<ChatNameCount> <ChatName*3>">
           </label>
 
           <label class="field">
@@ -324,10 +325,18 @@
             <code>&lt;Provider&gt;</code>
             <code>&lt;Date&gt;</code>
             <code>&lt;Time&gt;</code>
+            <code>&lt;TotalCount&gt;</code>
+            <code>&lt;DayCount&gt;</code>
+            <code>&lt;ChatNameCount&gt;</code>
           </div>
 
           <p class="field-help">
             `&lt;ChatTitle&gt;` remains available as a legacy alias of `&lt;ChatName&gt;` for existing templates.
+          </p>
+
+          <p class="field-help">
+            Add `*N` to numeric keywords for zero-left padding (example: `&lt;TotalCount*4&gt;`).
+            For compatibility, `&lt;ChatName*3&gt;` maps to `&lt;ChatNameCount*3&gt;`.
           </p>
 
           <div class="keyword-box">
@@ -346,6 +355,79 @@
             <code>mm</code>
             <code>s</code>
             <code>ss</code>
+          </div>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="counters" hidden>
+        <section class="card">
+          <h2>Filename Counter Keywords</h2>
+          <p class="field-help">
+            These counters are persistent and shared across providers.
+          </p>
+          <div class="keyword-box">
+            <code>&lt;TotalCount&gt;</code>
+            <code>&lt;DayCount&gt;</code>
+            <code>&lt;ChatNameCount&gt;</code>
+            <code>&lt;TotalCount*4&gt;</code>
+            <code>&lt;DayCount*2&gt;</code>
+            <code>&lt;ChatNameCount*3&gt;</code>
+            <code>&lt;ChatName*3&gt;</code>
+          </div>
+          <p class="field-help">
+            Default template: <code>YY.MM-&lt;ChatNameCount&gt; &lt;ChatName*3&gt;</code>
+          </p>
+        </section>
+
+        <section class="card">
+          <h2>Counter Values</h2>
+
+          <label class="field">
+            <span>Total exports</span>
+            <input id="counterTotalCount" type="number" min="0" step="1">
+          </label>
+
+          <label class="field">
+            <span>Exports in current day</span>
+            <input id="counterDayCount" type="number" min="0" step="1">
+          </label>
+
+          <label class="field">
+            <span>Next ChatNameCount id</span>
+            <input id="counterNextChatNameCount" type="number" min="1" step="1">
+          </label>
+
+          <p class="field-help">
+            Local day key: <code id="counterDayKey">-</code>
+          </p>
+
+          <div class="counter-actions">
+            <button id="applyCounterValues" type="button">Apply counter values</button>
+            <button id="resetDayCounter" type="button">Reset day counter</button>
+            <button id="resetAllCounters" type="button">Reset all counters</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>ChatNameCount Associations</h2>
+          <p class="field-help">
+            `ChatNameCount` is stable for each unique `provider/folder/chat name` key.
+          </p>
+          <div class="counter-map-wrap">
+            <table class="counter-map-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Provider</th>
+                  <th>Chat Name</th>
+                </tr>
+              </thead>
+              <tbody id="counterMapBody">
+                <tr>
+                  <td colspan="3">No mappings yet.</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </section>
       </section>

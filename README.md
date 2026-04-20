@@ -41,11 +41,11 @@ The TXT export is designed as a readable chat log:
 - Claude extraction for user/assistant turns, title, model, and share-anchor integration
 - Gemini extraction for user/assistant turns, title, mode/model label, share-anchor integration, and uploaded-file labels
 - DeepSeek extraction for user/assistant turns plus visible thinking duration labels from current DOM logs
-- DeepSeek inline header integration now places `Export To...` before Share, and falls back from Share/Compartir text to icon-only share glyph detection in the chat action row
-- DeepSeek insertion now resolves the nearest horizontal action row to avoid vertical stacking over the share arrow icon
+- DeepSeek inline header integration now places `Export To...` before Share, with non-wrapping row detection and icon-anchor styling fallback so it stays in the same header action row
 - Grok extraction for user/assistant turns, visible thinking duration labels, and user file chip labels
 - Configurable AI/Human border colors for HTML and PDF exports
 - Configurable file naming templates
+- Persistent filename counters (`TotalCount`, `DayCount`, `ChatNameCount`) with configurable values and mapping view
 - Auto-save overwrite vs add-count conflict policy
 - Optional inline `EXPORT...` action per provider in supported headers
 - Provider and message summary in the popup with the resolved download file name preview
@@ -116,6 +116,7 @@ The settings page supports:
 - Separate Chat Name summary path from Chat Title extraction
 - Visible export format toggles
 - Auto naming toggle and file name template
+- Dedicated `Counters` tab to configure counter values and inspect `ChatNameCount` associations
 - Auto-save vs ask-for-location download mode
 - Auto-save overwrite or add-count conflict mode
 - Inline header button toggle per provider (ChatGPT, Claude, Gemini, DeepSeek, Grok)
@@ -129,6 +130,9 @@ Supported file naming keywords:
 - `<Provider>`
 - `<Date>`
 - `<Time>`
+- `<TotalCount>`
+- `<DayCount>`
+- `<ChatNameCount>`
 
 Supported direct date and time tokens:
 - `YY`
@@ -147,11 +151,13 @@ Supported direct date and time tokens:
 - `ss`
 
 Default file name template:
-- `YY.MM.DD <ChatName>`
+- `YY.MM-<ChatNameCount> <ChatName*3>`
 
 `<ChatName>` is the provider-visible conversation name. `<WindowTitle>` is the browser window/tab title. `<ChatTitle>` stays supported as a legacy alias of `<ChatName>` for existing templates.
 
 Keyword placeholders are protected before date-token replacement, so single-letter date tokens no longer corrupt `<ChatName>`, `<WindowTitle>`, `<ChatTitle>`, or the other file-name keywords.
+
+Numeric filename keywords support zero-left padding via `*N` (example: `<TotalCount*4>`). For compatibility, `<ChatName*3>` maps to `<ChatNameCount*3>`.
 
 ## Privacy Model
 

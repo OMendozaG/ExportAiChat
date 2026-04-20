@@ -58,12 +58,21 @@
   const showExportMhtCheckbox = document.getElementById("showExportMht");
   const showExportHtmlCheckbox = document.getElementById("showExportHtml");
   const showExportTxtCheckbox = document.getElementById("showExportTxt");
+  const counterTotalCountInput = document.getElementById("counterTotalCount");
+  const counterDayCountInput = document.getElementById("counterDayCount");
+  const counterNextChatNameCountInput = document.getElementById("counterNextChatNameCount");
+  const counterDayKeyNode = document.getElementById("counterDayKey");
+  const counterMapBodyNode = document.getElementById("counterMapBody");
+  const applyCounterValuesButton = document.getElementById("applyCounterValues");
+  const resetDayCounterButton = document.getElementById("resetDayCounter");
+  const resetAllCountersButton = document.getElementById("resetAllCounters");
 
   const aiNameModeRadios = Array.from(form.querySelectorAll('input[name="aiNameMode"]'));
   const saveModeRadios = Array.from(form.querySelectorAll('input[name="saveMode"]'));
   const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
   const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
   let autoSaveTimer = null;
+  let lastCounterSummary = null;
 
   function showStatus(message, isError = false) {
     statusNode.textContent = message;
@@ -89,7 +98,7 @@
   function updateFileNameFieldState() {
     const isAutomatic = autoFileNameCheckbox.checked;
     fileNameTemplateInput.disabled = false;
-    fileNameTemplateInput.placeholder = isAutomatic ? "YY.MM.DD <ChatName>" : "chat";
+    fileNameTemplateInput.placeholder = isAutomatic ? "YY.MM-<ChatNameCount> <ChatName*3>" : "chat";
   }
 
   function updateAutosaveConflictFieldState() {
@@ -132,6 +141,121 @@
     const numericValue = Number(value);
     const safeValue = Number.isFinite(numericValue) ? numericValue : MAX_EXPORT_TIMEOUT_SECONDS;
     return Math.min(MAX_EXPORT_TIMEOUT_SECONDS, Math.max(1, Math.round(safeValue)));
+  }
+
+  function clampNonNegativeInteger(value, fallback = 0) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      return Math.max(0, Math.round(fallback));
+    }
+
+    return Math.max(0, Math.round(numericValue));
+  }
+
+  function clampPositiveInteger(value, fallback = 1) {
+    return Math.max(1, clampNonNegativeInteger(value, fallback));
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function applyCounterSummary(summary) {
+    if (!summary || typeof summary !== "object") {
+      return;
+    }
+
+    if (
+      !counterTotalCountInput
+      || !counterDayCountInput
+      || !counterNextChatNameCountInput
+      || !counterDayKeyNode
+      || !counterMapBodyNode
+    ) {
+      return;
+    }
+
+    lastCounterSummary = summary;
+    counterTotalCountInput.value = String(clampNonNegativeInteger(summary.totalCount, 0));
+    counterDayCountInput.value = String(clampNonNegativeInteger(summary.dayCount, 0));
+    counterNextChatNameCountInput.value = String(clampPositiveInteger(summary.nextChatNameCount, 1));
+    counterDayKeyNode.textContent = String(summary.dayKey || "-");
+
+    const entries = Array.isArray(summary.entries) ? summary.entries : [];
+    if (!entries.length) {
+      counterMapBodyNode.innerHTML = "<tr><td colspan=\"3\">No mappings yet.</td></tr>";
+      return;
+    }
+
+    counterMapBodyNode.innerHTML = entries.map((entry) => {
+      return [
+        "<tr>",
+        `  <td>${escapeHtml(entry.count)}</td>`,
+        `  <td>${escapeHtml(entry.providerName || "-")}</td>`,
+        `  <td>${escapeHtml(entry.chatPath || "-")}</td>`,
+        "</tr>"
+      ].join("");
+    }).join("");
+  }
+
+  async function loadCounterSummary() {
+    if (!root.storage || typeof root.storage.getCounterSummary !== "function") {
+      return;
+    }
+
+    if (!counterTotalCountInput || !counterDayCountInput || !counterNextChatNameCountInput) {
+      return;
+    }
+
+    const summary = await root.storage.getCounterSummary();
+    applyCounterSummary(summary);
+  }
+
+  async function applyCounterValues() {
+    if (!root.storage || typeof root.storage.updateCounterValues !== "function") {
+      return;
+    }
+
+    if (!counterTotalCountInput || !counterDayCountInput || !counterNextChatNameCountInput) {
+      return;
+    }
+
+    const summary = await root.storage.updateCounterValues({
+      totalCount: clampNonNegativeInteger(counterTotalCountInput.value, lastCounterSummary?.totalCount ?? 0),
+      dayCount: clampNonNegativeInteger(counterDayCountInput.value, lastCounterSummary?.dayCount ?? 0),
+      nextChatNameCount: clampPositiveInteger(
+        counterNextChatNameCountInput.value,
+        lastCounterSummary?.nextChatNameCount ?? 1
+      ),
+      dayKey: String(lastCounterSummary?.dayKey || "")
+    });
+    applyCounterSummary(summary);
+    showStatus("Counter values updated.");
+  }
+
+  async function resetDayCounter() {
+    if (!root.storage || typeof root.storage.resetCounterValues !== "function") {
+      return;
+    }
+
+    const summary = await root.storage.resetCounterValues("day");
+    applyCounterSummary(summary);
+    showStatus("Day counter reset.");
+  }
+
+  async function resetAllCounters() {
+    if (!root.storage || typeof root.storage.resetCounterValues !== "function") {
+      return;
+    }
+
+    const summary = await root.storage.resetCounterValues("all");
+    applyCounterSummary(summary);
+    showStatus("All counters reset.");
   }
 
   function applySettingsToForm(settings) {
@@ -270,6 +394,24 @@
       label: "Reset defaults",
       secondary: true
     });
+    if (applyCounterValuesButton) {
+      root.buttonSystem.decorateButton(applyCounterValuesButton, {
+        label: "Apply counter values"
+      });
+    }
+    if (resetDayCounterButton) {
+      root.buttonSystem.decorateButton(resetDayCounterButton, {
+        label: "Reset day counter",
+        secondary: true
+      });
+    }
+    if (resetAllCountersButton) {
+      root.buttonSystem.decorateButton(resetAllCountersButton, {
+        label: "Reset all counters",
+        secondary: true
+      });
+    }
+    await loadCounterSummary();
     showStatus("Settings loaded.");
   }
 
@@ -320,6 +462,35 @@
     });
   });
 
+  if (applyCounterValuesButton) {
+    applyCounterValuesButton.addEventListener("click", () => {
+      applyCounterValues().catch((error) => {
+        showStatus(`Error updating counters: ${error.message}`, true);
+      });
+    });
+  }
+
+  if (resetDayCounterButton) {
+    resetDayCounterButton.addEventListener("click", () => {
+      resetDayCounter().catch((error) => {
+        showStatus(`Error resetting day counter: ${error.message}`, true);
+      });
+    });
+  }
+
+  if (resetAllCountersButton) {
+    resetAllCountersButton.addEventListener("click", () => {
+      const confirmed = window.confirm("Reset all filename counters and ChatNameCount associations?");
+      if (!confirmed) {
+        return;
+      }
+
+      resetAllCounters().catch((error) => {
+        showStatus(`Error resetting all counters: ${error.message}`, true);
+      });
+    });
+  }
+
   aiNameModeRadios.forEach((radio) => {
     radio.addEventListener("change", updateAiCustomFieldState);
   });
@@ -334,6 +505,21 @@
   exportTimeoutSecondsInput.addEventListener("change", () => {
     exportTimeoutSecondsInput.value = String(clampTimeoutSeconds(exportTimeoutSecondsInput.value));
   });
+  if (counterTotalCountInput) {
+    counterTotalCountInput.addEventListener("change", () => {
+      counterTotalCountInput.value = String(clampNonNegativeInteger(counterTotalCountInput.value, 0));
+    });
+  }
+  if (counterDayCountInput) {
+    counterDayCountInput.addEventListener("change", () => {
+      counterDayCountInput.value = String(clampNonNegativeInteger(counterDayCountInput.value, 0));
+    });
+  }
+  if (counterNextChatNameCountInput) {
+    counterNextChatNameCountInput.addEventListener("change", () => {
+      counterNextChatNameCountInput.value = String(clampPositiveInteger(counterNextChatNameCountInput.value, 1));
+    });
+  }
   tabButtons.forEach((button) => {
     button.addEventListener("click", () => {
       activateTab(button.dataset.tab);

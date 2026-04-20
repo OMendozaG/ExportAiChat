@@ -7,6 +7,8 @@
   root.constants = {
     // Clave única para guardar configuración persistente.
     SETTINGS_STORAGE_KEY: "chatExportAi.settings.v1",
+    // Dedicated storage bucket for filename/export counters.
+    COUNTERS_STORAGE_KEY: "chatExportAi.counters.v1",
 
     // Hard cap for export timeout while the PDF pipeline is still conservative.
     MAX_EXPORT_TIMEOUT_SECONDS: 20,

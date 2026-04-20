@@ -71,6 +71,11 @@
   border: 0;
   color: inherit;
 }
+#${UI_ROOT_ID}[data-provider="chatgpt"] .ceai-inline-btn {
+  background: transparent;
+  border: 0;
+  color: inherit;
+}
 #${UI_ROOT_ID}[data-provider="deepseek"] {
   margin-right: 60px;
 }
@@ -322,6 +327,15 @@
       mainButton.style.minWidth = "fit-content";
       mainButton.style.whiteSpace = "nowrap";
       mainButton.style.cursor = "pointer";
+
+      // ChatGPT integration requirement: keep the inline button borderless/background-less
+      // even when host styles are copied from Share.
+      const activeProvider = normalizeText(rootNode.dataset.provider).toLowerCase();
+      if (activeProvider === "chatgpt") {
+        mainButton.style.background = "transparent";
+        mainButton.style.backgroundColor = "transparent";
+        mainButton.style.border = "0";
+      }
     }
 
     function mount(anchor) {

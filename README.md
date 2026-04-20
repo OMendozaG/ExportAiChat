@@ -43,6 +43,7 @@ The TXT export is designed as a readable chat log:
 - DeepSeek extraction for user/assistant turns plus visible thinking duration labels from current DOM logs
 - DeepSeek inline header integration now places `Export To...` before Share, with non-wrapping row detection and icon-anchor styling fallback so it stays in the same header action row
 - DeepSeek inline button styling includes a compact, borderless mode with provider-specific spacing to avoid overlap with header share controls
+- ChatGPT inline button styling now keeps a transparent, borderless appearance to blend with the native header actions
 - Grok extraction for user/assistant turns, visible thinking duration labels, and user file chip labels
 - Configurable AI/Human border colors for HTML and PDF exports
 - Configurable file naming templates

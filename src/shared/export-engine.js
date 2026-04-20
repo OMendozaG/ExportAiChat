@@ -113,8 +113,6 @@
     const replacement = conversation.settings?.invalidFileNameReplacement;
 
     return {
-      // Keep <ChatTitle> as a backward-compatible alias of <ChatName> for existing templates.
-      ChatTitle: compactName(conversation.chatName || conversation.title || "chat", replacement),
       WindowTitle: compactName(conversation.title || conversation.chatName || "chat", replacement),
       ChatName: compactName(conversation.chatName || conversation.title || "chat", replacement),
       ChatFolder: compactName(conversation.folderName || "", replacement, ""),
@@ -155,17 +153,7 @@
       if (!normalizedKeyword) {
         return match;
       }
-
-      // Compatibility shorthand requested by users:
-      // <ChatName*3> resolves to a zero-padded ChatNameCount when *N is present.
-      const fallbackValue = (
-        normalizedKeyword === "chatname"
-        && rawPaddingLength
-        && keywordLookup.has("chatnamecount")
-      )
-        ? keywordLookup.get("chatnamecount")
-        : null;
-      const resolvedKeywordValue = fallbackValue ?? keywordLookup.get(normalizedKeyword);
+      const resolvedKeywordValue = keywordLookup.get(normalizedKeyword);
 
       if (resolvedKeywordValue === undefined || resolvedKeywordValue === null) {
         return match;
@@ -186,7 +174,7 @@
     const timeParts = timestampParts(new Date(conversation.extractedAtIso || Date.now()));
     const counters = resolveCounterSnapshot(conversation);
     const templateSource = settings.autoFileName
-      ? (settings.fileNameTemplate || "YY.MM-<ChatNameCount> <ChatName*3>")
+      ? (settings.fileNameTemplate || "YY.MM-<ChatNameCount*3> <ChatName>")
       : (settings.fileNameTemplate || "chat");
     const keywords = keywordValueMap(conversation, counters);
     const { protectedTemplate, replacements } = protectKeywordMarkers(templateSource, keywords);

@@ -7,6 +7,8 @@
   root.constants = {
     // Clave única para guardar configuración persistente.
     SETTINGS_STORAGE_KEY: "chatExportAi.settings.v1",
+    // Tracks which settings were manually changed by the user.
+    SETTINGS_MANUAL_KEYS_STORAGE_KEY: "chatExportAi.settings.manualKeys.v1",
     // Dedicated storage bucket for filename/export counters.
     COUNTERS_STORAGE_KEY: "chatExportAi.counters.v1",
 

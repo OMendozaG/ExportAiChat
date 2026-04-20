@@ -117,6 +117,7 @@ The settings page supports:
 - Visible export format toggles
 - Auto naming toggle and file name template
 - Dedicated `Counters` tab to configure counter values and inspect `ChatNameCount` associations
+- Only manually changed settings are pinned; untouched fields keep following new version defaults after updates
 - Auto-save vs ask-for-location download mode
 - Auto-save overwrite or add-count conflict mode
 - Inline header button toggle per provider (ChatGPT, Claude, Gemini, DeepSeek, Grok)
@@ -151,13 +152,13 @@ Supported direct date and time tokens:
 - `ss`
 
 Default file name template:
-- `YY.MM-<ChatNameCount> <ChatName*3>`
+- `YY.MM-<ChatNameCount*3> <ChatName>`
 
-`<ChatName>` is the provider-visible conversation name. `<WindowTitle>` is the browser window/tab title. `<ChatTitle>` stays supported as a legacy alias of `<ChatName>` for existing templates.
+`<ChatName>` is the provider-visible conversation name. `<WindowTitle>` is the browser window/tab title.
 
-Keyword placeholders are protected before date-token replacement, so single-letter date tokens no longer corrupt `<ChatName>`, `<WindowTitle>`, `<ChatTitle>`, or the other file-name keywords.
+Keyword placeholders are protected before date-token replacement, so single-letter date tokens no longer corrupt `<ChatName>`, `<WindowTitle>`, or the other file-name keywords.
 
-Numeric filename keywords support zero-left padding via `*N` (example: `<TotalCount*4>`). For compatibility, `<ChatName*3>` maps to `<ChatNameCount*3>`.
+Numeric filename keywords support zero-left padding via `*N` (example: `<TotalCount*4>`).
 
 ## Privacy Model
 

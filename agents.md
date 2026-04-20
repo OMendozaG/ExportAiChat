@@ -32,6 +32,8 @@ Do not wrap provider names in parentheses for normal assistant messages.
 
 ## Settings Requirements
 Persist settings in extension storage and auto-save on change.
+Store only manually changed values as fixed overrides, so untouched settings
+continue to inherit new app defaults after extension updates.
 
 Settings must support relevant shared behavior, including:
 - visible human name,
@@ -52,7 +54,6 @@ Settings must support relevant shared behavior, including:
 Document naming keywords in settings. Supported keywords should include:
 - `<ChatName>`
 - `<WindowTitle>` as the browser window/tab title for the current conversation,
-- `<ChatTitle>` as a backward-compatible alias of `<ChatName>`,
 - `<ChatFolder>`
 - `<Model>`
 - `<Provider>`
@@ -63,12 +64,11 @@ Document naming keywords in settings. Supported keywords should include:
 - `<ChatNameCount>`
 
 Numeric naming keywords must support zero-left padding via `*N`
-(for example `<TotalCount*4>`). Keep compatibility with `<ChatName*3>`
-as a shorthand for `<ChatNameCount*3>`.
+(for example `<TotalCount*4>`).
 
 `<ChatName>` should stay bound to the provider-visible conversation name.
 
-Default file naming should use `YY.MM-<ChatNameCount> <ChatName*3>`.
+Default file naming should use `YY.MM-<ChatNameCount*3> <ChatName>`.
 
 ## Metadata Rules
 Metadata must be configurable per field and reusable across TXT, HTML, MHT, and PDF exports.

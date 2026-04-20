@@ -4,7 +4,11 @@
  */
 (() => {
   const root = globalThis.ChatExportAi;
-  const { SETTINGS_STORAGE_KEY, COUNTERS_STORAGE_KEY } = root.constants;
+  const {
+    SETTINGS_STORAGE_KEY,
+    SETTINGS_MANUAL_KEYS_STORAGE_KEY,
+    COUNTERS_STORAGE_KEY
+  } = root.constants;
   const { storageGet, storageSet } = root.chromeHelpers;
 
   function toNonNegativeInteger(value, fallback = 0) {
@@ -220,41 +224,174 @@
     };
   }
 
-  async function getSettings() {
+  function settingKeys() {
+    return Object.keys(root.defaults.settings || {});
+  }
+
+  function isSettingKey(key) {
+    return settingKeys().includes(key);
+  }
+
+  function normalizeManualSettingKeys(rawValue) {
+    if (!Array.isArray(rawValue)) {
+      return [];
+    }
+
+    const seen = new Set();
+    const normalized = [];
+    rawValue.forEach((item) => {
+      const key = String(item || "").trim();
+      if (!key || !isSettingKey(key) || seen.has(key)) {
+        return;
+      }
+
+      seen.add(key);
+      normalized.push(key);
+    });
+
+    return normalized;
+  }
+
+  function normalizeSettingsValueMap(rawValue) {
+    if (!rawValue || typeof rawValue !== "object") {
+      return {};
+    }
+
+    const next = {};
+    settingKeys().forEach((key) => {
+      if (rawValue[key] !== undefined) {
+        next[key] = rawValue[key];
+      }
+    });
+    return next;
+  }
+
+  function isDenseLegacySettingsSnapshot(rawValue) {
+    if (!rawValue || typeof rawValue !== "object") {
+      return false;
+    }
+
+    const knownKeys = settingKeys().filter((key) => Object.prototype.hasOwnProperty.call(rawValue, key));
+    const keyCount = knownKeys.length;
+    const minimumDenseCount = Math.max(10, Math.floor(settingKeys().length * 0.6));
+    return keyCount >= minimumDenseCount;
+  }
+
+  function deriveManualSettingsFromLegacy(rawValue) {
+    const normalizedRaw = normalizeSettingsValueMap(rawValue);
+    const mergedRaw = root.defaults.mergeSettings(normalizedRaw);
+    const defaults = root.defaults.settings || {};
+    const denseSnapshot = isDenseLegacySettingsSnapshot(rawValue);
+    const manualKeys = denseSnapshot
+      ? settingKeys().filter((key) => !Object.is(mergedRaw[key], defaults[key]))
+      : settingKeys().filter((key) => Object.prototype.hasOwnProperty.call(normalizedRaw, key));
+    const manualValues = {};
+
+    manualKeys.forEach((key) => {
+      manualValues[key] = mergedRaw[key];
+    });
+
+    return {
+      manualKeys,
+      manualValues
+    };
+  }
+
+  function resolveSettingsFromManualValues(manualValues) {
+    return root.defaults.mergeSettings(normalizeSettingsValueMap(manualValues));
+  }
+
+  async function saveSettingsState(manualValues, manualKeys) {
+    const normalizedManualValues = normalizeSettingsValueMap(manualValues);
+    const normalizedManualKeys = normalizeManualSettingKeys(manualKeys);
+    const payload = {};
+
+    payload[SETTINGS_STORAGE_KEY] = normalizedManualValues;
+    payload[SETTINGS_MANUAL_KEYS_STORAGE_KEY] = normalizedManualKeys;
+
     try {
-      const stored = await storageGet([SETTINGS_STORAGE_KEY]);
-      return root.defaults.mergeSettings(stored[SETTINGS_STORAGE_KEY]);
+      await storageSet(payload);
     } catch (_error) {
-      return root.defaults.mergeSettings({});
+      return {
+        manualValues: normalizedManualValues,
+        manualKeys: normalizedManualKeys
+      };
+    }
+
+    return {
+      manualValues: normalizedManualValues,
+      manualKeys: normalizedManualKeys
+    };
+  }
+
+  async function loadSettingsState() {
+    try {
+      const stored = await storageGet([SETTINGS_STORAGE_KEY, SETTINGS_MANUAL_KEYS_STORAGE_KEY]);
+      const rawSettingsValue = stored[SETTINGS_STORAGE_KEY];
+      const rawManualKeys = stored[SETTINGS_MANUAL_KEYS_STORAGE_KEY];
+      const manualKeys = normalizeManualSettingKeys(rawManualKeys);
+      const hasManualKeyList = Array.isArray(rawManualKeys);
+
+      if (hasManualKeyList) {
+        const normalizedValues = normalizeSettingsValueMap(rawSettingsValue);
+        const manualValues = {};
+        manualKeys.forEach((key) => {
+          if (normalizedValues[key] !== undefined) {
+            manualValues[key] = normalizedValues[key];
+          }
+        });
+        return {
+          manualValues,
+          manualKeys
+        };
+      }
+
+      // Legacy migration: previous versions stored a full merged snapshot.
+      const derived = deriveManualSettingsFromLegacy(rawSettingsValue);
+      await saveSettingsState(derived.manualValues, derived.manualKeys);
+      return {
+        manualValues: derived.manualValues,
+        manualKeys: derived.manualKeys
+      };
+    } catch (_error) {
+      return {
+        manualValues: {},
+        manualKeys: []
+      };
     }
   }
 
+  async function getSettings() {
+    const state = await loadSettingsState();
+    return resolveSettingsFromManualValues(state.manualValues);
+  }
+
   async function saveSettings(partialSettings) {
-    const current = await getSettings();
+    const state = await loadSettingsState();
+    const current = resolveSettingsFromManualValues(state.manualValues);
     const merged = root.defaults.mergeSettings({ ...current, ...partialSettings });
+    const manualKeySet = new Set(state.manualKeys);
 
-    try {
-      await storageSet({
-        [SETTINGS_STORAGE_KEY]: merged
-      });
-    } catch (_error) {
-      return merged;
-    }
+    // Promote only values changed in this save call to manual/fixed overrides.
+    settingKeys().forEach((key) => {
+      if (!Object.is(current[key], merged[key])) {
+        manualKeySet.add(key);
+      }
+    });
 
+    const nextManualKeys = Array.from(manualKeySet);
+    const nextManualValues = {};
+    nextManualKeys.forEach((key) => {
+      nextManualValues[key] = merged[key];
+    });
+
+    await saveSettingsState(nextManualValues, nextManualKeys);
     return merged;
   }
 
   async function resetSettings() {
     const defaults = root.defaults.mergeSettings({});
-
-    try {
-      await storageSet({
-        [SETTINGS_STORAGE_KEY]: defaults
-      });
-    } catch (_error) {
-      return defaults;
-    }
-
+    await saveSettingsState({}, []);
     return defaults;
   }
 

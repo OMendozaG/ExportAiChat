@@ -304,7 +304,7 @@
 
           <label class="field">
             <span>File name template</span>
-            <input id="fileNameTemplate" name="fileNameTemplate" type="text" maxlength="200" placeholder="YY.MM-<ChatNameCount> <ChatName*3>">
+            <input id="fileNameTemplate" name="fileNameTemplate" type="text" maxlength="200" placeholder="YY.MM-<ChatNameCount*3> <ChatName>">
           </label>
 
           <label class="field">
@@ -313,7 +313,7 @@
           </label>
 
           <p class="field-help">
-            Characters that are not valid in file names are replaced with this value when `<ChatTitle>`, `<WindowTitle>`, `<ChatName>`, `<ChatFolder>`, or the final file name contains them.
+            Characters that are not valid in file names are replaced with this value when `<WindowTitle>`, `<ChatName>`, `<ChatFolder>`, or the final file name contains them.
           </p>
 
           <div class="keyword-box">
@@ -331,12 +331,7 @@
           </div>
 
           <p class="field-help">
-            `&lt;ChatTitle&gt;` remains available as a legacy alias of `&lt;ChatName&gt;` for existing templates.
-          </p>
-
-          <p class="field-help">
             Add `*N` to numeric keywords for zero-left padding (example: `&lt;TotalCount*4&gt;`).
-            For compatibility, `&lt;ChatName*3&gt;` maps to `&lt;ChatNameCount*3&gt;`.
           </p>
 
           <div class="keyword-box">
@@ -372,10 +367,9 @@
             <code>&lt;TotalCount*4&gt;</code>
             <code>&lt;DayCount*2&gt;</code>
             <code>&lt;ChatNameCount*3&gt;</code>
-            <code>&lt;ChatName*3&gt;</code>
           </div>
           <p class="field-help">
-            Default template: <code>YY.MM-&lt;ChatNameCount&gt; &lt;ChatName*3&gt;</code>
+            Default template: <code>YY.MM-&lt;ChatNameCount*3&gt; &lt;ChatName&gt;</code>
           </p>
         </section>
 

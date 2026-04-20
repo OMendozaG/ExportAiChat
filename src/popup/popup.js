@@ -50,7 +50,7 @@
     }
 
     summaryProviderNode.textContent = summary.providerName || "-";
-    summaryChatNameNode.textContent = summary.chatPath || summary.chatTitle || "-";
+    summaryChatNameNode.textContent = summary.fileName || summary.fileNameBase || "-";
     summaryMessagesNode.textContent = summary.messagesDisplay || String(summary.totalMessages || 0);
     setSummaryVisible(true);
   }

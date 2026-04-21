@@ -250,7 +250,8 @@
   }
 
   function buildThinkingMessage(turnNode, settings, messageId) {
-    if (!settings.includeThinking) {
+    // Keep extraction available when either reasoning text or thinking time is enabled.
+    if (!settings.includeThinking && !settings.includeThinkingDuration) {
       return null;
     }
 

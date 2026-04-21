@@ -68,11 +68,11 @@
       metadataEndTime: false,
       metadataDuration: false,
 
-      // Include visible reasoning/thinking blocks when the provider exposes them.
+      // Include visible reasoning text when the provider exposes it.
       includeThinking: true,
 
-      // Include the visible thinking duration when the provider exposes it.
-      includeThinkingDuration: true,
+      // Include visible thinking-time labels when the provider exposes them.
+      includeThinkingDuration: false,
 
       // Include the message time when the provider can extract it reliably.
       includeMessageTime: false,

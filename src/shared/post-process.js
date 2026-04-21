@@ -5,7 +5,9 @@
 (() => {
   const root = globalThis.ChatExportAi;
   const { ROLES, TEXT_FORMATTING, AI_NAME_MODE, METADATA_LABELS } = root.constants;
-  const THINKING_LABEL_ONLY_REGEX = /^(?:thought|thinking|reasoning|reasoned|pensado|pensando|pensamiento|razonando|razonamiento)(?:\s*(?:for|durante)\s*.+)?$/i;
+  const THINKING_LABEL_ONLY_REGEX = /^(?:thought|thinking|reasoning|reasoned|pensado|pensando|pens[oó]|pensamiento|razonando|razonamiento|reflexionando|reflexi[oó]n)(?:\s*(?:for|durante|por)\s*.+)?$/i;
+  const THINKING_DURATION_CAPTURE_REGEX = /(?:thought|thinking|reasoned|reasoning|pensado|pensando|pens[oó]|pensamiento|razonando|razonamiento|reflexionando|reflexi[oó]n)(?:\s*(?:for|durante|por))?\s+(.+)$/i;
+  const THINKING_DURATION_STRIP_REGEX = /((?:thought|thinking|reasoned|reasoning|pensado|pensando|pens[oó]|pensamiento|razonando|razonamiento|reflexionando|reflexi[oó]n))(?:\s*(?:for|durante|por)\s+.+)$/i;
 
   function resolveNames(settings, provider) {
     const human = (settings.humanName || "Human").trim() || "Human";
@@ -215,6 +217,10 @@
       .toLowerCase();
   }
 
+  function escapeRegex(value) {
+    return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
   function thinkingDurationFromLabel(rawLabel) {
     const label = String(rawLabel || "").trim();
     if (!label) {
@@ -222,11 +228,38 @@
     }
 
     const normalized = label.replace(/\s+/g, " ").trim();
-    const durationMatch = normalized.match(
-      /(?:thought|thinking|reasoned|reasoning|pensado|pensando|pensamiento|razonando|razonamiento)(?:\s*(?:for|durante))?\s+(.+)$/i
-    );
+    const durationMatch = normalized.match(THINKING_DURATION_CAPTURE_REGEX);
 
     return durationMatch ? durationMatch[1].trim() : "";
+  }
+
+  function stripThinkingDurationFromLabel(rawLabel) {
+    const label = compactThinkingLabel(rawLabel);
+    if (!label) {
+      return "";
+    }
+
+    const stripped = label.replace(THINKING_DURATION_STRIP_REGEX, "$1").trim();
+    return stripped || label;
+  }
+
+  function stripLeadingThinkingLabel(rawText, rawLabel) {
+    const text = compactThinkingText(rawText);
+    const label = compactThinkingLabel(rawLabel);
+    if (!text || !label) {
+      return text;
+    }
+
+    const labelPattern = escapeRegex(label);
+    const leadingLabelRegex = new RegExp(`^\\(?${labelPattern}\\)?(?:\\s*[:\\-]\\s*|\\s+)?`, "i");
+    return compactThinkingText(text.replace(leadingLabelRegex, ""));
+  }
+
+  function resolveThinkingDuration(message) {
+    const fromMessage = compactThinkingLabel(message?.thinkingDurationLabel);
+    const fromIndicator = thinkingDurationFromLabel(message?.thinkingLabel);
+    const fromSeconds = message?.thinkingSeconds ? `${message.thinkingSeconds}s` : "";
+    return compactThinkingLabel(fromMessage || fromIndicator || fromSeconds);
   }
 
   function isLabelOnlyThinking(text) {
@@ -256,37 +289,60 @@
   }
 
   function normalizeThinkingText(rawText, message, settings) {
+    const includeReasoningText = Boolean(settings.includeThinking);
+    const includeThinkingTime = Boolean(settings.includeThinkingDuration);
+    if (!includeReasoningText && !includeThinkingTime) {
+      return "";
+    }
+
     const explicitLabel = compactThinkingLabel(message?.thinkingLabel);
     const cleanedText = compactThinkingText(rawText);
-
-    // Prefer explicit provider labels (for example, "Pensó por 18s")
-    // to keep wording consistent with the source chat language.
-    if (explicitLabel) {
-      const sameAsLabel = normalizeComparisonText(cleanedText) === normalizeComparisonText(explicitLabel);
-      const bodyText = sameAsLabel ? "" : cleanedText;
-
-      if (bodyText && !isLabelOnlyThinking(bodyText)) {
-        const inlineBody = compactThinkingLabel(bodyText);
-        return toParenthesizedLabel(`${explicitLabel}: ${inlineBody}`);
-      }
-
-      return toParenthesizedLabel(explicitLabel);
-    }
-
     const cleanedLabelText = compactThinkingLabel(cleanedText);
-    if (cleanedLabelText) {
-      return toParenthesizedLabel(cleanedLabelText);
+    const hasLabelOnlyText = isLabelOnlyThinking(cleanedLabelText);
+    const fallbackLabel = hasLabelOnlyText ? cleanedLabelText : "";
+    const durationLabel = resolveThinkingDuration(message);
+    const resolvedLabel = explicitLabel || fallbackLabel;
+    const reasoningLabel = includeReasoningText
+      ? (
+          includeThinkingTime
+            ? resolvedLabel
+            : stripThinkingDurationFromLabel(resolvedLabel)
+        )
+      : "";
+    const sameAsLabel = Boolean(explicitLabel)
+      && normalizeComparisonText(cleanedText) === normalizeComparisonText(explicitLabel);
+    const bodyText = sameAsLabel
+      ? ""
+      : stripLeadingThinkingLabel(cleanedText, explicitLabel);
+    const hasReasoningBody = Boolean(bodyText && !isLabelOnlyThinking(bodyText));
+    const inlineBody = compactThinkingLabel(bodyText);
+
+    if (includeReasoningText) {
+      // Prefer explicit provider labels (for example, "Pensó por 18s")
+      // to keep wording consistent with the source chat language.
+      if (hasReasoningBody) {
+        if (reasoningLabel) {
+          return toParenthesizedLabel(`${reasoningLabel}: ${inlineBody}`);
+        }
+
+        if (includeThinkingTime && durationLabel) {
+          return toParenthesizedLabel(`${durationLabel}: ${inlineBody}`);
+        }
+
+        return toParenthesizedLabel(inlineBody);
+      }
+
+      if (reasoningLabel) {
+        return toParenthesizedLabel(reasoningLabel);
+      }
     }
 
-    if (settings.includeThinkingDuration) {
-      const fromMessage = String(message?.thinkingDurationLabel || "").trim();
-      const fromIndicator = thinkingDurationFromLabel(message?.thinkingLabel);
-      const fromSeconds = message?.thinkingSeconds ? `${message.thinkingSeconds}s` : "";
-      const duration = fromMessage || fromIndicator || fromSeconds;
+    if (includeThinkingTime && durationLabel) {
+      return toParenthesizedLabel(durationLabel);
+    }
 
-      if (duration) {
-        return toParenthesizedLabel(compactThinkingLabel(duration));
-      }
+    if (!includeReasoningText) {
+      return "";
     }
 
     return "(Thought)";

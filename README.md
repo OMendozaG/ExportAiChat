@@ -40,7 +40,8 @@ The TXT export is designed as a readable chat log:
 - Dedicated TXT export settings, including per-role message header templates
 - Optional metadata export
 - Optional export title header (Chat Name) above metadata/messages
-- Optional visible reasoning or thinking export when the provider exposes it in the page
+- Optional reasoning text export when the provider exposes visible thinking/reasoning content
+- Optional thinking time export when the provider exposes it (default off)
 - Optional message date and time export when the provider exposes it in the page
 - Optional message ids starting at 1 across TXT, HTML, and PDF exports
 - Optional metadata for provider/chat summary and conversation start, end, and duration when message dates are available
@@ -54,6 +55,7 @@ The TXT export is designed as a readable chat log:
 - Virtualized turn hydration now restores the original chat scroll position after export collection (ChatGPT and DeepSeek)
 - Thinking labels now export inline under the AI message header as `(<label>)` using provider wording (for example, `(Pensó por 18s)`), and no longer create standalone messages
 - When a provider exposes both a thinking label and thinking body, exports now format it inline as `(<label>: <thinking text>)`
+- Reasoning text and thinking-time exports are now independent toggles, so each can be exported alone or together
 - Thinking-label normalization in post-processing no longer depends on provider-global helpers, avoiding runtime export failures in TXT/HTML/PDF/MHT
 - TXT thinking notes now always end with a line break and keep a blank line before the message body/attachments
 - TXT thinking notes are normalized as `(...)` without role prefix
@@ -152,7 +154,8 @@ The settings page supports:
 - Message time export toggle
 - Message id export toggle
 - Conversation start, end, and duration metadata toggles when message dates exist
-- Thinking or reasoning export toggle
+- Separate reasoning text toggle (default on)
+- Separate thinking time toggle (default off)
 - User attachment and assistant reference toggles split into:
 - assistant references to user attachments (default on)
 - assistant-generated file attachments (default on)

@@ -223,26 +223,64 @@
     }
 
     const originalScroll = captureScrollPosition(scrollContainer);
+    const requestedBudgetMs = Number(options?.maxHydrationMs);
+    const maxHydrationMs = Number.isFinite(requestedBudgetMs)
+      ? Math.max(1200, Math.round(requestedBudgetMs))
+      : 120000;
+    const hydrationStartedAt = Date.now();
+    const hydrationBudgetExceeded = () => (Date.now() - hydrationStartedAt) >= maxHydrationMs;
+    const topReachThreshold = 2;
+
+    const ensureScrolledToTop = async () => {
+      let reachedTopPasses = 0;
+
+      while (!hydrationBudgetExceeded()) {
+        scrollToTopAnimated(scrollContainer);
+        await waitForRender(180);
+        messageNodes = readNodes();
+
+        const atTop = scrollTopOf(scrollContainer) <= topReachThreshold;
+        if (atTop) {
+          reachedTopPasses += 1;
+          if (reachedTopPasses >= 2) {
+            return true;
+          }
+        } else {
+          reachedTopPasses = 0;
+        }
+      }
+
+      return false;
+    };
 
     try {
-      scrollToTopAnimated(scrollContainer);
-      await waitForRender(260);
-      scrollToTopAnimated(scrollContainer);
+      const reachedTop = await ensureScrolledToTop();
+      if (!reachedTop) {
+        throw new Error("HYDRATION_TOP_REACH_FAILED: Gemini history did not reach top within timeout.");
+      }
 
       let stablePasses = 0;
       let previousCount = messageNodes.length;
 
       // Simplified hydration strategy: move to top once and wait for
       // virtualized history to mount without incremental sweeping.
-      for (let pass = 0; pass < 8; pass += 1) {
+      for (let pass = 0; pass < 32 && !hydrationBudgetExceeded(); pass += 1) {
         await waitForRender(220);
         messageNodes = readNodes();
 
+        let atTop = scrollTopOf(scrollContainer) <= topReachThreshold;
+        if (!atTop) {
+          const reachedTopAgain = await ensureScrolledToTop();
+          if (!reachedTopAgain) {
+            throw new Error("HYDRATION_TOP_REACH_FAILED: Gemini history lost top position before completion.");
+          }
+          atTop = true;
+        }
+
         const currentCount = messageNodes.length;
-        const atTop = scrollTopOf(scrollContainer) <= 2;
         if (currentCount === previousCount && atTop) {
           stablePasses += 1;
-          if (stablePasses >= 2) {
+          if (stablePasses >= 3) {
             break;
           }
         } else {

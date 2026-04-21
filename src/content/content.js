@@ -21,6 +21,7 @@
   let domObserver = null;
   let cachedInlineUiSettings = null;
   const exportSnapshotsByConversation = new Map();
+  const HYDRATION_TOP_ERROR_TOKEN = "HYDRATION_TOP_REACH_FAILED";
 
   function getProviderButtonSetting(settings, providerId) {
     const providerSettingById = {
@@ -55,6 +56,23 @@
           reject(error);
         });
     });
+  }
+
+  function resolveHydrationTimeoutMs(settings) {
+    const exportTimeoutMs = Math.max(
+      0,
+      Math.round(Number(settings?.exportTimeoutSeconds || 20) * 1000)
+    );
+    return Math.max(120000, exportTimeoutMs);
+  }
+
+  function normalizeExportErrorMessage(error) {
+    const rawMessage = String(error?.message || "Export error.");
+    if (rawMessage.includes(HYDRATION_TOP_ERROR_TOKEN)) {
+      return "Could not scroll this chat to the beginning before timeout. Export was canceled.";
+    }
+
+    return rawMessage;
   }
 
   function resolveProvider() {
@@ -433,13 +451,15 @@
       scheduleInlineUiRefresh();
       const settings = await root.storage.getSettings();
       const timeoutMs = settings.exportTimeoutSeconds * 1000;
+      const hydrationTimeoutMs = resolveHydrationTimeoutMs(settings);
       const liveMessageCountBeforeExport = getLiveMessageCount(provider);
       const shouldForceRichMedia = format === EXPORT_FORMATS.MHT || format === EXPORT_FORMATS.PDF;
       const extractionSettings = shouldForceRichMedia
         ? settingsForRichMediaExport(settings)
         : settings;
       const processedConversation = await buildProcessedConversation(provider, extractionSettings, {
-        hydrateVirtualized: true
+        hydrateVirtualized: true,
+        maxHydrationMs: hydrationTimeoutMs
       });
       const exporter = root.exporters;
 
@@ -542,7 +562,8 @@
           provider,
           settingsForRichMediaExport(settings),
           {
-            hydrateVirtualized: true
+            hydrateVirtualized: true,
+            maxHydrationMs: hydrationTimeoutMs
           }
         );
         if (processedConversation.exportCounters) {
@@ -590,6 +611,16 @@
         filename,
         exportStates
       };
+    } catch (error) {
+      if (String(error?.message || "").includes(HYDRATION_TOP_ERROR_TOKEN)) {
+        try {
+          window.alert("Export failed: could not load the full chat history. Scroll to the beginning and try again.");
+        } catch (_alertError) {
+          // Ignore alert failures in restricted contexts.
+        }
+      }
+
+      throw new Error(normalizeExportErrorMessage(error));
     } finally {
       exportInProgress = false;
       scheduleInlineUiRefresh();

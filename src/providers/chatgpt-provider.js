@@ -466,7 +466,7 @@
     const requestedBudgetMs = Number(options.maxHydrationMs);
     const maxHydrationMs = Number.isFinite(requestedBudgetMs)
       ? Math.max(1200, Math.round(requestedBudgetMs))
-      : 12000;
+      : 120000;
     const hydrationBudgetExceeded = () => (Date.now() - hydrationStartedAt) >= maxHydrationMs;
 
     const initialSections = Array.from(
@@ -511,26 +511,58 @@
       }
     };
 
+    const topReachThreshold = 2;
+    const ensureScrolledToTop = async () => {
+      let reachedTopPasses = 0;
+
+      while (!hydrationBudgetExceeded()) {
+        scrollToTopAnimated(scrollContainer);
+        await waitForRender(180);
+        mergeEntries(collectVisibleConversationEntries());
+
+        const atTop = scrollTopOf(scrollContainer) <= topReachThreshold;
+        if (atTop) {
+          reachedTopPasses += 1;
+          if (reachedTopPasses >= 2) {
+            return true;
+          }
+        } else {
+          reachedTopPasses = 0;
+        }
+      }
+
+      return false;
+    };
+
     try {
       mergeEntries(visibleEntries);
-      scrollToTopAnimated(scrollContainer);
-      await waitForRender(260);
-      scrollToTopAnimated(scrollContainer);
+      const reachedTop = await ensureScrolledToTop();
+      if (!reachedTop) {
+        throw new Error("HYDRATION_TOP_REACH_FAILED: ChatGPT history did not reach top within timeout.");
+      }
 
       let stablePasses = 0;
       let previousCount = collectedByTurn.size;
 
       // Simplified hydration strategy: move to top once and wait for
       // virtualized history to mount without incremental sweeping.
-      for (let pass = 0; pass < 10 && !hydrationBudgetExceeded(); pass += 1) {
+      for (let pass = 0; pass < 32 && !hydrationBudgetExceeded(); pass += 1) {
         await waitForRender(220);
         mergeEntries(collectVisibleConversationEntries());
 
+        let atTop = scrollTopOf(scrollContainer) <= topReachThreshold;
+        if (!atTop) {
+          const reachedTopAgain = await ensureScrolledToTop();
+          if (!reachedTopAgain) {
+            throw new Error("HYDRATION_TOP_REACH_FAILED: ChatGPT history lost top position before completion.");
+          }
+          atTop = true;
+        }
+
         const currentCount = collectedByTurn.size;
-        const atTop = scrollTopOf(scrollContainer) <= 2;
         if (currentCount === previousCount && atTop) {
           stablePasses += 1;
-          if (stablePasses >= 2) {
+          if (stablePasses >= 3) {
             break;
           }
         } else {
@@ -1391,7 +1423,7 @@
   async function extractConversation(settings, options = {}) {
     const requestedHydrationBudgetMs = Number(options.maxHydrationMs);
     const fallbackHydrationBudgetMs = Math.max(
-      1500,
+      120000,
       Math.round(Number(settings?.exportTimeoutSeconds || 20) * 1000 * 0.65)
     );
     const rawEntries = await collectConversationEntries({

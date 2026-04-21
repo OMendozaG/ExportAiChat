@@ -865,6 +865,75 @@
       });
     }
 
+    // DeepSeek frequently ships DOM class/hash changes. If strict role heuristics
+    // produce no exportable entries, retry with a relaxed pass so export does not fail.
+    if (!messages.length && turnEntries.length) {
+      for (let index = 0; index < turnEntries.length; index += 1) {
+        const turnNode = turnEntries[index].node;
+        const messageId = `deepseek-fallback-${index + 1}`;
+        const hasUserHint = Boolean(turnNode.querySelector(".fbb737a4"));
+
+        if (hasUserHint) {
+          const userRoot = pickUserContentRoot(turnNode);
+          const userSanitizeRoot = prepareContentRootForSanitize(userRoot, settings, {});
+          const userSanitized = root.sanitize.sanitizeMessageNode(userSanitizeRoot, {
+            mediaHandling: settings.mediaHandling
+          });
+          const userText = normalizeText((userSanitized.safeHtml || "").replace(/<[^>]*>/g, " "));
+
+          if (userText || userSanitized.hasMedia) {
+            messages.push({
+              id: messageId,
+              role: ROLES.HUMAN,
+              safeHtml: userSanitized.safeHtml,
+              hasMedia: userSanitized.hasMedia,
+              attachments: [],
+              references: []
+            });
+          }
+
+          continue;
+        }
+
+        const thinkingMessage = buildThinkingMessage(turnNode, settings, messageId);
+        if (thinkingMessage) {
+          messages.push(thinkingMessage);
+        }
+
+        const assistantRoot = pickAssistantContentRoot(turnNode)
+          || turnNode.querySelector(".ds-markdown");
+        if (!assistantRoot) {
+          continue;
+        }
+
+        const assistantSanitizeRoot = prepareContentRootForSanitize(
+          assistantRoot,
+          settings,
+          { stripAssistantWebLinks: true }
+        );
+        const assistantSanitized = root.sanitize.sanitizeMessageNode(assistantSanitizeRoot, {
+          mediaHandling: settings.mediaHandling
+        });
+        const assistantReferences = shouldExtractAssistantReferences
+          ? extractAssistantReferences(turnNode, assistantRoot)
+          : [];
+        const assistantText = normalizeText((assistantSanitized.safeHtml || "").replace(/<[^>]*>/g, " "));
+
+        if (!assistantText && !assistantSanitized.hasMedia && !assistantReferences.length) {
+          continue;
+        }
+
+        messages.push({
+          id: messageId,
+          role: ROLES.ASSISTANT,
+          safeHtml: assistantSanitized.safeHtml,
+          hasMedia: assistantSanitized.hasMedia,
+          attachments: [],
+          references: assistantReferences
+        });
+      }
+    }
+
     const chatName = extractChatName();
 
     return {

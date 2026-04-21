@@ -812,13 +812,15 @@
         throw new Error("HYDRATION_TOP_REACH_FAILED: DeepSeek history did not reach top within timeout.");
       }
 
-      let stablePasses = 0;
-      let previousCount = collectedByKey.size;
+      const requiredQuietMs = Math.min(45000, Math.max(15000, Math.round(maxHydrationMs * 0.2)));
+      let maxCountSeen = collectedByKey.size;
+      let maxHeightSeen = scrollHeightOf(scrollContainer);
+      let lastGrowthAt = Date.now();
 
-      // Simplified hydration strategy: move to top once and wait for
-      // virtualized history to mount without incremental sweeping.
-      for (let pass = 0; pass < 32 && !hydrationBudgetExceeded(); pass += 1) {
-        await waitForRender(220);
+      // Keep top anchored and wait for a continuous quiet window. Some
+      // virtualized hosts prepend more messages after first hitting top.
+      while (!hydrationBudgetExceeded()) {
+        await waitForRender(260);
         mergeEntries(readVisibleTurnEntries());
 
         let atTop = scrollTopOf(scrollContainer) <= topReachThreshold;
@@ -831,16 +833,22 @@
         }
 
         const currentCount = collectedByKey.size;
-        if (currentCount === previousCount && atTop) {
-          stablePasses += 1;
-          if (stablePasses >= 3) {
-            break;
-          }
-        } else {
-          stablePasses = 0;
+        const currentHeight = scrollHeightOf(scrollContainer);
+        const discoveredGrowth = currentCount > maxCountSeen || currentHeight > (maxHeightSeen + 4);
+        if (discoveredGrowth) {
+          lastGrowthAt = Date.now();
         }
 
-        previousCount = currentCount;
+        maxCountSeen = Math.max(maxCountSeen, currentCount);
+        maxHeightSeen = Math.max(maxHeightSeen, currentHeight);
+
+        if (atTop && (Date.now() - lastGrowthAt) >= requiredQuietMs) {
+          break;
+        }
+      }
+
+      if (hydrationBudgetExceeded()) {
+        throw new Error("HYDRATION_TOP_REACH_FAILED: DeepSeek history kept growing until hydration timeout.");
       }
 
       const merged = Array.from(collectedByKey.values())

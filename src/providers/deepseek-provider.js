@@ -265,7 +265,12 @@
     let hasMedia = false;
 
     if (thinkingRoot) {
-      const thinkingSanitized = root.sanitize.sanitizeMessageNode(thinkingRoot, {
+      const thinkingSanitizeRoot = prepareContentRootForSanitize(
+        thinkingRoot,
+        settings,
+        { stripAssistantWebLinks: true }
+      );
+      const thinkingSanitized = root.sanitize.sanitizeMessageNode(thinkingSanitizeRoot, {
         mediaHandling: settings.mediaHandling
       });
       safeHtml = thinkingSanitized.safeHtml;
@@ -330,6 +335,62 @@
     return /\/files?\//i.test(String(href || "")) || /download/i.test(String(href || ""));
   }
 
+  function isLikelyUrlLabel(label) {
+    return /^(?:https?:\/\/|www\.)/i.test(String(label || "").trim());
+  }
+
+  function isCitationOnlyLabel(label) {
+    const normalized = normalizeText(label).replace(/[\[\]().,:;#]/g, "");
+    return /^\d{1,4}$/.test(normalized);
+  }
+
+  function stripAssistantWebLinksFromNode(node, settings) {
+    if (!node || settings.showAssistantWebReferences) {
+      return;
+    }
+
+    const anchors = Array.from(node.querySelectorAll("a[href]"));
+
+    for (const anchor of anchors) {
+      const href = normalizeText(anchor.getAttribute("href"));
+      const label = normalizeText(
+        anchor.textContent
+        || anchor.getAttribute("aria-label")
+        || anchor.getAttribute("title")
+      );
+
+      if (!href) {
+        continue;
+      }
+
+      // Keep file-like links; attachment visibility is controlled by
+      // dedicated attachment reference settings downstream.
+      if (isLikelyAttachmentHref(href) || isLikelyAttachmentLabel(label)) {
+        continue;
+      }
+
+      const isCitationLink = Boolean(anchor.querySelector(".ds-markdown-cite")) || isCitationOnlyLabel(label);
+      if (isCitationLink || !label || isLikelyUrlLabel(label)) {
+        anchor.remove();
+        continue;
+      }
+
+      // Keep readable wording but strip outbound URL behavior.
+      anchor.replaceWith(node.ownerDocument.createTextNode(label));
+    }
+
+    // Remove citation chips when web links are hidden.
+    Array.from(node.querySelectorAll(".ds-markdown-cite")).forEach((citeNode) => {
+      const wrapper = citeNode.closest("a");
+      if (wrapper) {
+        wrapper.remove();
+        return;
+      }
+
+      citeNode.remove();
+    });
+  }
+
   function extractAssistantReferences(turnNode, contentRoot) {
     const anchors = Array.from((contentRoot || turnNode).querySelectorAll("a[href]"));
 
@@ -356,7 +417,8 @@
         }
 
         return {
-          kind: "reference",
+          // Treat citations as web references so the web-links toggle controls them.
+          kind: "url",
           label,
           url: ""
         };
@@ -428,10 +490,14 @@
     return true;
   }
 
-  function prepareContentRootForSanitize(contentRoot) {
+  function prepareContentRootForSanitize(contentRoot, settings = {}, options = {}) {
     const clone = contentRoot?.cloneNode?.(true);
     if (!clone) {
       return contentRoot;
+    }
+
+    if (options.stripAssistantWebLinks) {
+      stripAssistantWebLinksFromNode(clone, settings);
     }
 
     // Drop decorative SVG icons (citation/action glyphs) that would otherwise
@@ -743,7 +809,11 @@
           continue;
         }
 
-        const sanitizeRoot = prepareContentRootForSanitize(contentRoot);
+        const sanitizeRoot = prepareContentRootForSanitize(
+          contentRoot,
+          settings,
+          { stripAssistantWebLinks: true }
+        );
         const sanitized = root.sanitize.sanitizeMessageNode(sanitizeRoot, {
           mediaHandling: settings.mediaHandling
         });
@@ -775,7 +845,7 @@
       }
 
       const contentRoot = pickUserContentRoot(turnNode);
-      const sanitizeRoot = prepareContentRootForSanitize(contentRoot);
+      const sanitizeRoot = prepareContentRootForSanitize(contentRoot, settings, {});
       const sanitized = root.sanitize.sanitizeMessageNode(sanitizeRoot, {
         mediaHandling: settings.mediaHandling
       });

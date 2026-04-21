@@ -196,15 +196,17 @@
 
     const messageNode = section.querySelector("[data-message-author-role][data-message-id]")
       || section.querySelector("[data-message-author-role]");
-    const messageId = messageNode?.getAttribute("data-message-id")
-      || section.getAttribute("data-turn-id")
+    const turnId = section.getAttribute("data-turn-id")
       || section.closest("[data-turn-id-container]")?.getAttribute("data-turn-id-container")
       || `chatgpt-turn-${fallbackIndex + 1}`;
+    const messageId = messageNode?.getAttribute("data-message-id")
+      || turnId;
     const clonedNode = section.cloneNode(true);
 
     return {
       node: clonedNode,
       rawRole,
+      turnId,
       messageId,
       order: parseTurnOrder(section, fallbackIndex + 1),
       weight: getEntryWeight(clonedNode)
@@ -247,6 +249,7 @@
       entries.push({
         node: clonedNode,
         rawRole,
+        turnId: node.getAttribute("data-message-id") || `chatgpt-legacy-${index + 1}`,
         messageId: node.getAttribute("data-message-id") || `chatgpt-legacy-${index + 1}`,
         order: Number.MAX_SAFE_INTEGER - 1000 + index,
         weight: getEntryWeight(clonedNode)
@@ -407,23 +410,25 @@
     }
 
     const originalScroll = captureScrollPosition(scrollContainer);
-    const collectedById = new Map();
+    const collectedByTurn = new Map();
     const mergeEntries = (entries) => {
       for (const entry of entries) {
-        const key = String(entry.messageId || "");
+        // Use the stable turn id as the merge key. Message ids can repeat across
+        // edited/regenerated branches and can cause dropped or imbalanced turns.
+        const key = String(entry.turnId || entry.messageId || "");
         if (!key) {
           continue;
         }
 
-        const existing = collectedById.get(key);
+        const existing = collectedByTurn.get(key);
         if (!existing || entry.weight > existing.weight) {
-          collectedById.set(key, entry);
+          collectedByTurn.set(key, entry);
         }
       }
     };
 
     const maybeRunTurnSweep = async () => {
-      if (!shouldRunTurnHydrationSweep(initialTurnCount, collectedById.size)) {
+      if (!shouldRunTurnHydrationSweep(initialTurnCount, collectedByTurn.size)) {
         return;
       }
 
@@ -431,14 +436,14 @@
         const startedAt = Date.now();
         let stablePasses = 0;
         let previousVisibleRoleCount = document.querySelectorAll("[data-message-author-role]").length;
-        let previousCollectedCount = collectedById.size;
+        let previousCollectedCount = collectedByTurn.size;
 
         while (Date.now() - startedAt < timeoutMs && !hydrationBudgetExceeded()) {
           await waitForRender(92);
           mergeEntries(collectVisibleConversationEntries());
 
           const currentVisibleRoleCount = document.querySelectorAll("[data-message-author-role]").length;
-          const currentCollectedCount = collectedById.size;
+          const currentCollectedCount = collectedByTurn.size;
 
           const unchanged = currentVisibleRoleCount === previousVisibleRoleCount
             && currentCollectedCount === previousCollectedCount;
@@ -457,7 +462,7 @@
       };
 
       let stablePasses = 0;
-      let previousCount = collectedById.size;
+      let previousCount = collectedByTurn.size;
 
       // Fast coarse sweep first: jump across the scroll range to hydrate large
       // windows quickly before doing expensive turn-by-turn targeting.
@@ -468,7 +473,7 @@
         setScrollTop(scrollContainer, Math.round(maxScrollTop * ratio));
         await settleHydrationAfterScroll(360);
 
-        if (!shouldRunTurnHydrationSweep(initialTurnCount, collectedById.size)) {
+        if (!shouldRunTurnHydrationSweep(initialTurnCount, collectedByTurn.size)) {
           break;
         }
       }
@@ -519,7 +524,7 @@
             await settleHydrationAfterScroll(420);
           }
 
-          if (collectedById.size >= initialTurnCount) {
+          if (collectedByTurn.size >= initialTurnCount) {
             break;
           }
         }
@@ -528,7 +533,7 @@
         setScrollTop(scrollContainer, 0);
         await settleHydrationAfterScroll(540);
 
-        const currentCount = collectedById.size;
+        const currentCount = collectedByTurn.size;
         if (currentCount === previousCount) {
           stablePasses += 1;
         } else {
@@ -552,7 +557,7 @@
 
       let topHydrated = false;
       let topStablePasses = 0;
-      let topPreviousCount = collectedById.size;
+      let topPreviousCount = collectedByTurn.size;
       let topPreviousHeight = scrollHeightOf(scrollContainer);
 
       // Phase 1 (preferred): force jump to top and wait until the virtualized
@@ -568,7 +573,7 @@
         mergeEntries(collectVisibleConversationEntries());
 
         const afterTop = scrollTopOf(scrollContainer);
-        const afterCount = collectedById.size;
+        const afterCount = collectedByTurn.size;
         const afterHeight = scrollHeightOf(scrollContainer);
         const discoveredNew = afterCount > topPreviousCount;
         const heightExpanded = Math.abs(afterHeight - topPreviousHeight) > 4;
@@ -597,7 +602,7 @@
 
       if (topHydrated) {
         await maybeRunTurnSweep();
-        const mergedEntries = Array.from(collectedById.values()).sort((left, right) => left.order - right.order);
+        const mergedEntries = Array.from(collectedByTurn.values()).sort((left, right) => left.order - right.order);
         return mergedEntries.length ? mergedEntries : visibleEntries;
       }
 
@@ -607,7 +612,7 @@
       let stagnantPasses = 0;
       let noMovementPasses = 0;
       topStablePasses = 0;
-      let previousCount = collectedById.size;
+      let previousCount = collectedByTurn.size;
 
       for (let guard = 0; guard < 140 && !hydrationBudgetExceeded(); guard += 1) {
         const currentTop = scrollTopOf(scrollContainer);
@@ -624,7 +629,7 @@
 
         const afterTop = scrollTopOf(scrollContainer);
         const afterHeight = scrollHeightOf(scrollContainer);
-        const currentCount = collectedById.size;
+        const currentCount = collectedByTurn.size;
         const discoveredNew = currentCount > previousCount;
         const heightExpanded = Math.abs(afterHeight - beforeHeight) > 4;
         const moved = Math.abs(afterTop - currentTop) > 2;
@@ -645,14 +650,14 @@
 
         const reachedTop = afterTop <= 1;
         if (reachedTop) {
-          const countBeforeTopSettle = collectedById.size;
+          const countBeforeTopSettle = collectedByTurn.size;
           // ChatGPT can prepend older turns asynchronously once top is reached.
           await waitForRender(208);
           mergeEntries(collectVisibleConversationEntries());
           await waitForRender(208);
           mergeEntries(collectVisibleConversationEntries());
 
-          if (collectedById.size === countBeforeTopSettle) {
+          if (collectedByTurn.size === countBeforeTopSettle) {
             topStablePasses += 1;
             if (topStablePasses >= 3) {
               break;
@@ -682,7 +687,7 @@
       }
 
       await maybeRunTurnSweep();
-      const mergedEntries = Array.from(collectedById.values()).sort((left, right) => left.order - right.order);
+      const mergedEntries = Array.from(collectedByTurn.values()).sort((left, right) => left.order - right.order);
       return mergedEntries.length ? mergedEntries : visibleEntries;
     } finally {
       await restoreScrollPosition(scrollContainer, originalScroll);
@@ -1542,7 +1547,7 @@
         ? requestedHydrationBudgetMs
         : fallbackHydrationBudgetMs
     });
-    const seenIds = new Set();
+    const seenTurns = new Set();
     const messages = [];
 
     const shouldExtractAssistantReferences = Boolean(
@@ -1556,12 +1561,13 @@
       const entry = rawEntries[index];
       const node = entry.node;
       const rawRole = entry.rawRole || "unknown";
-      const messageId = entry.messageId || `chatgpt-${index + 1}`;
+      const turnKey = String(entry.turnId || entry.messageId || `chatgpt-turn-${index + 1}`);
+      const messageId = entry.messageId || turnKey || `chatgpt-${index + 1}`;
 
-      if (seenIds.has(messageId)) {
+      if (seenTurns.has(turnKey)) {
         continue;
       }
-      seenIds.add(messageId);
+      seenTurns.add(turnKey);
 
       const timeData = extractMessageTimeData(node);
       const timeLabel = timeData.label;

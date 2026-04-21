@@ -53,6 +53,7 @@ The TXT export is designed as a readable chat log:
 - ChatGPT extraction now supports modern `conversation-turn` sections, including assistant image-only turns
 - ChatGPT export now hydrates virtualized turn lists while collecting messages, reducing skipped messages in long chats
 - ChatGPT long-thread hydration now includes a per-turn sweep with settle waits to improve full-history capture when only a small visible window is mounted
+- ChatGPT turn deduplication now uses stable turn ids (not message ids), preventing dropped/imbalanced turns on edited or regenerated branches
 - Virtualized turn hydration now restores the original chat scroll position after export collection (ChatGPT and DeepSeek)
 - Thinking labels now export inline under the AI message header as `(<label>)` using provider wording (for example, `(Pensó por 18s)`), and no longer create standalone messages
 - When a provider exposes both a thinking label and thinking body, exports now format it inline as `(<label>: <thinking text>)`

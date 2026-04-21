@@ -310,7 +310,11 @@
   }
 
   function buildMetadataText(conversation) {
-    const metadata = conversation.metadata || [];
+    const metadata = (conversation.metadata || []).filter((item) => {
+      const label = String(item?.label || "").trim();
+      const value = String(item?.value || "").trim();
+      return Boolean(label && value);
+    });
 
     if (!metadata.length) {
       return "";
@@ -380,32 +384,20 @@
 
   function toChatText(conversation) {
     const settings = conversation.settings || root.defaults.settings;
-    const exportTitle = resolveExportTitle(conversation);
     const metadataBlock = buildMetadataText(conversation).trimEnd();
     const messageBlocks = (conversation.messages || []).map((message) => buildTextMessageBlock(message, settings, conversation));
     const separator = normalizeSeparator(settings);
     const sections = [];
 
-    if (settings.includeExportTitle) {
-      sections.push(exportTitle);
-    }
-
     if (metadataBlock) {
       sections.push(metadataBlock);
+      sections.push("[Content]");
     }
 
     if (messageBlocks.length) {
       // Respect an explicit empty-string separator (no gap between message blocks).
       const messageText = messageBlocks.join(separator);
-
-      // Keep metadata immediately followed by messages without an extra
-      // separator or blank line inserted by section joining.
-      if (metadataBlock && sections.length) {
-        const lastIndex = sections.length - 1;
-        sections[lastIndex] = `${sections[lastIndex]}\n${messageText}`;
-      } else {
-        sections.push(messageText);
-      }
+      sections.push(messageText);
     }
 
     return `${sections.join("\n\n").trimEnd()}\n`;

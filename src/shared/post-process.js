@@ -249,16 +249,26 @@
   }
 
   function normalizeThinkingText(rawText, message, settings) {
+    const explicitLabel = compactThinkingLabel(message?.thinkingLabel);
+    const cleanedText = compactThinkingText(rawText);
+
     // Prefer explicit provider labels (for example, "Pensó por 18s")
     // to keep wording consistent with the source chat language.
-    const explicitLabel = compactThinkingLabel(message?.thinkingLabel);
     if (explicitLabel) {
+      const sameAsLabel = normalizeText(cleanedText) === normalizeText(explicitLabel);
+      const bodyText = sameAsLabel ? "" : cleanedText;
+
+      if (bodyText && !isLabelOnlyThinking(bodyText)) {
+        const inlineBody = compactThinkingLabel(bodyText);
+        return toParenthesizedLabel(`${explicitLabel}: ${inlineBody}`);
+      }
+
       return toParenthesizedLabel(explicitLabel);
     }
 
-    const cleanedText = compactThinkingLabel(rawText);
-    if (cleanedText) {
-      return toParenthesizedLabel(cleanedText);
+    const cleanedLabelText = compactThinkingLabel(cleanedText);
+    if (cleanedLabelText) {
+      return toParenthesizedLabel(cleanedLabelText);
     }
 
     if (settings.includeThinkingDuration) {

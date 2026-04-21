@@ -53,6 +53,7 @@ The TXT export is designed as a readable chat log:
 - ChatGPT export now hydrates virtualized turn lists while collecting messages, reducing skipped messages in long chats
 - Virtualized turn hydration now restores the original chat scroll position after export collection (ChatGPT and DeepSeek)
 - Thinking labels now export inline under the AI message header as `(<label>)` using provider wording (for example, `(Pensó por 18s)`), and no longer create standalone messages
+- When a provider exposes both a thinking label and thinking body, exports now format it inline as `(<label>: <thinking text>)`
 - TXT thinking notes now always end with a line break and keep a blank line before the message body/attachments
 - TXT thinking notes are normalized as `(...)` without role prefix
 - TXT first-line indentation now follows the TXT indentation style with a dedicated toggle (`Apply indentation style to the first content line`, default on)
@@ -60,6 +61,7 @@ The TXT export is designed as a readable chat log:
 - MHT and PDF exports now inline chat images as data URLs when possible, so generated-image replies are preserved more reliably
 - ChatGPT extraction now prefers section-level turns over nested legacy placeholders so image-only assistant replies are not dropped
 - ChatGPT button-based assistant references are now limited to file/url-like labels so generic UI action text is not exported across locales
+- ChatGPT now strips inline citation/web pills from assistant body HTML when `Show assistant web links` is disabled, including labels like `arXiv+1`
 - MHT export now forces rich media extraction for the current export and companion MHT generation, improving generated-image preservation
 - Claude extraction for user/assistant turns, title, model, and share-anchor integration
 - Gemini extraction for user/assistant turns, title, mode/model label, share-anchor integration, and uploaded-file labels

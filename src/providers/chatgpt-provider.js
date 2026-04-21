@@ -459,6 +459,76 @@
     return /^(?:https?:\/\/|www\.)/i.test(label);
   }
 
+  function isCitationOnlyLabel(label) {
+    const normalized = normalizeText(label).replace(/[\[\]().,:;#]/g, "");
+    if (!normalized) {
+      return false;
+    }
+
+    if (/^\d{1,4}$/.test(normalized)) {
+      return true;
+    }
+
+    // ChatGPT web pills can be exported as labels like "arXiv+1".
+    return /^.+\+\d{1,4}$/i.test(normalized);
+  }
+
+  function stripAssistantWebLinksFromNode(node, settings = {}) {
+    if (!node || settings.showAssistantWebReferences) {
+      return;
+    }
+
+    const anchors = Array.from(node.querySelectorAll("a[href]"));
+    for (const anchor of anchors) {
+      const href = normalizeText(anchor.getAttribute("href"));
+      const label = normalizeReferenceLabel(
+        anchor.getAttribute("aria-label")
+        || anchor.getAttribute("title")
+        || anchor.textContent
+      );
+
+      if (!href) {
+        continue;
+      }
+
+      // Preserve file-like links; dedicated reference settings control visibility.
+      if (isLikelyAttachmentHref(href) || isLikelyAttachmentLabel(label)) {
+        continue;
+      }
+
+      const isCitationLink = isCitationOnlyLabel(label)
+        || Boolean(anchor.querySelector("[data-testid*='citation-pill']"));
+
+      if (isCitationLink || !label || isLikelyUrlLabel(label)) {
+        anchor.remove();
+        continue;
+      }
+
+      // Keep readable wording while removing outbound URL behavior.
+      anchor.replaceWith(node.ownerDocument.createTextNode(label));
+    }
+
+    // Remove citation chips/pills that are rendered outside direct anchor text.
+    const citationNodes = Array.from(
+      node.querySelectorAll(
+        [
+          "[data-testid='webpage-citation-pill']",
+          "[data-testid*='citation-pill']"
+        ].join(", ")
+      )
+    );
+
+    for (const citationNode of citationNodes) {
+      const linkedWrapper = citationNode.closest("a[href]");
+      if (linkedWrapper) {
+        linkedWrapper.remove();
+        continue;
+      }
+
+      citationNode.remove();
+    }
+  }
+
   function extractVisibleFileTileLabel(node) {
     const candidates = [
       node.getAttribute("aria-label"),
@@ -766,7 +836,7 @@
     thinkingBlock.thinkingRoot.remove();
   }
 
-  function prepareAssistantContentRootForSanitize(contentRoot) {
+  function prepareAssistantContentRootForSanitize(contentRoot, settings = {}) {
     const clone = contentRoot?.cloneNode?.(true);
     if (!clone) {
       return contentRoot;
@@ -774,6 +844,9 @@
 
     // Ensure thought labels/blocks do not leak into assistant plain text output.
     removeStructuredThinkingFromAssistantRoot(clone);
+
+    // Remove assistant web links from message body when web references are disabled.
+    stripAssistantWebLinksFromNode(clone, settings);
 
     // Remove UI-only action surfaces that are not part of the assistant content.
     const uiOnlyNodes = Array.from(clone.querySelectorAll(
@@ -1224,7 +1297,7 @@
 
       const contentRoot = pickMessageContentRoot(node, rawRole);
       const sanitizeRoot = rawRole === "assistant"
-        ? prepareAssistantContentRootForSanitize(contentRoot)
+        ? prepareAssistantContentRootForSanitize(contentRoot, settings)
         : contentRoot;
       const sanitized = root.sanitize.sanitizeMessageNode(sanitizeRoot, {
         mediaHandling: settings.mediaHandling

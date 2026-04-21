@@ -139,6 +139,38 @@
     container.scrollLeft = safeLeft;
   }
 
+  function scrollToTopAnimated(container) {
+    if (!container) {
+      return;
+    }
+
+    const safeLeft = scrollLeftOf(container);
+
+    try {
+      if (isDocumentScrollContainer(container)) {
+        window.scrollTo({
+          top: 0,
+          left: safeLeft,
+          behavior: "smooth"
+        });
+        return;
+      }
+
+      if (typeof container.scrollTo === "function") {
+        container.scrollTo({
+          top: 0,
+          left: safeLeft,
+          behavior: "smooth"
+        });
+        return;
+      }
+    } catch (_error) {
+      // Fall back to immediate positioning for hosts that reject smooth scroll.
+    }
+
+    setScrollPosition(container, 0, safeLeft);
+  }
+
   function captureScrollPosition(container) {
     return {
       top: scrollTopOf(container),
@@ -187,132 +219,31 @@
     const originalScroll = captureScrollPosition(scrollContainer);
 
     try {
-      setScrollTop(scrollContainer, scrollHeightOf(scrollContainer));
-      for (let settlePass = 0; settlePass < 3; settlePass += 1) {
-        await waitForRender(120 + (settlePass * 36));
-        messageNodes = readNodes();
-      }
+      scrollToTopAnimated(scrollContainer);
+      await waitForRender(260);
+      scrollToTopAnimated(scrollContainer);
 
-      let topHydrated = false;
-      let topStablePasses = 0;
-      let topPreviousCount = messageNodes.length;
-      let topPreviousHeight = scrollHeightOf(scrollContainer);
-
-      // Phase 1 (preferred): hard-jump to top and wait until history settles.
-      for (let guard = 0; guard < 36; guard += 1) {
-        const beforeTop = scrollTopOf(scrollContainer);
-
-        setScrollTop(scrollContainer, 0);
-        await waitForRender(132);
-        messageNodes = readNodes();
-        setScrollTop(scrollContainer, 0);
-        await waitForRender(208);
-        messageNodes = readNodes();
-
-        const afterTop = scrollTopOf(scrollContainer);
-        const afterCount = messageNodes.length;
-        const afterHeight = scrollHeightOf(scrollContainer);
-        const discoveredNew = afterCount > topPreviousCount;
-        const heightExpanded = Math.abs(afterHeight - topPreviousHeight) > 4;
-
-        topPreviousCount = afterCount;
-        topPreviousHeight = afterHeight;
-
-        if (afterTop <= 1) {
-          if (!discoveredNew && !heightExpanded) {
-            topStablePasses += 1;
-            if (topStablePasses >= 3) {
-              topHydrated = true;
-              break;
-            }
-          } else {
-            topStablePasses = 0;
-          }
-          continue;
-        }
-
-        if (Math.abs(afterTop - beforeTop) <= 2) {
-          break;
-        }
-      }
-
-      if (topHydrated) {
-        return worker(messageNodes);
-      }
-
-      // Phase 2 (fallback): incremental sweep when top-jumps are throttled.
-      let stepSize = Math.max(260, Math.round(clientHeightOf(scrollContainer) * 0.72));
-      let stagnantPasses = 0;
-      let noMovementPasses = 0;
-      topStablePasses = 0;
+      let stablePasses = 0;
       let previousCount = messageNodes.length;
 
-      for (let guard = 0; guard < 140; guard += 1) {
-        const currentTop = scrollTopOf(scrollContainer);
-        const beforeHeight = scrollHeightOf(scrollContainer);
-
-        if (currentTop > 0) {
-          setScrollTop(scrollContainer, Math.max(0, currentTop - stepSize));
-        }
-
-        await waitForRender(120);
-        messageNodes = readNodes();
-        await waitForRender(168);
+      // Simplified hydration strategy: move to top once and wait for
+      // virtualized history to mount without incremental sweeping.
+      for (let pass = 0; pass < 8; pass += 1) {
+        await waitForRender(220);
         messageNodes = readNodes();
 
-        const afterTop = scrollTopOf(scrollContainer);
-        const afterHeight = scrollHeightOf(scrollContainer);
         const currentCount = messageNodes.length;
-        const discoveredNew = currentCount > previousCount;
-        const heightExpanded = Math.abs(afterHeight - beforeHeight) > 4;
-        const moved = Math.abs(afterTop - currentTop) > 2;
-
-        if (discoveredNew || heightExpanded) {
-          stagnantPasses = 0;
+        const atTop = scrollTopOf(scrollContainer) <= 2;
+        if (currentCount === previousCount && atTop) {
+          stablePasses += 1;
+          if (stablePasses >= 2) {
+            break;
+          }
         } else {
-          stagnantPasses += 1;
-        }
-
-        if (!moved && !discoveredNew && !heightExpanded) {
-          noMovementPasses += 1;
-        } else {
-          noMovementPasses = 0;
+          stablePasses = 0;
         }
 
         previousCount = currentCount;
-
-        if (afterTop <= 1) {
-          const countBeforeTopSettle = messageNodes.length;
-          await waitForRender(220);
-          messageNodes = readNodes();
-          await waitForRender(220);
-          messageNodes = readNodes();
-
-          if (messageNodes.length === countBeforeTopSettle) {
-            topStablePasses += 1;
-            if (topStablePasses >= 3) {
-              break;
-            }
-          } else {
-            topStablePasses = 0;
-          }
-        } else {
-          topStablePasses = 0;
-        }
-
-        if (stagnantPasses >= 10) {
-          stepSize = Math.max(180, Math.round(stepSize * 0.82));
-          await waitForRender(260);
-          messageNodes = readNodes();
-          stagnantPasses = 0;
-        }
-
-        if (noMovementPasses >= 8) {
-          if (scrollTopOf(scrollContainer) <= 1) {
-            break;
-          }
-          noMovementPasses = 0;
-        }
       }
 
       return worker(messageNodes);

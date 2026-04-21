@@ -401,6 +401,38 @@
     container.scrollLeft = safeLeft;
   }
 
+  function scrollToTopAnimated(container) {
+    if (!container) {
+      return;
+    }
+
+    const safeLeft = scrollLeftOf(container);
+
+    try {
+      if (isDocumentScrollContainer(container)) {
+        window.scrollTo({
+          top: 0,
+          left: safeLeft,
+          behavior: "smooth"
+        });
+        return;
+      }
+
+      if (typeof container.scrollTo === "function") {
+        container.scrollTo({
+          top: 0,
+          left: safeLeft,
+          behavior: "smooth"
+        });
+        return;
+      }
+    } catch (_error) {
+      // Fall back to immediate positioning for hosts that reject smooth scroll.
+    }
+
+    setScrollPosition(container, 0, safeLeft);
+  }
+
   function captureScrollPosition(container) {
     return {
       top: scrollTopOf(container),
@@ -479,307 +511,35 @@
       }
     };
 
-    const maybeRunTurnSweep = async () => {
-      if (!shouldRunTurnHydrationSweep(initialTurnCount, collectedByTurn.size)) {
-        return;
-      }
-
-      const settleHydrationAfterScroll = async (timeoutMs = 720) => {
-        const startedAt = Date.now();
-        let stablePasses = 0;
-        let previousVisibleRoleCount = document.querySelectorAll("[data-message-author-role]").length;
-        let previousCollectedCount = collectedByTurn.size;
-
-        while (Date.now() - startedAt < timeoutMs && !hydrationBudgetExceeded()) {
-          await waitForRender(92);
-          mergeEntries(collectVisibleConversationEntries());
-
-          const currentVisibleRoleCount = document.querySelectorAll("[data-message-author-role]").length;
-          const currentCollectedCount = collectedByTurn.size;
-
-          const unchanged = currentVisibleRoleCount === previousVisibleRoleCount
-            && currentCollectedCount === previousCollectedCount;
-
-          if (unchanged) {
-            stablePasses += 1;
-            if (stablePasses >= 2) {
-              break;
-            }
-          } else {
-            stablePasses = 0;
-            previousVisibleRoleCount = currentVisibleRoleCount;
-            previousCollectedCount = currentCollectedCount;
-          }
-        }
-      };
+    try {
+      mergeEntries(visibleEntries);
+      scrollToTopAnimated(scrollContainer);
+      await waitForRender(260);
+      scrollToTopAnimated(scrollContainer);
 
       let stablePasses = 0;
       let previousCount = collectedByTurn.size;
 
-      // Fast coarse sweep first: jump across the scroll range to hydrate large
-      // windows quickly before doing expensive turn-by-turn targeting.
-      const coarseStops = Math.min(26, Math.max(12, Math.round(initialTurnCount / 4)));
-      for (let stop = coarseStops; stop >= 0 && !hydrationBudgetExceeded(); stop -= 1) {
-        const maxScrollTop = Math.max(0, scrollHeightOf(scrollContainer) - clientHeightOf(scrollContainer));
-        const ratio = coarseStops > 0 ? (stop / coarseStops) : 0;
-        setScrollTop(scrollContainer, Math.round(maxScrollTop * ratio));
-        await settleHydrationAfterScroll(360);
-
-        if (!shouldRunTurnHydrationSweep(initialTurnCount, collectedByTurn.size)) {
-          break;
-        }
-      }
-
-      for (let pass = 0; pass < 4 && !hydrationBudgetExceeded(); pass += 1) {
-        const sections = Array.from(document.querySelectorAll(TURN_SECTION_SELECTOR))
-          .sort((left, right) => parseTurnOrder(left, 0) - parseTurnOrder(right, 0));
-
-        if (!sections.length) {
-          break;
-        }
-
-        const orderedSections = pass % 2 === 0
-          ? sections.slice().reverse()
-          : sections;
-        const sectionStep = orderedSections.length > 120 ? 2 : 1;
-
-        for (
-          let sectionIndex = 0;
-          sectionIndex < orderedSections.length && !hydrationBudgetExceeded();
-          sectionIndex += sectionStep
-        ) {
-          const section = orderedSections[sectionIndex];
-          if (!section || !section.isConnected) {
-            continue;
-          }
-
-          const sectionWasRenderable = hasRenderableTurnContent(section);
-          const scrollTarget = section.closest("[data-turn-id-container]") || section;
-
-          try {
-            scrollTarget.scrollIntoView({
-              block: "center",
-              inline: "nearest"
-            });
-          } catch (_error) {
-            const ordinal = parseTurnOrder(section, 1);
-            const ratio = Math.min(1, Math.max(0, ordinal / Math.max(initialTurnCount, 1)));
-            setScrollTop(scrollContainer, Math.round(scrollHeightOf(scrollContainer) * ratio));
-          }
-
-          if (sectionWasRenderable) {
-            await waitForRender(72);
-            mergeEntries(collectVisibleConversationEntries());
-          } else {
-            // Robust mode: when a turn is still virtualized, wait briefly for
-            // hydration to mount real message nodes before advancing.
-            await settleHydrationAfterScroll(420);
-          }
-
-          if (collectedByTurn.size >= initialTurnCount) {
-            break;
-          }
-        }
-
-        // Give the list one more top settle pass so prepended turns mount.
-        setScrollTop(scrollContainer, 0);
-        await settleHydrationAfterScroll(540);
+      // Simplified hydration strategy: move to top once and wait for
+      // virtualized history to mount without incremental sweeping.
+      for (let pass = 0; pass < 10 && !hydrationBudgetExceeded(); pass += 1) {
+        await waitForRender(220);
+        mergeEntries(collectVisibleConversationEntries());
 
         const currentCount = collectedByTurn.size;
-        if (currentCount === previousCount) {
+        const atTop = scrollTopOf(scrollContainer) <= 2;
+        if (currentCount === previousCount && atTop) {
           stablePasses += 1;
+          if (stablePasses >= 2) {
+            break;
+          }
         } else {
           stablePasses = 0;
         }
-        previousCount = currentCount;
-
-        if (!shouldRunTurnHydrationSweep(initialTurnCount, currentCount) || stablePasses >= 2) {
-          break;
-        }
-      }
-
-      if (hydrationBudgetExceeded() || collectedByTurn.size >= initialTurnCount) {
-        return;
-      }
-
-      const strictSections = Array.from(document.querySelectorAll(TURN_SECTION_SELECTOR))
-        .sort((left, right) => parseTurnOrder(left, 0) - parseTurnOrder(right, 0));
-
-      // Final strict pass: for turns still not renderable, trigger hydration and
-      // wait briefly for each one so mixed DOM variants can finish mounting.
-      for (const section of strictSections) {
-        if (!section || !section.isConnected || hasRenderableTurnContent(section)) {
-          continue;
-        }
-
-        const scrollTarget = section.closest("[data-turn-id-container]") || section;
-        try {
-          scrollTarget.scrollIntoView({
-            block: "center",
-            inline: "nearest"
-          });
-        } catch (_error) {
-          const ordinal = parseTurnOrder(section, 1);
-          const ratio = Math.min(1, Math.max(0, ordinal / Math.max(initialTurnCount, 1)));
-          setScrollTop(scrollContainer, Math.round(scrollHeightOf(scrollContainer) * ratio));
-        }
-
-        const waitStartedAt = Date.now();
-        while (!hydrationBudgetExceeded() && Date.now() - waitStartedAt < 920) {
-          await waitForRender(98);
-          mergeEntries(collectVisibleConversationEntries());
-
-          if (hasRenderableTurnContent(section)) {
-            break;
-          }
-        }
-
-        if (collectedByTurn.size >= initialTurnCount) {
-          break;
-        }
-      }
-    };
-
-    try {
-      mergeEntries(visibleEntries);
-      setScrollTop(scrollContainer, scrollHeightOf(scrollContainer));
-      for (let settlePass = 0; settlePass < 3 && !hydrationBudgetExceeded(); settlePass += 1) {
-        await waitForRender(116 + (settlePass * 32));
-        mergeEntries(collectVisibleConversationEntries());
-      }
-
-      let topHydrated = false;
-      let topStablePasses = 0;
-      let topPreviousCount = collectedByTurn.size;
-      let topPreviousHeight = scrollHeightOf(scrollContainer);
-
-      // Phase 1 (preferred): force jump to top and wait until the virtualized
-      // history stabilizes. This is the most reliable path on very long chats.
-      for (let guard = 0; guard < 36 && !hydrationBudgetExceeded(); guard += 1) {
-        const beforeTop = scrollTopOf(scrollContainer);
-
-        setScrollTop(scrollContainer, 0);
-        await waitForRender(132);
-        mergeEntries(collectVisibleConversationEntries());
-        setScrollTop(scrollContainer, 0);
-        await waitForRender(208);
-        mergeEntries(collectVisibleConversationEntries());
-
-        const afterTop = scrollTopOf(scrollContainer);
-        const afterCount = collectedByTurn.size;
-        const afterHeight = scrollHeightOf(scrollContainer);
-        const discoveredNew = afterCount > topPreviousCount;
-        const heightExpanded = Math.abs(afterHeight - topPreviousHeight) > 4;
-
-        topPreviousCount = afterCount;
-        topPreviousHeight = afterHeight;
-
-        if (afterTop <= 1) {
-          if (!discoveredNew && !heightExpanded) {
-            topStablePasses += 1;
-            if (topStablePasses >= 3) {
-              topHydrated = true;
-              break;
-            }
-          } else {
-            topStablePasses = 0;
-          }
-          continue;
-        }
-
-        // If the container does not move towards top at all, fallback to step mode.
-        if (Math.abs(afterTop - beforeTop) <= 2) {
-          break;
-        }
-      }
-
-      if (topHydrated) {
-        await maybeRunTurnSweep();
-        const mergedEntries = Array.from(collectedByTurn.values()).sort((left, right) => left.order - right.order);
-        return mergedEntries.length ? mergedEntries : visibleEntries;
-      }
-
-      // Phase 2 (fallback): incremental sweep for hosts where direct top jumps
-      // are throttled or partially ignored during hydration.
-      let stepSize = Math.max(260, Math.round(clientHeightOf(scrollContainer) * 0.72));
-      let stagnantPasses = 0;
-      let noMovementPasses = 0;
-      topStablePasses = 0;
-      let previousCount = collectedByTurn.size;
-
-      for (let guard = 0; guard < 140 && !hydrationBudgetExceeded(); guard += 1) {
-        const currentTop = scrollTopOf(scrollContainer);
-        const beforeHeight = scrollHeightOf(scrollContainer);
-
-        if (currentTop > 0) {
-          setScrollTop(scrollContainer, Math.max(0, currentTop - stepSize));
-        }
-
-        await waitForRender(116);
-        mergeEntries(collectVisibleConversationEntries());
-        await waitForRender(164);
-        mergeEntries(collectVisibleConversationEntries());
-
-        const afterTop = scrollTopOf(scrollContainer);
-        const afterHeight = scrollHeightOf(scrollContainer);
-        const currentCount = collectedByTurn.size;
-        const discoveredNew = currentCount > previousCount;
-        const heightExpanded = Math.abs(afterHeight - beforeHeight) > 4;
-        const moved = Math.abs(afterTop - currentTop) > 2;
-
-        if (discoveredNew || heightExpanded) {
-          stagnantPasses = 0;
-        } else {
-          stagnantPasses += 1;
-        }
-
-        if (!moved && !discoveredNew && !heightExpanded) {
-          noMovementPasses += 1;
-        } else {
-          noMovementPasses = 0;
-        }
 
         previousCount = currentCount;
-
-        const reachedTop = afterTop <= 1;
-        if (reachedTop) {
-          const countBeforeTopSettle = collectedByTurn.size;
-          // ChatGPT can prepend older turns asynchronously once top is reached.
-          await waitForRender(208);
-          mergeEntries(collectVisibleConversationEntries());
-          await waitForRender(208);
-          mergeEntries(collectVisibleConversationEntries());
-
-          if (collectedByTurn.size === countBeforeTopSettle) {
-            topStablePasses += 1;
-            if (topStablePasses >= 3) {
-              break;
-            }
-          } else {
-            topStablePasses = 0;
-          }
-        } else {
-          topStablePasses = 0;
-        }
-
-        if (stagnantPasses >= 10) {
-          // Back off with smaller jumps when lazy rendering is slow.
-          stepSize = Math.max(180, Math.round(stepSize * 0.82));
-          await waitForRender(248);
-          mergeEntries(collectVisibleConversationEntries());
-          stagnantPasses = 0;
-        }
-
-        if (noMovementPasses >= 8) {
-          // Safety valve for unexpected containers that ignore scroll writes.
-          if (scrollTopOf(scrollContainer) <= 1) {
-            break;
-          }
-          noMovementPasses = 0;
-        }
       }
 
-      await maybeRunTurnSweep();
       const mergedEntries = Array.from(collectedByTurn.values()).sort((left, right) => left.order - right.order);
       return mergedEntries.length ? mergedEntries : visibleEntries;
     } finally {

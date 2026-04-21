@@ -678,6 +678,38 @@
     container.scrollLeft = safeLeft;
   }
 
+  function scrollToTopAnimated(container) {
+    if (!container) {
+      return;
+    }
+
+    const safeLeft = scrollLeftOf(container);
+
+    try {
+      if (isDocumentScrollContainer(container)) {
+        window.scrollTo({
+          top: 0,
+          left: safeLeft,
+          behavior: "smooth"
+        });
+        return;
+      }
+
+      if (typeof container.scrollTo === "function") {
+        container.scrollTo({
+          top: 0,
+          left: safeLeft,
+          behavior: "smooth"
+        });
+        return;
+      }
+    } catch (_error) {
+      // Fall back to immediate positioning for hosts that reject smooth scroll.
+    }
+
+    setScrollPosition(container, 0, safeLeft);
+  }
+
   function captureScrollPosition(container) {
     return {
       top: scrollTopOf(container),
@@ -746,139 +778,31 @@
 
     try {
       mergeEntries(visibleEntries);
-      setScrollTop(scrollContainer, scrollHeightOf(scrollContainer));
-      for (let settlePass = 0; settlePass < 3; settlePass += 1) {
-        await waitForRender(120 + (settlePass * 36));
-        mergeEntries(readVisibleTurnEntries());
-      }
+      scrollToTopAnimated(scrollContainer);
+      await waitForRender(260);
+      scrollToTopAnimated(scrollContainer);
 
-      let topHydrated = false;
-      let topStablePasses = 0;
-      let topPreviousCount = collectedByKey.size;
-      let topPreviousHeight = scrollHeightOf(scrollContainer);
-
-      // Phase 1 (preferred): hard-jump to top and wait for lazy history hydration.
-      for (let guard = 0; guard < 36; guard += 1) {
-        const beforeTop = scrollTopOf(scrollContainer);
-
-        setScrollTop(scrollContainer, 0);
-        await waitForRender(132);
-        mergeEntries(readVisibleTurnEntries());
-        setScrollTop(scrollContainer, 0);
-        await waitForRender(208);
-        mergeEntries(readVisibleTurnEntries());
-
-        const afterTop = scrollTopOf(scrollContainer);
-        const afterCount = collectedByKey.size;
-        const afterHeight = scrollHeightOf(scrollContainer);
-        const discoveredNew = afterCount > topPreviousCount;
-        const heightExpanded = Math.abs(afterHeight - topPreviousHeight) > 4;
-
-        topPreviousCount = afterCount;
-        topPreviousHeight = afterHeight;
-
-        if (afterTop <= 1) {
-          if (!discoveredNew && !heightExpanded) {
-            topStablePasses += 1;
-            if (topStablePasses >= 3) {
-              topHydrated = true;
-              break;
-            }
-          } else {
-            topStablePasses = 0;
-          }
-          continue;
-        }
-
-        // If jumps do not move up, fallback to incremental sweeping.
-        if (Math.abs(afterTop - beforeTop) <= 2) {
-          break;
-        }
-      }
-
-      if (topHydrated) {
-        const merged = Array.from(collectedByKey.values())
-          .sort((left, right) => left.order - right.order);
-        return merged.length ? merged : visibleEntries;
-      }
-
-      // Phase 2 (fallback): incremental sweep for stubborn scroll hosts.
-      let stepSize = Math.max(260, Math.round(clientHeightOf(scrollContainer) * 0.72));
-      let stagnantPasses = 0;
-      let noMovementPasses = 0;
-      topStablePasses = 0;
+      let stablePasses = 0;
       let previousCount = collectedByKey.size;
 
-      for (let guard = 0; guard < 140; guard += 1) {
-        const currentTop = scrollTopOf(scrollContainer);
-        const beforeHeight = scrollHeightOf(scrollContainer);
-
-        if (currentTop > 0) {
-          setScrollTop(scrollContainer, Math.max(0, currentTop - stepSize));
-        }
-
-        await waitForRender(120);
-        mergeEntries(readVisibleTurnEntries());
-        await waitForRender(168);
+      // Simplified hydration strategy: move to top once and wait for
+      // virtualized history to mount without incremental sweeping.
+      for (let pass = 0; pass < 8; pass += 1) {
+        await waitForRender(220);
         mergeEntries(readVisibleTurnEntries());
 
-        const afterTop = scrollTopOf(scrollContainer);
-        const afterHeight = scrollHeightOf(scrollContainer);
         const currentCount = collectedByKey.size;
-        const discoveredNew = currentCount > previousCount;
-        const heightExpanded = Math.abs(afterHeight - beforeHeight) > 4;
-        const moved = Math.abs(afterTop - currentTop) > 2;
-
-        if (discoveredNew || heightExpanded) {
-          stagnantPasses = 0;
+        const atTop = scrollTopOf(scrollContainer) <= 2;
+        if (currentCount === previousCount && atTop) {
+          stablePasses += 1;
+          if (stablePasses >= 2) {
+            break;
+          }
         } else {
-          stagnantPasses += 1;
-        }
-
-        if (!moved && !discoveredNew && !heightExpanded) {
-          noMovementPasses += 1;
-        } else {
-          noMovementPasses = 0;
+          stablePasses = 0;
         }
 
         previousCount = currentCount;
-
-        const reachedTop = afterTop <= 1;
-        if (reachedTop) {
-          const countBeforeTopSettle = collectedByKey.size;
-          // DeepSeek can prepend older chunks asynchronously after we reach top.
-          await waitForRender(220);
-          mergeEntries(readVisibleTurnEntries());
-          await waitForRender(220);
-          mergeEntries(readVisibleTurnEntries());
-
-          if (collectedByKey.size === countBeforeTopSettle) {
-            topStablePasses += 1;
-            if (topStablePasses >= 3) {
-              break;
-            }
-          } else {
-            topStablePasses = 0;
-          }
-        } else {
-          topStablePasses = 0;
-        }
-
-        if (stagnantPasses >= 10) {
-          // Back off with smaller increments when virtual loading gets slow.
-          stepSize = Math.max(180, Math.round(stepSize * 0.82));
-          await waitForRender(260);
-          mergeEntries(readVisibleTurnEntries());
-          stagnantPasses = 0;
-        }
-
-        if (noMovementPasses >= 8) {
-          // Safety valve for unexpected containers that ignore programmatic scroll.
-          if (scrollTopOf(scrollContainer) <= 1) {
-            break;
-          }
-          noMovementPasses = 0;
-        }
       }
 
       const merged = Array.from(collectedByKey.values())

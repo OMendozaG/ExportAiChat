@@ -51,12 +51,11 @@ The TXT export is designed as a readable chat log:
 - Broader ChatGPT thinking/reasoning block detection, including localized labels and timing extraction
 - ChatGPT thought blocks are now detected structurally from assistant turn DOM (pre-message block in `agent-turn`) and stripped from assistant body text before sanitize
 - ChatGPT extraction now supports modern `conversation-turn` sections, including assistant image-only turns
-- ChatGPT export now hydrates virtualized turn lists while collecting messages, reducing skipped messages in long chats
-- ChatGPT long-thread hydration now includes a per-turn sweep with settle waits to improve full-history capture when only a small visible window is mounted
+- ChatGPT export now hydrates virtualized turn lists with a top-scroll settle pass while collecting messages
+- Virtualized hydration now uses the same simplified strategy across ChatGPT, Claude, Gemini, Grok, and DeepSeek: animated scroll-to-top plus settle waits (no incremental sweep)
 - ChatGPT turn deduplication now uses stable turn ids (not message ids), preventing dropped/imbalanced turns on edited or regenerated branches
 - ChatGPT turn merge/dedup now keys by `turnId + role`, preventing rare collisions when mixed model DOM variants reuse turn containers
-- ChatGPT hydration now runs a strict final unresolved-turn pass, scrolling each non-rendered turn and waiting briefly for content mount before finishing export
-- Virtualized turn hydration now restores the original chat scroll position after export collection (ChatGPT and DeepSeek)
+- Virtualized turn hydration now restores the original chat scroll position after export collection (ChatGPT, Claude, Gemini, Grok, and DeepSeek)
 - Thinking labels now export inline under the AI message header as `(<label>)` using provider wording (for example, `(Pensó por 18s)`), and no longer create standalone messages
 - When a provider exposes both a thinking label and thinking body, exports now format it inline as `(<label>: <thinking text>)`
 - Reasoning text and thinking-time exports are now independent toggles, so each can be exported alone or together
@@ -91,7 +90,7 @@ The TXT export is designed as a readable chat log:
 - Editable `ChatNameCount` associations with inline id, provider, and chat-name editing, plus single delete and clear-all reset
 - Auto-save overwrite vs add-count conflict policy
 - Optional inline `EXPORT...` action per provider in supported headers
-- Provider and message summary in the popup with the resolved download file name preview
+- Provider and resolved file name preview in the popup summary card
 - Popup format buttons stay centered as a group when some formats are hidden
 - Shared raised button component across popup, settings, and inline export menu
 - Unified download icon sizing across popup and inline export menus

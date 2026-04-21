@@ -10,7 +10,6 @@
   const actionsNode = document.getElementById("actions");
   const summaryProviderNode = document.getElementById("summaryProvider");
   const summaryChatNameNode = document.getElementById("summaryChatName");
-  const summaryMessagesNode = document.getElementById("summaryMessages");
 
   const exportPdfButton = document.getElementById("exportPdf");
   const exportTxtButton = document.getElementById("exportTxt");
@@ -51,7 +50,6 @@
 
     summaryProviderNode.textContent = summary.providerName || "-";
     summaryChatNameNode.textContent = summary.fileName || summary.fileNameBase || "-";
-    summaryMessagesNode.textContent = summary.messagesDisplay || String(summary.totalMessages || 0);
     setSummaryVisible(true);
   }
 

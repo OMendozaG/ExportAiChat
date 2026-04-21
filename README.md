@@ -54,6 +54,7 @@ The TXT export is designed as a readable chat log:
 - Virtualized turn hydration now restores the original chat scroll position after export collection (ChatGPT and DeepSeek)
 - Thinking labels now export inline under the AI message header as `(<label>)` using provider wording (for example, `(Pensó por 18s)`), and no longer create standalone messages
 - When a provider exposes both a thinking label and thinking body, exports now format it inline as `(<label>: <thinking text>)`
+- Thinking-label normalization in post-processing no longer depends on provider-global helpers, avoiding runtime export failures in TXT/HTML/PDF/MHT
 - TXT thinking notes now always end with a line break and keep a blank line before the message body/attachments
 - TXT thinking notes are normalized as `(...)` without role prefix
 - TXT first-line indentation now follows the TXT indentation style with a dedicated toggle (`Apply indentation style to the first content line`, default on)

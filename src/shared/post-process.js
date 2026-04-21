@@ -208,6 +208,13 @@
     return compactThinkingText(value).replace(/\s*\n+\s*/g, " ").trim();
   }
 
+  function normalizeComparisonText(value) {
+    return String(value || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+
   function thinkingDurationFromLabel(rawLabel) {
     const label = String(rawLabel || "").trim();
     if (!label) {
@@ -255,7 +262,7 @@
     // Prefer explicit provider labels (for example, "Pensó por 18s")
     // to keep wording consistent with the source chat language.
     if (explicitLabel) {
-      const sameAsLabel = normalizeText(cleanedText) === normalizeText(explicitLabel);
+      const sameAsLabel = normalizeComparisonText(cleanedText) === normalizeComparisonText(explicitLabel);
       const bodyText = sameAsLabel ? "" : cleanedText;
 
       if (bodyText && !isLabelOnlyThinking(bodyText)) {

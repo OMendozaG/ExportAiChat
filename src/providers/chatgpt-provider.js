@@ -16,6 +16,7 @@
   const TIME_TEXT_REGEX = /\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|A\.M\.|P\.M\.)?\b/i;
   const CONVERSATION_PATH_REGEX = /\/c\/([^/?#]+)/i;
   const PROJECT_PATH_REGEX = /(\/g\/[^/]+)\/c\/[^/?#]+/i;
+  const TURN_SECTION_SELECTOR = "section[data-testid^='conversation-turn-']";
 
   function hostnameFromUrl(url) {
     try {
@@ -159,8 +160,10 @@
           "[data-message-author-role]",
           ".agent-turn",
           ".markdown",
+          ".text-message",
           ".whitespace-pre-wrap",
           ".user-message-bubble-color",
+          "[data-turn-message-id]",
           "img",
           "video"
         ].join(", ")
@@ -211,7 +214,7 @@
   function collectVisibleConversationEntries() {
     const entries = [];
     const turnSections = Array.from(
-      document.querySelectorAll("section[data-testid^='conversation-turn-'][data-turn]")
+      document.querySelectorAll(TURN_SECTION_SELECTOR)
     );
 
     for (let index = 0; index < turnSections.length; index += 1) {
@@ -231,7 +234,7 @@
     const legacyNodes = Array.from(document.querySelectorAll("[data-message-author-role]"));
     for (let index = 0; index < legacyNodes.length; index += 1) {
       const node = legacyNodes[index];
-      if (node.closest("section[data-testid^='conversation-turn-'][data-turn]")) {
+      if (node.closest(TURN_SECTION_SELECTOR)) {
         continue;
       }
 
@@ -251,6 +254,19 @@
     }
 
     return entries.sort((left, right) => left.order - right.order);
+  }
+
+  function shouldRunTurnHydrationSweep(totalTurns, collectedCount) {
+    const total = Number(totalTurns || 0);
+    const collected = Number(collectedCount || 0);
+    if (!total || total < 12 || collected >= total) {
+      return false;
+    }
+
+    const missing = total - collected;
+    // Run an extra targeted hydration sweep when virtualized turns are much
+    // higher than currently rendered entries (common in long ChatGPT threads).
+    return missing >= 8 || collected < Math.ceil(total * 0.72);
   }
 
   function getScrollContainerFromSection(section) {
@@ -359,9 +375,17 @@
   }
 
   async function collectConversationEntries(options = {}) {
+    const hydrationStartedAt = Date.now();
+    const requestedBudgetMs = Number(options.maxHydrationMs);
+    const maxHydrationMs = Number.isFinite(requestedBudgetMs)
+      ? Math.max(1200, Math.round(requestedBudgetMs))
+      : 12000;
+    const hydrationBudgetExceeded = () => (Date.now() - hydrationStartedAt) >= maxHydrationMs;
+
     const initialSections = Array.from(
-      document.querySelectorAll("section[data-testid^='conversation-turn-'][data-turn]")
+      document.querySelectorAll(TURN_SECTION_SELECTOR)
     );
+    const initialTurnCount = initialSections.length;
     let visibleEntries = collectVisibleConversationEntries();
 
     if (!visibleEntries.length && options.hydrateVirtualized !== false) {
@@ -398,10 +422,130 @@
       }
     };
 
+    const maybeRunTurnSweep = async () => {
+      if (!shouldRunTurnHydrationSweep(initialTurnCount, collectedById.size)) {
+        return;
+      }
+
+      const settleHydrationAfterScroll = async (timeoutMs = 720) => {
+        const startedAt = Date.now();
+        let stablePasses = 0;
+        let previousVisibleRoleCount = document.querySelectorAll("[data-message-author-role]").length;
+        let previousCollectedCount = collectedById.size;
+
+        while (Date.now() - startedAt < timeoutMs && !hydrationBudgetExceeded()) {
+          await waitForRender(92);
+          mergeEntries(collectVisibleConversationEntries());
+
+          const currentVisibleRoleCount = document.querySelectorAll("[data-message-author-role]").length;
+          const currentCollectedCount = collectedById.size;
+
+          const unchanged = currentVisibleRoleCount === previousVisibleRoleCount
+            && currentCollectedCount === previousCollectedCount;
+
+          if (unchanged) {
+            stablePasses += 1;
+            if (stablePasses >= 2) {
+              break;
+            }
+          } else {
+            stablePasses = 0;
+            previousVisibleRoleCount = currentVisibleRoleCount;
+            previousCollectedCount = currentCollectedCount;
+          }
+        }
+      };
+
+      let stablePasses = 0;
+      let previousCount = collectedById.size;
+
+      // Fast coarse sweep first: jump across the scroll range to hydrate large
+      // windows quickly before doing expensive turn-by-turn targeting.
+      const coarseStops = Math.min(26, Math.max(12, Math.round(initialTurnCount / 4)));
+      for (let stop = coarseStops; stop >= 0 && !hydrationBudgetExceeded(); stop -= 1) {
+        const maxScrollTop = Math.max(0, scrollHeightOf(scrollContainer) - clientHeightOf(scrollContainer));
+        const ratio = coarseStops > 0 ? (stop / coarseStops) : 0;
+        setScrollTop(scrollContainer, Math.round(maxScrollTop * ratio));
+        await settleHydrationAfterScroll(360);
+
+        if (!shouldRunTurnHydrationSweep(initialTurnCount, collectedById.size)) {
+          break;
+        }
+      }
+
+      for (let pass = 0; pass < 4 && !hydrationBudgetExceeded(); pass += 1) {
+        const sections = Array.from(document.querySelectorAll(TURN_SECTION_SELECTOR))
+          .sort((left, right) => parseTurnOrder(left, 0) - parseTurnOrder(right, 0));
+
+        if (!sections.length) {
+          break;
+        }
+
+        const orderedSections = pass % 2 === 0
+          ? sections.slice().reverse()
+          : sections;
+        const sectionStep = orderedSections.length > 120 ? 2 : 1;
+
+        for (
+          let sectionIndex = 0;
+          sectionIndex < orderedSections.length && !hydrationBudgetExceeded();
+          sectionIndex += sectionStep
+        ) {
+          const section = orderedSections[sectionIndex];
+          if (!section || !section.isConnected) {
+            continue;
+          }
+
+          const sectionWasRenderable = hasRenderableTurnContent(section);
+          const scrollTarget = section.closest("[data-turn-id-container]") || section;
+
+          try {
+            scrollTarget.scrollIntoView({
+              block: "center",
+              inline: "nearest"
+            });
+          } catch (_error) {
+            const ordinal = parseTurnOrder(section, 1);
+            const ratio = Math.min(1, Math.max(0, ordinal / Math.max(initialTurnCount, 1)));
+            setScrollTop(scrollContainer, Math.round(scrollHeightOf(scrollContainer) * ratio));
+          }
+
+          if (sectionWasRenderable) {
+            await waitForRender(72);
+            mergeEntries(collectVisibleConversationEntries());
+          } else {
+            // Robust mode: when a turn is still virtualized, wait briefly for
+            // hydration to mount real message nodes before advancing.
+            await settleHydrationAfterScroll(420);
+          }
+
+          if (collectedById.size >= initialTurnCount) {
+            break;
+          }
+        }
+
+        // Give the list one more top settle pass so prepended turns mount.
+        setScrollTop(scrollContainer, 0);
+        await settleHydrationAfterScroll(540);
+
+        const currentCount = collectedById.size;
+        if (currentCount === previousCount) {
+          stablePasses += 1;
+        } else {
+          stablePasses = 0;
+        }
+        previousCount = currentCount;
+
+        if (!shouldRunTurnHydrationSweep(initialTurnCount, currentCount) || stablePasses >= 2) {
+          break;
+        }
+      }
+    };
+
     try {
       mergeEntries(visibleEntries);
       setScrollTop(scrollContainer, scrollHeightOf(scrollContainer));
-      for (let settlePass = 0; settlePass < 3; settlePass += 1) {
+      for (let settlePass = 0; settlePass < 3 && !hydrationBudgetExceeded(); settlePass += 1) {
         await waitForRender(116 + (settlePass * 32));
         mergeEntries(collectVisibleConversationEntries());
       }
@@ -413,7 +557,7 @@
 
       // Phase 1 (preferred): force jump to top and wait until the virtualized
       // history stabilizes. This is the most reliable path on very long chats.
-      for (let guard = 0; guard < 36; guard += 1) {
+      for (let guard = 0; guard < 36 && !hydrationBudgetExceeded(); guard += 1) {
         const beforeTop = scrollTopOf(scrollContainer);
 
         setScrollTop(scrollContainer, 0);
@@ -452,6 +596,7 @@
       }
 
       if (topHydrated) {
+        await maybeRunTurnSweep();
         const mergedEntries = Array.from(collectedById.values()).sort((left, right) => left.order - right.order);
         return mergedEntries.length ? mergedEntries : visibleEntries;
       }
@@ -464,7 +609,7 @@
       topStablePasses = 0;
       let previousCount = collectedById.size;
 
-      for (let guard = 0; guard < 140; guard += 1) {
+      for (let guard = 0; guard < 140 && !hydrationBudgetExceeded(); guard += 1) {
         const currentTop = scrollTopOf(scrollContainer);
         const beforeHeight = scrollHeightOf(scrollContainer);
 
@@ -536,6 +681,7 @@
         }
       }
 
+      await maybeRunTurnSweep();
       const mergedEntries = Array.from(collectedById.values()).sort((left, right) => left.order - right.order);
       return mergedEntries.length ? mergedEntries : visibleEntries;
     } finally {
@@ -1385,7 +1531,17 @@
   }
 
   async function extractConversation(settings, options = {}) {
-    const rawEntries = await collectConversationEntries(options);
+    const requestedHydrationBudgetMs = Number(options.maxHydrationMs);
+    const fallbackHydrationBudgetMs = Math.max(
+      1500,
+      Math.round(Number(settings?.exportTimeoutSeconds || 20) * 1000 * 0.65)
+    );
+    const rawEntries = await collectConversationEntries({
+      ...options,
+      maxHydrationMs: Number.isFinite(requestedHydrationBudgetMs)
+        ? requestedHydrationBudgetMs
+        : fallbackHydrationBudgetMs
+    });
     const seenIds = new Set();
     const messages = [];
 
@@ -1465,7 +1621,7 @@
 
   function getLiveStatus() {
     const roleCount = document.querySelectorAll("[data-message-author-role]").length;
-    const turnCount = document.querySelectorAll("section[data-testid^='conversation-turn-'][data-turn]").length;
+    const turnCount = document.querySelectorAll(TURN_SECTION_SELECTOR).length;
     return {
       isChatPage: isChatPage(),
       messageCount: Math.max(roleCount, turnCount)

@@ -333,6 +333,11 @@
       }
 
       if (reasoningLabel) {
+        const genericReasoningOnly = isLabelOnlyThinking(reasoningLabel);
+        if (genericReasoningOnly && (!includeThinkingTime || !durationLabel)) {
+          return "";
+        }
+
         return toParenthesizedLabel(reasoningLabel);
       }
     }
@@ -345,7 +350,7 @@
       return "";
     }
 
-    return "(Thought)";
+    return "";
   }
 
   function mergeThinkingIntoAssistantMessages(messages) {

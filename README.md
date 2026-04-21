@@ -48,6 +48,7 @@ The TXT export is designed as a readable chat log:
 - ChatGPT user file tiles and assistant inline file/reference chips are extracted explicitly instead of relying only on sanitized rich text
 - ChatGPT attachment tile detection, including attachment-only user turns
 - Broader ChatGPT thinking/reasoning block detection, including localized labels and timing extraction
+- ChatGPT thought blocks are now detected structurally from assistant turn DOM (pre-message block in `agent-turn`) and stripped from assistant body text before sanitize
 - ChatGPT extraction now supports modern `conversation-turn` sections, including assistant image-only turns
 - ChatGPT export now hydrates virtualized turn lists while collecting messages, reducing skipped messages in long chats
 - Virtualized turn hydration now restores the original chat scroll position after export collection (ChatGPT and DeepSeek)

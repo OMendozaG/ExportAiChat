@@ -637,11 +637,143 @@
     return dedupeReferences(items);
   }
 
+  function isLikelyThinkingLabelText(value) {
+    const text = normalizeText(value);
+    if (!text || text.length > 220) {
+      return false;
+    }
+
+    if (!THINKING_LABEL_REGEX.test(text)) {
+      return false;
+    }
+
+    if (THINKING_SECONDS_REGEX.test(text) || THINKING_DURATION_LABEL_REGEX.test(text)) {
+      return true;
+    }
+
+    return /^(?:thought|thinking|reasoning|reasoned|pensado|pensando|pens[oó]|pensamiento|razonando|razonamiento)\b/i.test(text);
+  }
+
+  function findThinkingIndicatorInNode(node) {
+    if (!node) {
+      return null;
+    }
+
+    const probes = [
+      node,
+      ...Array.from(node.querySelectorAll(
+        [
+          ".text-token-text-tertiary",
+          "summary",
+          "details",
+          '[aria-label*="think" i]',
+          '[aria-label*="reason" i]',
+          '[aria-label*="pens" i]',
+          '[aria-label*="razon" i]',
+          '[title*="think" i]',
+          '[title*="reason" i]',
+          '[title*="pens" i]',
+          '[title*="razon" i]'
+        ].join(", ")
+      ))
+    ];
+
+    for (const probe of probes) {
+      const candidateTexts = [
+        probe.getAttribute?.("aria-label"),
+        probe.getAttribute?.("title"),
+        probe.textContent
+      ]
+        .map((value) => normalizeText(value))
+        .filter(Boolean);
+
+      const label = candidateTexts.find((text) => isLikelyThinkingLabelText(text));
+      if (label) {
+        return {
+          indicatorNode: probe,
+          indicatorText: label
+        };
+      }
+    }
+
+    return null;
+  }
+
+  function findStructuredThinkingBlock(turnNode) {
+    if (!turnNode) {
+      return null;
+    }
+
+    const assistantMessageNode = turnNode.querySelector("[data-message-author-role='assistant']");
+    if (!assistantMessageNode) {
+      return null;
+    }
+
+    // ChatGPT currently renders the "Thought for ..." block immediately
+    // before the assistant message container inside the assistant turn.
+    let sibling = assistantMessageNode.previousElementSibling;
+    while (sibling) {
+      if (!sibling.querySelector("[data-message-author-role]")) {
+        const siblingIndicator = findThinkingIndicatorInNode(sibling);
+        if (siblingIndicator) {
+          return {
+            thinkingRoot: sibling,
+            indicatorNode: siblingIndicator.indicatorNode,
+            indicatorText: siblingIndicator.indicatorText
+          };
+        }
+      }
+
+      sibling = sibling.previousElementSibling;
+    }
+
+    // Fallback for minor DOM variants where the thinking block is rendered
+    // as a standalone details/summary node that still precedes assistant text.
+    const fallbackCandidates = Array.from(
+      turnNode.querySelectorAll("details, summary, [data-testid*='think'], [data-testid*='reason']")
+    );
+
+    for (const candidate of fallbackCandidates) {
+      if (assistantMessageNode.contains(candidate) || candidate.contains(assistantMessageNode)) {
+        continue;
+      }
+
+      if (!(candidate.compareDocumentPosition(assistantMessageNode) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+        continue;
+      }
+
+      const candidateIndicator = findThinkingIndicatorInNode(candidate);
+      if (!candidateIndicator) {
+        continue;
+      }
+
+      return {
+        thinkingRoot: candidate.closest("details") || candidate,
+        indicatorNode: candidateIndicator.indicatorNode,
+        indicatorText: candidateIndicator.indicatorText
+      };
+    }
+
+    return null;
+  }
+
+  function removeStructuredThinkingFromAssistantRoot(contentRoot) {
+    const thinkingBlock = findStructuredThinkingBlock(contentRoot);
+    if (!thinkingBlock?.thinkingRoot?.parentElement) {
+      return;
+    }
+
+    thinkingBlock.thinkingRoot.remove();
+  }
+
   function prepareAssistantContentRootForSanitize(contentRoot) {
     const clone = contentRoot?.cloneNode?.(true);
     if (!clone) {
       return contentRoot;
     }
+
+    // Ensure thought labels/blocks do not leak into assistant plain text output.
+    removeStructuredThinkingFromAssistantRoot(clone);
 
     // Remove UI-only action surfaces that are not part of the assistant content.
     const uiOnlyNodes = Array.from(clone.querySelectorAll(
@@ -1014,66 +1146,15 @@
       return null;
     }
 
-    const candidates = Array.from(
-      messageNode.querySelectorAll(
-        [
-          "summary",
-          "details",
-          "button",
-          '[role="button"]',
-          '[data-testid*="think"]',
-          '[data-testid*="reason"]',
-          '[aria-label*="think" i]',
-          '[aria-label*="reason" i]',
-          '[aria-label*="pens" i]',
-          '[aria-label*="razon" i]',
-          '[title*="think" i]',
-          '[title*="reason" i]',
-          '[title*="pens" i]',
-          '[title*="razon" i]'
-        ].join(", ")
-      )
-    );
-
-    let indicatorNode = null;
-    let indicatorText = "";
-    let bestScore = -1;
-
-    for (const candidate of candidates) {
-      const candidateTexts = [
-        candidate.getAttribute("aria-label"),
-        candidate.getAttribute("title"),
-        candidate.getAttribute("data-testid"),
-        candidate.textContent
-      ]
-        .map((value) => normalizeText(value))
-        .filter(Boolean);
-      const matchText = candidateTexts.find((text) => (
-        THINKING_LABEL_REGEX.test(text) || THINKING_SECONDS_REGEX.test(text)
-      ));
-
-      if (!matchText) {
-        continue;
-      }
-
-      const score = (
-        (candidate.matches("summary") ? 3 : 0)
-        + (candidate.matches("details") ? 2 : 0)
-        + (candidate.closest("details") ? 1 : 0)
-      );
-
-      if (score > bestScore) {
-        bestScore = score;
-        indicatorNode = candidate;
-        indicatorText = matchText;
-      }
-    }
-
-    if (!indicatorNode) {
+    const thinkingBlock = findStructuredThinkingBlock(messageNode);
+    if (!thinkingBlock) {
       return null;
     }
 
-    const thinkingRoot = indicatorNode.closest("details") || indicatorNode;
+    const indicatorText = normalizeText(thinkingBlock.indicatorText);
+    const thinkingRoot = thinkingBlock.thinkingRoot?.closest?.("details")
+      || thinkingBlock.thinkingRoot
+      || thinkingBlock.indicatorNode;
     const sanitized = root.sanitize.sanitizeMessageNode(thinkingRoot, {
       mediaHandling: settings.mediaHandling
     });

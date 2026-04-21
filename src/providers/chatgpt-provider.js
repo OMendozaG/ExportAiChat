@@ -362,15 +362,17 @@
     const initialSections = Array.from(
       document.querySelectorAll("section[data-testid^='conversation-turn-'][data-turn]")
     );
-    const totalTurnCount = initialSections.length;
-    const renderedTurnCount = initialSections.filter((section) => hasRenderableTurnContent(section)).length;
-    const visibleEntries = collectVisibleConversationEntries();
+    let visibleEntries = collectVisibleConversationEntries();
+
+    if (!visibleEntries.length && options.hydrateVirtualized !== false) {
+      // Give ChatGPT one extra paint cycle when sections are still mounting.
+      await waitForRender(132);
+      visibleEntries = collectVisibleConversationEntries();
+    }
 
     if (
       options.hydrateVirtualized === false
-      || !totalTurnCount
-      || totalTurnCount <= renderedTurnCount + 1
-      || totalTurnCount <= 8
+      || !visibleEntries.length
     ) {
       return visibleEntries;
     }
@@ -399,19 +401,139 @@
     try {
       mergeEntries(visibleEntries);
       setScrollTop(scrollContainer, scrollHeightOf(scrollContainer));
-      await waitForRender();
-      mergeEntries(collectVisibleConversationEntries());
+      for (let settlePass = 0; settlePass < 3; settlePass += 1) {
+        await waitForRender(116 + (settlePass * 32));
+        mergeEntries(collectVisibleConversationEntries());
+      }
 
-      const stepSize = Math.max(420, Math.round(clientHeightOf(scrollContainer) * 0.75));
-      for (let guard = 0; guard < 90; guard += 1) {
-        const currentTop = scrollTopOf(scrollContainer);
-        if (currentTop <= 0) {
-          break;
+      let topHydrated = false;
+      let topStablePasses = 0;
+      let topPreviousCount = collectedById.size;
+      let topPreviousHeight = scrollHeightOf(scrollContainer);
+
+      // Phase 1 (preferred): force jump to top and wait until the virtualized
+      // history stabilizes. This is the most reliable path on very long chats.
+      for (let guard = 0; guard < 36; guard += 1) {
+        const beforeTop = scrollTopOf(scrollContainer);
+
+        setScrollTop(scrollContainer, 0);
+        await waitForRender(132);
+        mergeEntries(collectVisibleConversationEntries());
+        setScrollTop(scrollContainer, 0);
+        await waitForRender(208);
+        mergeEntries(collectVisibleConversationEntries());
+
+        const afterTop = scrollTopOf(scrollContainer);
+        const afterCount = collectedById.size;
+        const afterHeight = scrollHeightOf(scrollContainer);
+        const discoveredNew = afterCount > topPreviousCount;
+        const heightExpanded = Math.abs(afterHeight - topPreviousHeight) > 4;
+
+        topPreviousCount = afterCount;
+        topPreviousHeight = afterHeight;
+
+        if (afterTop <= 1) {
+          if (!discoveredNew && !heightExpanded) {
+            topStablePasses += 1;
+            if (topStablePasses >= 3) {
+              topHydrated = true;
+              break;
+            }
+          } else {
+            topStablePasses = 0;
+          }
+          continue;
         }
 
-        setScrollTop(scrollContainer, Math.max(0, currentTop - stepSize));
-        await waitForRender();
+        // If the container does not move towards top at all, fallback to step mode.
+        if (Math.abs(afterTop - beforeTop) <= 2) {
+          break;
+        }
+      }
+
+      if (topHydrated) {
+        const mergedEntries = Array.from(collectedById.values()).sort((left, right) => left.order - right.order);
+        return mergedEntries.length ? mergedEntries : visibleEntries;
+      }
+
+      // Phase 2 (fallback): incremental sweep for hosts where direct top jumps
+      // are throttled or partially ignored during hydration.
+      let stepSize = Math.max(260, Math.round(clientHeightOf(scrollContainer) * 0.72));
+      let stagnantPasses = 0;
+      let noMovementPasses = 0;
+      topStablePasses = 0;
+      let previousCount = collectedById.size;
+
+      for (let guard = 0; guard < 140; guard += 1) {
+        const currentTop = scrollTopOf(scrollContainer);
+        const beforeHeight = scrollHeightOf(scrollContainer);
+
+        if (currentTop > 0) {
+          setScrollTop(scrollContainer, Math.max(0, currentTop - stepSize));
+        }
+
+        await waitForRender(116);
         mergeEntries(collectVisibleConversationEntries());
+        await waitForRender(164);
+        mergeEntries(collectVisibleConversationEntries());
+
+        const afterTop = scrollTopOf(scrollContainer);
+        const afterHeight = scrollHeightOf(scrollContainer);
+        const currentCount = collectedById.size;
+        const discoveredNew = currentCount > previousCount;
+        const heightExpanded = Math.abs(afterHeight - beforeHeight) > 4;
+        const moved = Math.abs(afterTop - currentTop) > 2;
+
+        if (discoveredNew || heightExpanded) {
+          stagnantPasses = 0;
+        } else {
+          stagnantPasses += 1;
+        }
+
+        if (!moved && !discoveredNew && !heightExpanded) {
+          noMovementPasses += 1;
+        } else {
+          noMovementPasses = 0;
+        }
+
+        previousCount = currentCount;
+
+        const reachedTop = afterTop <= 1;
+        if (reachedTop) {
+          const countBeforeTopSettle = collectedById.size;
+          // ChatGPT can prepend older turns asynchronously once top is reached.
+          await waitForRender(208);
+          mergeEntries(collectVisibleConversationEntries());
+          await waitForRender(208);
+          mergeEntries(collectVisibleConversationEntries());
+
+          if (collectedById.size === countBeforeTopSettle) {
+            topStablePasses += 1;
+            if (topStablePasses >= 3) {
+              break;
+            }
+          } else {
+            topStablePasses = 0;
+          }
+        } else {
+          topStablePasses = 0;
+        }
+
+        if (stagnantPasses >= 10) {
+          // Back off with smaller jumps when lazy rendering is slow.
+          stepSize = Math.max(180, Math.round(stepSize * 0.82));
+          await waitForRender(248);
+          mergeEntries(collectVisibleConversationEntries());
+          stagnantPasses = 0;
+        }
+
+        if (noMovementPasses >= 8) {
+          // Safety valve for unexpected containers that ignore scroll writes.
+          if (scrollTopOf(scrollContainer) <= 1) {
+            break;
+          }
+          noMovementPasses = 0;
+        }
       }
 
       const mergedEntries = Array.from(collectedById.values()).sort((left, right) => left.order - right.order);

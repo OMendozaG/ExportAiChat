@@ -392,9 +392,6 @@
     }
 
     ui.setVisible(true);
-    if (typeof ui.setFormatStates === "function") {
-      ui.setFormatStates(getExportStates(provider, Number(liveStatus?.messageCount || 0)));
-    }
     ui.setEnabled(!exportInProgress && Boolean(liveStatus?.messageCount));
   }
 

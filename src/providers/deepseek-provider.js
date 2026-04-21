@@ -706,7 +706,14 @@
   }
 
   async function collectTurnEntries(options = {}) {
-    const visibleEntries = readVisibleTurnEntries();
+    let visibleEntries = readVisibleTurnEntries();
+
+    if (!visibleEntries.length && options.hydrateVirtualized !== false) {
+      // Give DeepSeek one extra paint cycle when the export is triggered while
+      // virtualized rows are still mounting.
+      await waitForRender(140);
+      visibleEntries = readVisibleTurnEntries();
+    }
 
     if (
       options.hydrateVirtualized === false
@@ -739,31 +746,137 @@
     try {
       mergeEntries(visibleEntries);
       setScrollTop(scrollContainer, scrollHeightOf(scrollContainer));
-      await waitForRender();
-      mergeEntries(readVisibleTurnEntries());
+      for (let settlePass = 0; settlePass < 3; settlePass += 1) {
+        await waitForRender(120 + (settlePass * 36));
+        mergeEntries(readVisibleTurnEntries());
+      }
 
-      const stepSize = Math.max(420, Math.round(clientHeightOf(scrollContainer) * 0.78));
-      let stagnantPasses = 0;
-      let previousCount = collectedByKey.size;
+      let topHydrated = false;
+      let topStablePasses = 0;
+      let topPreviousCount = collectedByKey.size;
+      let topPreviousHeight = scrollHeightOf(scrollContainer);
 
-      for (let guard = 0; guard < 120; guard += 1) {
-        const currentTop = scrollTopOf(scrollContainer);
-        if (currentTop <= 0) {
-          break;
-        }
+      // Phase 1 (preferred): hard-jump to top and wait for lazy history hydration.
+      for (let guard = 0; guard < 36; guard += 1) {
+        const beforeTop = scrollTopOf(scrollContainer);
 
-        setScrollTop(scrollContainer, Math.max(0, currentTop - stepSize));
-        await waitForRender();
+        setScrollTop(scrollContainer, 0);
+        await waitForRender(132);
+        mergeEntries(readVisibleTurnEntries());
+        setScrollTop(scrollContainer, 0);
+        await waitForRender(208);
         mergeEntries(readVisibleTurnEntries());
 
-        if (collectedByKey.size === previousCount) {
+        const afterTop = scrollTopOf(scrollContainer);
+        const afterCount = collectedByKey.size;
+        const afterHeight = scrollHeightOf(scrollContainer);
+        const discoveredNew = afterCount > topPreviousCount;
+        const heightExpanded = Math.abs(afterHeight - topPreviousHeight) > 4;
+
+        topPreviousCount = afterCount;
+        topPreviousHeight = afterHeight;
+
+        if (afterTop <= 1) {
+          if (!discoveredNew && !heightExpanded) {
+            topStablePasses += 1;
+            if (topStablePasses >= 3) {
+              topHydrated = true;
+              break;
+            }
+          } else {
+            topStablePasses = 0;
+          }
+          continue;
+        }
+
+        // If jumps do not move up, fallback to incremental sweeping.
+        if (Math.abs(afterTop - beforeTop) <= 2) {
+          break;
+        }
+      }
+
+      if (topHydrated) {
+        const merged = Array.from(collectedByKey.values())
+          .sort((left, right) => left.order - right.order);
+        return merged.length ? merged : visibleEntries;
+      }
+
+      // Phase 2 (fallback): incremental sweep for stubborn scroll hosts.
+      let stepSize = Math.max(260, Math.round(clientHeightOf(scrollContainer) * 0.72));
+      let stagnantPasses = 0;
+      let noMovementPasses = 0;
+      topStablePasses = 0;
+      let previousCount = collectedByKey.size;
+
+      for (let guard = 0; guard < 140; guard += 1) {
+        const currentTop = scrollTopOf(scrollContainer);
+        const beforeHeight = scrollHeightOf(scrollContainer);
+
+        if (currentTop > 0) {
+          setScrollTop(scrollContainer, Math.max(0, currentTop - stepSize));
+        }
+
+        await waitForRender(120);
+        mergeEntries(readVisibleTurnEntries());
+        await waitForRender(168);
+        mergeEntries(readVisibleTurnEntries());
+
+        const afterTop = scrollTopOf(scrollContainer);
+        const afterHeight = scrollHeightOf(scrollContainer);
+        const currentCount = collectedByKey.size;
+        const discoveredNew = currentCount > previousCount;
+        const heightExpanded = Math.abs(afterHeight - beforeHeight) > 4;
+        const moved = Math.abs(afterTop - currentTop) > 2;
+
+        if (discoveredNew || heightExpanded) {
+          stagnantPasses = 0;
+        } else {
           stagnantPasses += 1;
-          if (stagnantPasses >= 5) {
-            break;
+        }
+
+        if (!moved && !discoveredNew && !heightExpanded) {
+          noMovementPasses += 1;
+        } else {
+          noMovementPasses = 0;
+        }
+
+        previousCount = currentCount;
+
+        const reachedTop = afterTop <= 1;
+        if (reachedTop) {
+          const countBeforeTopSettle = collectedByKey.size;
+          // DeepSeek can prepend older chunks asynchronously after we reach top.
+          await waitForRender(220);
+          mergeEntries(readVisibleTurnEntries());
+          await waitForRender(220);
+          mergeEntries(readVisibleTurnEntries());
+
+          if (collectedByKey.size === countBeforeTopSettle) {
+            topStablePasses += 1;
+            if (topStablePasses >= 3) {
+              break;
+            }
+          } else {
+            topStablePasses = 0;
           }
         } else {
-          previousCount = collectedByKey.size;
+          topStablePasses = 0;
+        }
+
+        if (stagnantPasses >= 10) {
+          // Back off with smaller increments when virtual loading gets slow.
+          stepSize = Math.max(180, Math.round(stepSize * 0.82));
+          await waitForRender(260);
+          mergeEntries(readVisibleTurnEntries());
           stagnantPasses = 0;
+        }
+
+        if (noMovementPasses >= 8) {
+          // Safety valve for unexpected containers that ignore programmatic scroll.
+          if (scrollTopOf(scrollContainer) <= 1) {
+            break;
+          }
+          noMovementPasses = 0;
         }
       }
 
@@ -775,7 +888,7 @@
     }
   }
 
-  async function extractConversation(settings) {
+  async function extractConversation(settings, options = {}) {
     const shouldExtractAssistantReferences = Boolean(
       settings.showAssistantUserAttachmentReferences
       || settings.showAssistantGeneratedAttachmentReferences
@@ -783,7 +896,7 @@
       || settings.showAssistantReferences
     );
 
-    const turnEntries = await collectTurnEntries({ hydrateVirtualized: true });
+    const turnEntries = await collectTurnEntries(options);
     const messages = [];
 
     for (let index = 0; index < turnEntries.length; index += 1) {

@@ -149,6 +149,31 @@
     return Number(fallback || 0);
   }
 
+  function inferRoleFromTurnSection(section) {
+    if (!section) {
+      return "";
+    }
+
+    if (section.querySelector("[data-message-author-role='user'], .user-message-bubble-color")) {
+      return "user";
+    }
+
+    if (section.querySelector("[data-message-author-role='assistant'], .agent-turn, .markdown")) {
+      return "assistant";
+    }
+
+    const srOnlyHeading = normalizeText(section.querySelector("h4.sr-only")?.textContent);
+    if (/^(?:you said|t[úu]\s+dijiste)\b/i.test(srOnlyHeading)) {
+      return "user";
+    }
+
+    if (/\b(?:chatgpt|assistant)\b/i.test(srOnlyHeading)) {
+      return "assistant";
+    }
+
+    return "";
+  }
+
   function hasRenderableTurnContent(section) {
     if (!section) {
       return false;
@@ -160,9 +185,13 @@
           "[data-message-author-role]",
           ".agent-turn",
           ".markdown",
+          ".prose",
           ".text-message",
           ".whitespace-pre-wrap",
           ".user-message-bubble-color",
+          "[data-message-id]",
+          "[data-message-model-slug]",
+          "[data-turn-start-message]",
           "[data-turn-message-id]",
           "img",
           "video"
@@ -183,10 +212,27 @@
     return textWeight + mediaWeight + richWeight;
   }
 
+  function entryMergeKey(entry) {
+    const roleKey = normalizeRole(entry?.rawRole || "unknown") || "unknown";
+    const turnId = normalizeText(entry?.turnId);
+    if (turnId) {
+      return `${turnId}::${roleKey}`;
+    }
+
+    const messageId = normalizeText(entry?.messageId);
+    if (messageId) {
+      return `${messageId}::${roleKey}`;
+    }
+
+    const order = Number(entry?.order || 0);
+    return `chatgpt-order-${order}::${roleKey}`;
+  }
+
   function readEntryFromTurnSection(section, fallbackIndex) {
     const rawRole = normalizeRole(
       section.getAttribute("data-turn")
       || section.querySelector("[data-message-author-role]")?.getAttribute("data-message-author-role")
+      || inferRoleFromTurnSection(section)
       || "unknown"
     );
 
@@ -195,11 +241,17 @@
     }
 
     const messageNode = section.querySelector("[data-message-author-role][data-message-id]")
-      || section.querySelector("[data-message-author-role]");
+      || section.querySelector("[data-message-author-role]")
+      || section.querySelector("[data-message-id]")
+      || section.querySelector("[data-turn-start-message]")
+      || section.querySelector(".text-message")
+      || section.querySelector(".agent-turn")
+      || section;
     const turnId = section.getAttribute("data-turn-id")
       || section.closest("[data-turn-id-container]")?.getAttribute("data-turn-id-container")
       || `chatgpt-turn-${fallbackIndex + 1}`;
     const messageId = messageNode?.getAttribute("data-message-id")
+      || section.getAttribute("data-message-id")
       || turnId;
     const clonedNode = section.cloneNode(true);
 
@@ -413,9 +465,9 @@
     const collectedByTurn = new Map();
     const mergeEntries = (entries) => {
       for (const entry of entries) {
-        // Use the stable turn id as the merge key. Message ids can repeat across
-        // edited/regenerated branches and can cause dropped or imbalanced turns.
-        const key = String(entry.turnId || entry.messageId || "");
+        // Keep role in the merge key to avoid collisions when model variants
+        // reuse turn containers with slightly different internal structures.
+        const key = entryMergeKey(entry);
         if (!key) {
           continue;
         }
@@ -542,6 +594,47 @@
         previousCount = currentCount;
 
         if (!shouldRunTurnHydrationSweep(initialTurnCount, currentCount) || stablePasses >= 2) {
+          break;
+        }
+      }
+
+      if (hydrationBudgetExceeded() || collectedByTurn.size >= initialTurnCount) {
+        return;
+      }
+
+      const strictSections = Array.from(document.querySelectorAll(TURN_SECTION_SELECTOR))
+        .sort((left, right) => parseTurnOrder(left, 0) - parseTurnOrder(right, 0));
+
+      // Final strict pass: for turns still not renderable, trigger hydration and
+      // wait briefly for each one so mixed DOM variants can finish mounting.
+      for (const section of strictSections) {
+        if (!section || !section.isConnected || hasRenderableTurnContent(section)) {
+          continue;
+        }
+
+        const scrollTarget = section.closest("[data-turn-id-container]") || section;
+        try {
+          scrollTarget.scrollIntoView({
+            block: "center",
+            inline: "nearest"
+          });
+        } catch (_error) {
+          const ordinal = parseTurnOrder(section, 1);
+          const ratio = Math.min(1, Math.max(0, ordinal / Math.max(initialTurnCount, 1)));
+          setScrollTop(scrollContainer, Math.round(scrollHeightOf(scrollContainer) * ratio));
+        }
+
+        const waitStartedAt = Date.now();
+        while (!hydrationBudgetExceeded() && Date.now() - waitStartedAt < 920) {
+          await waitForRender(98);
+          mergeEntries(collectVisibleConversationEntries());
+
+          if (hasRenderableTurnContent(section)) {
+            break;
+          }
+        }
+
+        if (collectedByTurn.size >= initialTurnCount) {
           break;
         }
       }
@@ -1561,13 +1654,13 @@
       const entry = rawEntries[index];
       const node = entry.node;
       const rawRole = entry.rawRole || "unknown";
-      const turnKey = String(entry.turnId || entry.messageId || `chatgpt-turn-${index + 1}`);
-      const messageId = entry.messageId || turnKey || `chatgpt-${index + 1}`;
+      const dedupeKey = entryMergeKey(entry);
+      const messageId = entry.messageId || entry.turnId || `chatgpt-${index + 1}`;
 
-      if (seenTurns.has(turnKey)) {
+      if (seenTurns.has(dedupeKey)) {
         continue;
       }
-      seenTurns.add(turnKey);
+      seenTurns.add(dedupeKey);
 
       const timeData = extractMessageTimeData(node);
       const timeLabel = timeData.label;

@@ -60,9 +60,9 @@ The TXT export is designed as a readable chat log:
 - ChatGPT turn deduplication now uses stable turn ids (not message ids), preventing dropped/imbalanced turns on edited or regenerated branches
 - ChatGPT turn merge/dedup now keys by `turnId + role` when stable ids exist, and falls back to role-aware content fingerprints when ids are synthetic or missing
 - Virtualized turn hydration now restores the original chat scroll position after export collection (ChatGPT, Claude, Gemini, Grok, and DeepSeek)
-- Thinking labels now export inline under the AI message header as `(<label>)` using provider wording (for example, `(Pensó por 18s)`), and no longer create standalone messages
-- When a provider exposes both a thinking label and thinking body, exports now format it inline as `(<label>: <thinking text>)`
-- When only thinking time is exported (without reasoning text), exports now format it as `(Pensó: <duration>)`
+- Thinking labels now export inline under the AI message header using a unified format: `(Thought: <duration>)` or `(Thought: <duration> - <thinking text>)`
+- When only reasoning payload is exported (without duration), exports format it as `(Thought: <thinking text>)`
+- Attachment references are grouped as `(Attached: [File 1], [File 2], ...)` and rendered consistently across TXT, HTML, MHT, and PDF
 - Reasoning text and thinking-time exports are now independent toggles, so each can be exported alone or together
 - Thought notes no longer emit generic placeholders when reasoning/time data is missing for a message
 - Thinking-label normalization in post-processing no longer depends on provider-global helpers, avoiding runtime export failures in TXT/HTML/PDF/MHT

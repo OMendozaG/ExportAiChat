@@ -7,7 +7,6 @@
   const { ROLES, TEXT_FORMATTING, AI_NAME_MODE, METADATA_LABELS } = root.constants;
   const THINKING_LABEL_ONLY_REGEX = /^(?:thought|thinking|reasoning|reasoned|pensado|pensando|pens[oó]|pensamiento|razonando|razonamiento|reflexionando|reflexi[oó]n)(?:\s*(?:for|durante|por)\s*.+)?$/i;
   const THINKING_DURATION_CAPTURE_REGEX = /(?:thought|thinking|reasoned|reasoning|pensado|pensando|pens[oó]|pensamiento|razonando|razonamiento|reflexionando|reflexi[oó]n)(?:\s*(?:for|durante|por))?\s+(.+)$/i;
-  const THINKING_DURATION_STRIP_REGEX = /((?:thought|thinking|reasoned|reasoning|pensado|pensando|pens[oó]|pensamiento|razonando|razonamiento|reflexionando|reflexi[oó]n))(?:\s*(?:for|durante|por)\s+.+)$/i;
 
   function resolveNames(settings, provider) {
     const human = (settings.humanName || "Human").trim() || "Human";
@@ -233,16 +232,6 @@
     return durationMatch ? durationMatch[1].trim() : "";
   }
 
-  function stripThinkingDurationFromLabel(rawLabel) {
-    const label = compactThinkingLabel(rawLabel);
-    if (!label) {
-      return "";
-    }
-
-    const stripped = label.replace(THINKING_DURATION_STRIP_REGEX, "$1").trim();
-    return stripped || label;
-  }
-
   function stripLeadingThinkingLabel(rawText, rawLabel) {
     const text = compactThinkingText(rawText);
     const label = compactThinkingLabel(rawLabel);
@@ -297,60 +286,37 @@
 
     const explicitLabel = compactThinkingLabel(message?.thinkingLabel);
     const cleanedText = compactThinkingText(rawText);
-    const cleanedLabelText = compactThinkingLabel(cleanedText);
-    const hasLabelOnlyText = isLabelOnlyThinking(cleanedLabelText);
-    const fallbackLabel = hasLabelOnlyText ? cleanedLabelText : "";
     const durationLabel = resolveThinkingDuration(message);
-    const resolvedLabel = explicitLabel || fallbackLabel;
-    const reasoningLabel = includeReasoningText
-      ? (
-          includeThinkingTime
-            ? resolvedLabel
-            : stripThinkingDurationFromLabel(resolvedLabel)
-        )
-      : "";
     const sameAsLabel = Boolean(explicitLabel)
       && normalizeComparisonText(cleanedText) === normalizeComparisonText(explicitLabel);
     const bodyText = sameAsLabel
       ? ""
       : stripLeadingThinkingLabel(cleanedText, explicitLabel);
-    const hasReasoningBody = Boolean(bodyText && !isLabelOnlyThinking(bodyText));
     const inlineBody = compactThinkingLabel(bodyText);
+    const reasoningPayload = includeReasoningText && inlineBody && !isLabelOnlyThinking(inlineBody)
+      ? inlineBody
+      : "";
 
-    if (includeReasoningText) {
-      // Prefer explicit provider labels (for example, "Pensó por 18s")
-      // to keep wording consistent with the source chat language.
-      if (hasReasoningBody) {
-        if (reasoningLabel) {
-          return toParenthesizedLabel(`${reasoningLabel}: ${inlineBody}`);
+    if (includeThinkingTime) {
+      if (!durationLabel) {
+        if (reasoningPayload) {
+          return toParenthesizedLabel(`Thought: ${reasoningPayload}`);
         }
-
-        if (includeThinkingTime && durationLabel) {
-          return toParenthesizedLabel(`${durationLabel}: ${inlineBody}`);
-        }
-
-        return toParenthesizedLabel(inlineBody);
+        return "";
       }
 
-      if (reasoningLabel) {
-        const genericReasoningOnly = isLabelOnlyThinking(reasoningLabel);
-        if (genericReasoningOnly && (!includeThinkingTime || !durationLabel)) {
-          return "";
-        }
-
-        return toParenthesizedLabel(reasoningLabel);
+      if (reasoningPayload) {
+        return toParenthesizedLabel(`Thought: ${durationLabel} - ${reasoningPayload}`);
       }
+
+      return toParenthesizedLabel(`Thought: ${durationLabel}`);
     }
 
-    if (includeThinkingTime && durationLabel) {
-      return toParenthesizedLabel(`Pensó: ${durationLabel}`);
-    }
-
-    if (!includeReasoningText) {
+    if (!reasoningPayload) {
       return "";
     }
 
-    return "";
+    return toParenthesizedLabel(`Thought: ${reasoningPayload}`);
   }
 
   function mergeThinkingIntoAssistantMessages(messages) {

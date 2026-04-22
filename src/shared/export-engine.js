@@ -329,6 +329,58 @@
     return lines.join("\n");
   }
 
+  function isLikelyWebReferenceLine(value) {
+    const normalized = String(value || "").trim();
+    if (!normalized) {
+      return false;
+    }
+
+    return /\bhttps?:\/\/\S+/i.test(normalized) || /\bwww\.\S+/i.test(normalized);
+  }
+
+  function buildAttachedLine(referenceLines) {
+    const attachments = (referenceLines || [])
+      .map((line) => String(line || "").trim())
+      .filter(Boolean);
+
+    if (!attachments.length) {
+      return "";
+    }
+
+    const payload = attachments.map((line) => `[${line}]`).join(", ");
+    return `(Attached: ${payload})`;
+  }
+
+  function buildReferenceOutputLines(referenceLines) {
+    const references = (referenceLines || [])
+      .map((line) => String(line || "").trim())
+      .filter(Boolean);
+    if (!references.length) {
+      return [];
+    }
+
+    const attachmentLines = [];
+    const nonAttachmentLines = [];
+
+    references.forEach((line) => {
+      if (isLikelyWebReferenceLine(line)) {
+        nonAttachmentLines.push(`[${line}]`);
+        return;
+      }
+
+      attachmentLines.push(line);
+    });
+
+    const outputLines = [];
+    const attachedLine = buildAttachedLine(attachmentLines);
+    if (attachedLine) {
+      outputLines.push(attachedLine);
+    }
+
+    outputLines.push(...nonAttachmentLines);
+    return outputLines;
+  }
+
   function buildTextMessageBlock(message, settings, conversation) {
     const contentLines = [];
     const messageHeader = resolveTxtMessageHeader(message, settings, conversation);
@@ -342,13 +394,9 @@
     const normalizedThinkingLines = thinkingNoteLines
       .map((line) => ensureParenthesizedThinkingLine(line))
       .filter(Boolean);
-    const leadingLines = Array.isArray(message.leadingReferenceLines)
-      ? message.leadingReferenceLines.map((line) => `[${line}]`)
-      : [];
+    const leadingLines = buildReferenceOutputLines(message.leadingReferenceLines);
     const messageLines = String(message.text || "").split("\n");
-    const trailingLines = Array.isArray(message.trailingReferenceLines)
-      ? message.trailingReferenceLines.map((line) => `[${line}]`)
-      : [];
+    const trailingLines = buildReferenceOutputLines(message.trailingReferenceLines);
     contentLines.push(...leadingLines);
 
     if (message.text) {
@@ -484,12 +532,13 @@
 
   function buildReferenceBlockHtml(lines, className) {
     const escapeHtml = root.sanitize.escapeHtml;
-    if (!Array.isArray(lines) || !lines.length) {
+    const displayLines = buildReferenceOutputLines(lines);
+    if (!displayLines.length) {
       return "";
     }
 
-    const markup = lines
-      .map((line) => `    <p>[${escapeHtml(line)}]</p>`)
+    const markup = displayLines
+      .map((line) => `    <p>${escapeHtml(line)}</p>`)
       .join("\n");
 
     return [

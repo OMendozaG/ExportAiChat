@@ -210,13 +210,6 @@
     setScrollPosition(container, safeTop, safeLeft);
   }
 
-  function captureScrollPosition(container) {
-    return {
-      top: scrollTopOf(container),
-      left: scrollLeftOf(container)
-    };
-  }
-
   function waitForRender(ms = 84) {
     return new Promise((resolve) => {
       window.setTimeout(() => {
@@ -227,65 +220,81 @@
 
   async function runRequestedHydrationCycle(scrollContainer, hydrationBudgetExceeded, onCollect, topReachThreshold = 2) {
     const sweepStepPx = 1700;
-    const holdBottomMs = 5000;
-    const holdTopMs = 5000;
+    const stepWaitMs = 500;
+    const postSweepWaitMs = 2000;
+    const postTopWaitMs = 2000;
+    const retryTopWaitMs = 1000;
+    const retryBottomWaitMs = 1000;
+    const bottomReachThreshold = 2;
     const horizontal = scrollLeftOf(scrollContainer);
-    const maxSweepIterations = 1200;
+    const maxSweepIterations = 1600;
+    const getBottomTop = () => Math.max(0, scrollHeightOf(scrollContainer) - clientHeightOf(scrollContainer));
+
+    // 1) Move to top:0.
+    setScrollPosition(scrollContainer, 0, horizontal);
+    onCollect();
+
+    // 2) Sweep down in 1700px immediate steps with 0.5s between steps.
+    let iterations = 0;
+    while (!hydrationBudgetExceeded() && iterations < maxSweepIterations) {
+      const bottomTop = getBottomTop();
+      const currentTop = scrollTopOf(scrollContainer);
+      if (currentTop >= bottomTop - bottomReachThreshold) {
+        break;
+      }
+
+      const nextTop = Math.min(bottomTop, currentTop + sweepStepPx);
+      if (nextTop <= currentTop) {
+        break;
+      }
+      setScrollPosition(scrollContainer, nextTop, horizontal);
+      onCollect();
+      await waitForRender(stepWaitMs);
+      onCollect();
+      iterations += 1;
+    }
+
+    // 3) Hold 2 seconds.
+    await waitForRender(postSweepWaitMs);
+    onCollect();
+
+    // 4) Move to top:0 without animation and hold 2 seconds.
+    setScrollPosition(scrollContainer, 0, horizontal);
+    onCollect();
+    await waitForRender(postTopWaitMs);
+    onCollect();
+
+    // 5) If not at top yet, keep forcing top every 1 second.
+    while (!hydrationBudgetExceeded() && scrollTopOf(scrollContainer) > topReachThreshold) {
+      setScrollPosition(scrollContainer, 0, horizontal);
+      onCollect();
+      await waitForRender(retryTopWaitMs);
+      onCollect();
+    }
+
+    if (scrollTopOf(scrollContainer) > topReachThreshold) {
+      return false;
+    }
+
+    // 6) Move to bottom and keep forcing it every 1 second until it sticks.
+    setScrollPosition(scrollContainer, getBottomTop(), horizontal);
+    onCollect();
+    await waitForRender(retryBottomWaitMs);
+    onCollect();
 
     while (!hydrationBudgetExceeded()) {
-      // 1) Move to top.
-      scrollToTopAnimated(scrollContainer);
-      await waitForRender(220);
-      onCollect();
-
-      // 2) Sweep down in immediate 1700px steps until bottom (no long waits).
-      let iterations = 0;
-      while (!hydrationBudgetExceeded() && iterations < maxSweepIterations) {
-        const maxTop = Math.max(0, scrollHeightOf(scrollContainer) - clientHeightOf(scrollContainer));
-        const currentTop = scrollTopOf(scrollContainer);
-        if (currentTop >= maxTop - 2) {
-          break;
-        }
-
-        const nextTop = Math.min(maxTop, currentTop + sweepStepPx);
-        setScrollPosition(scrollContainer, nextTop, horizontal);
-        await waitForRender(36);
-        onCollect();
-        iterations += 1;
-      }
-
-      // Ensure true bottom and hold for 5s.
-      const bottomTop = Math.max(0, scrollHeightOf(scrollContainer) - clientHeightOf(scrollContainer));
-      setScrollPosition(scrollContainer, bottomTop, horizontal);
-      await waitForRender(90);
-      onCollect();
-      await waitForRender(holdBottomMs);
-      onCollect();
-
-      // 3) Move to top again and hold for 5s.
-      scrollToTopAnimated(scrollContainer);
-      await waitForRender(holdTopMs);
-      onCollect();
-
-      // 4) If not exactly/top-threshold at 0, repeat full cycle.
-      if (scrollTopOf(scrollContainer) <= topReachThreshold) {
+      const bottomTop = getBottomTop();
+      if (scrollTopOf(scrollContainer) >= bottomTop - bottomReachThreshold) {
         return true;
       }
+
+      setScrollPosition(scrollContainer, bottomTop, horizontal);
+      onCollect();
+      await waitForRender(retryBottomWaitMs);
+      onCollect();
     }
 
     return false;
-  }
-
-  async function restoreScrollPosition(container, snapshot) {
-    if (!container || !snapshot) {
-      return;
-    }
-
-    setScrollPosition(container, snapshot.top, snapshot.left);
-    await waitForRender(24);
-    setScrollPosition(container, snapshot.top, snapshot.left);
-    await waitForRender(96);
-    setScrollPosition(container, snapshot.top, snapshot.left);
   }
 
   async function runWithHydratedMessageNodes(selector, options, worker) {
@@ -306,7 +315,6 @@
       return worker(messageNodes);
     }
 
-    const originalScroll = captureScrollPosition(scrollContainer);
     const requestedBudgetMs = Number(options?.maxHydrationMs);
     const maxHydrationMs = Number.isFinite(requestedBudgetMs)
       ? Math.max(1200, Math.round(requestedBudgetMs))
@@ -314,35 +322,20 @@
     const hydrationStartedAt = Date.now();
     const hydrationBudgetExceeded = () => (Date.now() - hydrationStartedAt) >= maxHydrationMs;
     const topReachThreshold = 2;
-    let hydrationSucceeded = false;
-
-    try {
-      const reachedTop = await runRequestedHydrationCycle(
-        scrollContainer,
-        hydrationBudgetExceeded,
-        () => {
-          messageNodes = readNodes();
-        },
-        topReachThreshold
-      );
-      if (!reachedTop) {
-        throw new Error("HYDRATION_TOP_REACH_FAILED: Claude hydration did not reach top within timeout.");
-      }
-
-      // Capture hydrated snapshot at top before returning to bottom.
-      messageNodes = readNodes().map((node) => node.cloneNode(true));
-      const horizontal = scrollLeftOf(scrollContainer);
-      const bottomTop = Math.max(0, scrollHeightOf(scrollContainer) - clientHeightOf(scrollContainer));
-      setScrollPosition(scrollContainer, bottomTop, horizontal);
-      await waitForRender(140);
-
-      hydrationSucceeded = true;
-      return worker(messageNodes);
-    } finally {
-      if (!hydrationSucceeded) {
-        await restoreScrollPosition(scrollContainer, originalScroll);
-      }
+    const reachedPositions = await runRequestedHydrationCycle(
+      scrollContainer,
+      hydrationBudgetExceeded,
+      () => {
+        messageNodes = readNodes();
+      },
+      topReachThreshold
+    );
+    if (!reachedPositions) {
+      throw new Error("HYDRATION_TOP_REACH_FAILED: Claude hydration did not finish top/bottom stabilization within timeout.");
     }
+
+    messageNodes = readNodes().map((node) => node.cloneNode(true));
+    return worker(messageNodes);
   }
 
   function dedupeByLabelAndUrl(items) {

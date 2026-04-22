@@ -139,6 +139,28 @@
     return messageNode;
   }
 
+  function hasUserTurnStructure(node) {
+    if (!node) {
+      return false;
+    }
+
+    if (typeof node.matches === "function" && node.matches("[data-message-author-role='user']")) {
+      return true;
+    }
+
+    return Boolean(
+      node.querySelector(
+        [
+          "[data-message-author-role='user']",
+          "[data-testid='user-message']",
+          ".user-message-bubble-color",
+          ".whitespace-pre-wrap",
+          "[data-turn='user']"
+        ].join(", ")
+      )
+    );
+  }
+
   function parseTurnOrder(section, fallback) {
     const dataTestId = normalizeText(section?.getAttribute?.("data-testid"));
     const orderMatch = dataTestId.match(/conversation-turn-(\d+)/i);
@@ -1644,11 +1666,29 @@
       const sanitizeRoot = rawRole === "assistant"
         ? prepareAssistantContentRootForSanitize(contentRoot, settings)
         : contentRoot;
-      const sanitized = root.sanitize.sanitizeMessageNode(sanitizeRoot, {
+      let sanitized = root.sanitize.sanitizeMessageNode(sanitizeRoot, {
         mediaHandling: settings.mediaHandling
       });
-      const userAttachments = rawRole === "user" && settings.showUserAttachmentNames
+      let stripped = normalizeText((sanitized.safeHtml || "").replace(/<[^>]*>/g, " "));
+
+      // Some ChatGPT user turn variants render content outside the preferred
+      // bubble node. Retry sanitization from the whole turn before dropping it.
+      if (rawRole === "user" && !stripped && !sanitized.hasMedia) {
+        const fallbackSanitized = root.sanitize.sanitizeMessageNode(node, {
+          mediaHandling: settings.mediaHandling
+        });
+        const fallbackStripped = normalizeText((fallbackSanitized.safeHtml || "").replace(/<[^>]*>/g, " "));
+        if (fallbackStripped || fallbackSanitized.hasMedia) {
+          sanitized = fallbackSanitized;
+          stripped = fallbackStripped;
+        }
+      }
+
+      const detectedUserAttachments = rawRole === "user"
         ? extractUserAttachmentReferences(node)
+        : [];
+      const userAttachments = rawRole === "user" && settings.showUserAttachmentNames
+        ? detectedUserAttachments
         : [];
       const assistantReferences = rawRole === "assistant" && shouldExtractAssistantReferences
         ? dedupeReferences([
@@ -1657,15 +1697,15 @@
           ])
         : [];
 
-      const stripped = normalizeText((sanitized.safeHtml || "").replace(/<[^>]*>/g, " "));
-      if (!stripped && !sanitized.hasMedia && !userAttachments.length && !assistantReferences.length) {
+      const preserveEmptyUserTurn = rawRole === "user" && hasUserTurnStructure(node);
+      if (!stripped && !sanitized.hasMedia && !detectedUserAttachments.length && !assistantReferences.length && !preserveEmptyUserTurn) {
         continue;
       }
 
       messages.push({
         id: messageId,
         role: mapRole(rawRole),
-        safeHtml: sanitized.safeHtml,
+        safeHtml: sanitized.safeHtml || (preserveEmptyUserTurn ? "<p></p>" : ""),
         hasMedia: sanitized.hasMedia,
         timeLabel,
         timeMs,

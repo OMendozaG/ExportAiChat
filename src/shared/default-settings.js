@@ -23,10 +23,10 @@
       aiNameMode: AI_NAME_MODE.PROVIDER,
       aiCustomName: "AI",
 
-      // Formato de texto: limpiar formato o mantenerlo en Markdown.
+      // TXT only: convert message text to plain text or keep markdown markers.
       textFormatting: TEXT_FORMATTING.MARKDOWN,
 
-      // Estilo común para blockquotes y líneas de separación.
+      // TXT only: style for blockquotes and divider lines in converted text.
       quoteDividerStyle: QUOTE_DIVIDER_STYLE.MARKDOWN,
 
       // Continuation style for multiline TXT exports.

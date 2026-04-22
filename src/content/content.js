@@ -11,7 +11,9 @@
     MSG_GET_CHAT_STATUS,
     MSG_EXPORT_CHAT,
     EXPORT_FORMATS,
-    MEDIA_HANDLING
+    MEDIA_HANDLING,
+    TEXT_FORMATTING,
+    QUOTE_DIVIDER_STYLE
   } = root.constants;
 
   let activeProvider = null;
@@ -105,6 +107,15 @@
     return {
       ...settings,
       mediaHandling: MEDIA_HANDLING.MHT
+    };
+  }
+
+  function settingsForVisualExport(settings) {
+    return {
+      ...settings,
+      // Text conversion options are TXT-only. Keep rich formatting in HTML/PDF/MHT.
+      textFormatting: TEXT_FORMATTING.MARKDOWN,
+      quoteDividerStyle: QUOTE_DIVIDER_STYLE.MARKDOWN
     };
   }
 
@@ -536,15 +547,19 @@
       let maxMessageCount = 0;
       let lastFilename = "";
 
-      const getProcessedConversation = async (forceRichMedia) => {
-        const cacheKey = forceRichMedia ? "rich" : "normal";
+      const getProcessedConversation = async (forceRichMedia, targetFormat) => {
+        const isTxtExport = targetFormat === EXPORT_FORMATS.TXT;
+        const cacheKey = `${forceRichMedia ? "rich" : "normal"}:${isTxtExport ? "txt" : "visual"}`;
         if (processedConversationByMode.has(cacheKey)) {
           return processedConversationByMode.get(cacheKey);
         }
 
+        const baseExtractionSettings = isTxtExport
+          ? settings
+          : settingsForVisualExport(settings);
         const extractionSettings = forceRichMedia
-          ? settingsForRichMediaExport(settings)
-          : settings;
+          ? settingsForRichMediaExport(baseExtractionSettings)
+          : baseExtractionSettings;
         const processedConversation = await buildProcessedConversation(provider, extractionSettings, {
           hydrateVirtualized: true,
           maxHydrationMs: hydrationTimeoutMs
@@ -574,7 +589,8 @@
 
       const exportSingleFormat = async (targetFormat) => {
         const shouldForceRichMedia = shouldForceRichMediaForFormat(targetFormat);
-        const processedConversation = await getProcessedConversation(shouldForceRichMedia);
+        const processedConversation = await getProcessedConversation(shouldForceRichMedia, targetFormat);
+        const exportSettings = processedConversation.settings || settings;
         let filename = "";
         let mimeType = "text/plain;charset=utf-8";
         let content = "";
@@ -593,13 +609,13 @@
         } else if (targetFormat === EXPORT_FORMATS.HTML) {
           filename = resolveDownloadFilename(exporter.buildFileName(processedConversation, "html"), settings);
           root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
-          htmlDocument = exporter.toHtmlDocument(processedConversation, settings);
+          htmlDocument = exporter.toHtmlDocument(processedConversation, exportSettings);
           content = htmlDocument;
           mimeType = "text/html;charset=utf-8";
         } else if (targetFormat === EXPORT_FORMATS.MHT) {
           filename = resolveDownloadFilename(exporter.buildFileName(processedConversation, "mht"), settings);
           root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
-          htmlDocument = exporter.toHtmlDocument(processedConversation, settings);
+          htmlDocument = exporter.toHtmlDocument(processedConversation, exportSettings);
           htmlDocument = await inlineImagesInHtmlDocument(htmlDocument);
           content = exporter.toMhtDocument(htmlDocument, processedConversation);
           mimeType = "application/octet-stream";
@@ -607,8 +623,8 @@
           filename = resolveDownloadFilename(exporter.buildFileName(processedConversation, "pdf"), settings);
           root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
           htmlDocument = typeof exporter.toPdfDocument === "function"
-            ? exporter.toPdfDocument(processedConversation, settings)
-            : exporter.toHtmlDocument(processedConversation, settings);
+            ? exporter.toPdfDocument(processedConversation, exportSettings)
+            : exporter.toHtmlDocument(processedConversation, exportSettings);
           htmlDocument = await inlineImagesInHtmlDocument(htmlDocument);
         } else {
           throw new Error("Unsupported format: " + targetFormat);
@@ -665,10 +681,11 @@
         settings.companionMhtOnMedia &&
         !targetFormats.includes(EXPORT_FORMATS.MHT)
       ) {
-        const conversationForCompanion = await getProcessedConversation(true);
+        const conversationForCompanion = await getProcessedConversation(true, EXPORT_FORMATS.MHT);
+        const companionSettings = conversationForCompanion.settings || settings;
         if (conversationForCompanion.hasMedia) {
           const htmlDoc = await inlineImagesInHtmlDocument(
-            exporter.toHtmlDocument(conversationForCompanion, settingsForRichMediaExport(settings))
+            exporter.toHtmlDocument(conversationForCompanion, companionSettings)
           );
           const companionFilename = resolveDownloadFilename(
             exporter.buildFileName(conversationForCompanion, "mht"),

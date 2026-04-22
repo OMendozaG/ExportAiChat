@@ -37,7 +37,7 @@ The TXT export is designed as a readable chat log:
 - `Multi` export button (enabled by default) to export one or more configured formats in one click
 - Persistent settings stored locally in the browser
 - Configurable visible names for the human and the AI
-- Configurable text handling for markdown, quotes, separators, and multiline output
+- Configurable TXT-only text handling for markdown, quotes, separators, and multiline output
 - Dedicated TXT export settings, including per-role message header templates
 - Optional metadata export
 - Optional export title header (Chat Name) above metadata/messages
@@ -138,8 +138,8 @@ Best for sharing, printing, and long-form archiving.
 The settings page supports:
 - Human display name
 - AI display name by provider name or custom name
-- Markdown or clean text formatting
-- Quote and divider style
+- Markdown or clean text formatting (TXT only)
+- Quote and divider style (TXT only)
 - Dedicated TXT section with message indentation style (default `Indent with tab`)
 - TXT option to apply indentation style to the first content line (default on)
 - Editable TXT message separator

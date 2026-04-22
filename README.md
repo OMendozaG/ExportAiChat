@@ -104,6 +104,7 @@ The TXT export is designed as a readable chat log:
 - Inline header integration now swaps the `Export To...` label for a centered in-button spinner during export across all providers
 - Inline `Export To...` keeps a fixed button width while loading so the spinner stays centered and the button width does not jump
 - Per-format success state stays visible after export and resets to download when the conversation gets new messages
+- Drag-and-drop export button order in Settings is shared by both popup and inline integrated export menus
 - Refined line-art robot export icon with transparent background assets
 - Unicode-friendly file naming and an empty default TXT separator
 - Higher-contrast export button labels for better readability
@@ -149,6 +150,7 @@ The settings page supports:
 - Dedicated HTML/PDF/MHT appearance section with AI and Human border colors (default AI blue, Human orange)
 - Visible export format toggles are configured in the General tab
 - `Multi` export target toggles (`.PDF`, `.MHT`, `.HTML`, `.TXT`) with at least one required target
+- Drag-and-drop export button ordering for popup and inline integrated menus
 - Media handling rules
 - Metadata toggles
 - Export title toggle (default on) that prints `Chat Name` as the first line/header

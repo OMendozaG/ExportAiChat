@@ -4,8 +4,22 @@
  */
 (() => {
   const root = globalThis.ChatExportAi;
-  const { AI_NAME_MODE } = root.constants;
+  const { AI_NAME_MODE, EXPORT_FORMATS } = root.constants;
   const { MAX_EXPORT_TIMEOUT_SECONDS } = root.constants;
+  const EXPORT_BUTTON_ORDER_DEFAULT = [
+    EXPORT_FORMATS.MULTI,
+    EXPORT_FORMATS.PDF,
+    EXPORT_FORMATS.MHT,
+    EXPORT_FORMATS.HTML,
+    EXPORT_FORMATS.TXT
+  ];
+  const EXPORT_BUTTON_LABELS = {
+    [EXPORT_FORMATS.MULTI]: "Multi",
+    [EXPORT_FORMATS.PDF]: ".PDF",
+    [EXPORT_FORMATS.MHT]: ".MHT",
+    [EXPORT_FORMATS.HTML]: ".HTML",
+    [EXPORT_FORMATS.TXT]: ".TXT"
+  };
   const CHATNAME_PROVIDER_OPTIONS = [
     "ChatGPT",
     "Claude",
@@ -75,6 +89,7 @@
   const multiExportMhtCheckbox = document.getElementById("multiExportMht");
   const multiExportHtmlCheckbox = document.getElementById("multiExportHtml");
   const multiExportTxtCheckbox = document.getElementById("multiExportTxt");
+  const exportButtonOrderListNode = document.getElementById("exportButtonOrderList");
   const counterTotalCountInput = document.getElementById("counterTotalCount");
   const counterDayCountInput = document.getElementById("counterDayCount");
   const counterNextChatNameCountInput = document.getElementById("counterNextChatNameCount");
@@ -92,6 +107,8 @@
   let autoSaveTimer = null;
   let lastCounterSummary = null;
   let lastSavedSettingsSnapshot = "";
+  let exportButtonOrder = [...EXPORT_BUTTON_ORDER_DEFAULT];
+  let draggedExportFormat = "";
 
   function showStatus(message, tone = "info") {
     statusNode.textContent = message;
@@ -220,6 +237,80 @@
 
   function clampPositiveInteger(value, fallback = 1) {
     return Math.max(1, clampNonNegativeInteger(value, fallback));
+  }
+
+  function normalizeExportButtonOrder(value) {
+    const seen = new Set();
+    const normalized = [];
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        const format = String(item || "").trim().toLowerCase();
+        if (!EXPORT_BUTTON_ORDER_DEFAULT.includes(format) || seen.has(format)) {
+          return;
+        }
+
+        seen.add(format);
+        normalized.push(format);
+      });
+    }
+
+    EXPORT_BUTTON_ORDER_DEFAULT.forEach((format) => {
+      if (!seen.has(format)) {
+        seen.add(format);
+        normalized.push(format);
+      }
+    });
+
+    return normalized.length ? normalized : [...EXPORT_BUTTON_ORDER_DEFAULT];
+  }
+
+  function renderExportButtonOrderList() {
+    if (!exportButtonOrderListNode) {
+      return;
+    }
+
+    exportButtonOrderListNode.innerHTML = exportButtonOrder.map((format) => {
+      const label = EXPORT_BUTTON_LABELS[format] || format.toUpperCase();
+      return [
+        `<li class="export-order-item" draggable="true" data-format="${escapeAttribute(format)}">`,
+        "  <span class=\"export-order-handle\" aria-hidden=\"true\">::</span>",
+        `  <span class="export-order-label">${escapeHtml(label)}</span>`,
+        "</li>"
+      ].join("\n");
+    }).join("\n");
+  }
+
+  function moveExportFormat(dragFormat, targetFormat, insertAfter = false) {
+    const from = exportButtonOrder.indexOf(dragFormat);
+    const to = exportButtonOrder.indexOf(targetFormat);
+    if (from < 0 || to < 0 || from === to) {
+      return false;
+    }
+
+    const next = [...exportButtonOrder];
+    next.splice(from, 1);
+    const nextTargetIndex = next.indexOf(targetFormat);
+    const insertIndex = insertAfter ? nextTargetIndex + 1 : nextTargetIndex;
+    next.splice(insertIndex, 0, dragFormat);
+    const changed = next.join("::") !== exportButtonOrder.join("::");
+    if (changed) {
+      exportButtonOrder = next;
+    }
+    return changed;
+  }
+
+  function moveExportFormatToEnd(dragFormat) {
+    const from = exportButtonOrder.indexOf(dragFormat);
+    if (from < 0 || from === exportButtonOrder.length - 1) {
+      return false;
+    }
+
+    const next = [...exportButtonOrder];
+    next.splice(from, 1);
+    next.push(dragFormat);
+    exportButtonOrder = next;
+    return true;
   }
 
   function escapeHtml(value) {
@@ -434,6 +525,8 @@
     multiExportMhtCheckbox.checked = Boolean(settings.multiExportMht ?? true);
     multiExportHtmlCheckbox.checked = Boolean(settings.multiExportHtml ?? true);
     multiExportTxtCheckbox.checked = Boolean(settings.multiExportTxt ?? true);
+    exportButtonOrder = normalizeExportButtonOrder(settings.exportButtonOrder);
+    renderExportButtonOrderList();
     ensureAtLeastOneMultiTarget();
     saveModeRadios.forEach((radio) => {
       radio.checked = radio.value === settings.saveMode;
@@ -516,6 +609,7 @@
       showExportMht: showExportMhtCheckbox.checked,
       showExportHtml: showExportHtmlCheckbox.checked,
       showExportTxt: showExportTxtCheckbox.checked,
+      exportButtonOrder: normalizeExportButtonOrder(exportButtonOrder),
       ...multiTargets
     };
   }
@@ -677,6 +771,68 @@
       ensureAtLeastOneMultiTarget(checkbox.checked ? checkbox : null);
     });
   });
+  if (exportButtonOrderListNode) {
+    exportButtonOrderListNode.addEventListener("dragstart", (event) => {
+      const target = event.target instanceof Element ? event.target.closest(".export-order-item") : null;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      const format = String(target.dataset.format || "").trim().toLowerCase();
+      if (!EXPORT_BUTTON_ORDER_DEFAULT.includes(format)) {
+        return;
+      }
+
+      draggedExportFormat = format;
+      target.classList.add("is-dragging");
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", format);
+      }
+    });
+
+    exportButtonOrderListNode.addEventListener("dragover", (event) => {
+      if (!draggedExportFormat) {
+        return;
+      }
+
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "move";
+      }
+    });
+
+    exportButtonOrderListNode.addEventListener("drop", (event) => {
+      if (!draggedExportFormat) {
+        return;
+      }
+
+      event.preventDefault();
+      const target = event.target instanceof Element ? event.target.closest(".export-order-item") : null;
+      let changed = false;
+
+      if (target instanceof HTMLElement) {
+        const targetFormat = String(target.dataset.format || "").trim().toLowerCase();
+        const rect = target.getBoundingClientRect();
+        const insertAfter = event.clientY > (rect.top + (rect.height / 2));
+        changed = moveExportFormat(draggedExportFormat, targetFormat, insertAfter);
+      } else {
+        changed = moveExportFormatToEnd(draggedExportFormat);
+      }
+
+      if (changed) {
+        renderExportButtonOrderList();
+        scheduleAutoSave();
+      }
+    });
+
+    exportButtonOrderListNode.addEventListener("dragend", () => {
+      draggedExportFormat = "";
+      exportButtonOrderListNode
+        .querySelectorAll(".export-order-item.is-dragging")
+        .forEach((node) => node.classList.remove("is-dragging"));
+    });
+  }
   if (counterTotalCountInput) {
     counterTotalCountInput.addEventListener("change", () => {
       counterTotalCountInput.value = String(clampNonNegativeInteger(counterTotalCountInput.value, 0));

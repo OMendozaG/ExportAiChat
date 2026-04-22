@@ -21,7 +21,7 @@
   let activeTabId = null;
   let popupSettings = null;
   let exportInProgress = false;
-  const exportButtons = [exportMultiButton, exportPdfButton, exportMhtButton, exportHtmlButton, exportTxtButton];
+  let exportButtons = [exportMultiButton, exportPdfButton, exportMhtButton, exportHtmlButton, exportTxtButton];
   const exportButtonByFormat = {
     [EXPORT_FORMATS.MULTI]: exportMultiButton,
     [EXPORT_FORMATS.PDF]: exportPdfButton,
@@ -29,6 +29,13 @@
     [EXPORT_FORMATS.HTML]: exportHtmlButton,
     [EXPORT_FORMATS.TXT]: exportTxtButton
   };
+  const DEFAULT_EXPORT_BUTTON_ORDER = [
+    EXPORT_FORMATS.MULTI,
+    EXPORT_FORMATS.PDF,
+    EXPORT_FORMATS.MHT,
+    EXPORT_FORMATS.HTML,
+    EXPORT_FORMATS.TXT
+  ];
 
   function setStatus(message) {
     const text = String(message || "").trim();
@@ -61,6 +68,43 @@
     });
   }
 
+  function normalizeExportButtonOrder(value) {
+    const seen = new Set();
+    const normalized = [];
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        const format = String(item || "").trim().toLowerCase();
+        if (!DEFAULT_EXPORT_BUTTON_ORDER.includes(format) || seen.has(format)) {
+          return;
+        }
+
+        seen.add(format);
+        normalized.push(format);
+      });
+    }
+
+    DEFAULT_EXPORT_BUTTON_ORDER.forEach((format) => {
+      if (!seen.has(format)) {
+        seen.add(format);
+        normalized.push(format);
+      }
+    });
+
+    return normalized.length ? normalized : [...DEFAULT_EXPORT_BUTTON_ORDER];
+  }
+
+  function applyButtonOrder(settings) {
+    const orderedFormats = normalizeExportButtonOrder(settings?.exportButtonOrder);
+    exportButtons = orderedFormats
+      .map((format) => exportButtonByFormat[format])
+      .filter(Boolean);
+
+    exportButtons.forEach((button) => {
+      actionsNode.appendChild(button);
+    });
+  }
+
   function setOnlyButtonState(activeButton, state) {
     exportButtons.forEach((button) => {
       root.buttonSystem.setButtonState(button, button === activeButton ? state : "idle");
@@ -86,6 +130,7 @@
 
   function applyButtonVisibility(settings) {
     popupSettings = settings;
+    applyButtonOrder(settings);
     [
       [exportMultiButton, settings.showExportMulti],
       [exportPdfButton, settings.showExportPdf],

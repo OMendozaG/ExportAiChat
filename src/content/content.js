@@ -22,6 +22,13 @@
   let cachedInlineUiSettings = null;
   const exportSnapshotsByConversation = new Map();
   const HYDRATION_TOP_ERROR_TOKEN = "HYDRATION_TOP_REACH_FAILED";
+  const DEFAULT_EXPORT_BUTTON_ORDER = [
+    EXPORT_FORMATS.MULTI,
+    EXPORT_FORMATS.PDF,
+    EXPORT_FORMATS.MHT,
+    EXPORT_FORMATS.HTML,
+    EXPORT_FORMATS.TXT
+  ];
 
   function getProviderButtonSetting(settings, providerId) {
     const providerSettingById = {
@@ -293,6 +300,32 @@
     return Object.values(EXPORT_FORMATS);
   }
 
+  function normalizeExportButtonOrder(value) {
+    const seen = new Set();
+    const normalized = [];
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        const format = String(item || "").trim().toLowerCase();
+        if (!DEFAULT_EXPORT_BUTTON_ORDER.includes(format) || seen.has(format)) {
+          return;
+        }
+
+        seen.add(format);
+        normalized.push(format);
+      });
+    }
+
+    DEFAULT_EXPORT_BUTTON_ORDER.forEach((format) => {
+      if (!seen.has(format)) {
+        seen.add(format);
+        normalized.push(format);
+      }
+    });
+
+    return normalized.length ? normalized : [...DEFAULT_EXPORT_BUTTON_ORDER];
+  }
+
   function resolveMultiTargetFormats(settings) {
     const targets = [];
     if (settings?.multiExportPdf) {
@@ -409,6 +442,9 @@
     }
     if (typeof ui.setProvider === "function") {
       ui.setProvider(provider.id || "");
+    }
+    if (typeof ui.setFormatOrder === "function") {
+      ui.setFormatOrder(normalizeExportButtonOrder(settings.exportButtonOrder));
     }
 
     ui.setVisibleFormats({

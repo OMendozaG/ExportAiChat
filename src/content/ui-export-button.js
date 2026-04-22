@@ -233,17 +233,63 @@
     const exportMht = createActionButton(".MHT", root.constants.EXPORT_FORMATS.MHT, onExport);
     const exportHtml = createActionButton(".HTML", root.constants.EXPORT_FORMATS.HTML, onExport);
     const exportTxt = createActionButton(".TXT", root.constants.EXPORT_FORMATS.TXT, onExport);
-    const formatButtons = [exportMulti, exportPdf, exportMht, exportHtml, exportTxt];
+    const defaultOrder = [
+      root.constants.EXPORT_FORMATS.MULTI,
+      root.constants.EXPORT_FORMATS.PDF,
+      root.constants.EXPORT_FORMATS.MHT,
+      root.constants.EXPORT_FORMATS.HTML,
+      root.constants.EXPORT_FORMATS.TXT
+    ];
+    const formatButtonByFormat = {
+      [root.constants.EXPORT_FORMATS.MULTI]: exportMulti,
+      [root.constants.EXPORT_FORMATS.PDF]: exportPdf,
+      [root.constants.EXPORT_FORMATS.MHT]: exportMht,
+      [root.constants.EXPORT_FORMATS.HTML]: exportHtml,
+      [root.constants.EXPORT_FORMATS.TXT]: exportTxt
+    };
+    let formatButtons = [];
     let isLoading = false;
 
-    menuNode.appendChild(exportMulti);
-    menuNode.appendChild(exportPdf);
-    menuNode.appendChild(exportMht);
-    menuNode.appendChild(exportHtml);
-    menuNode.appendChild(exportTxt);
+    function normalizeExportButtonOrder(order) {
+      const seen = new Set();
+      const normalized = [];
+
+      if (Array.isArray(order)) {
+        order.forEach((item) => {
+          const format = normalizeText(item).toLowerCase();
+          if (!defaultOrder.includes(format) || seen.has(format)) {
+            return;
+          }
+
+          seen.add(format);
+          normalized.push(format);
+        });
+      }
+
+      defaultOrder.forEach((format) => {
+        if (!seen.has(format)) {
+          seen.add(format);
+          normalized.push(format);
+        }
+      });
+
+      return normalized.length ? normalized : [...defaultOrder];
+    }
+
+    function setFormatOrder(order) {
+      const orderedFormats = normalizeExportButtonOrder(order);
+      formatButtons = orderedFormats
+        .map((format) => formatButtonByFormat[format])
+        .filter(Boolean);
+
+      formatButtons.forEach((button) => {
+        menuNode.appendChild(button);
+      });
+    }
 
     rootNode.appendChild(mainButton);
     document.body.appendChild(menuNode);
+    setFormatOrder();
 
     function hasVisibleFormats() {
       return formatButtons.some((button) => !button.hidden);
@@ -497,6 +543,7 @@
       mount,
       setTheme,
       setProvider,
+      setFormatOrder,
       setVisibleFormats,
       setFormatStates,
       hasVisibleFormats,

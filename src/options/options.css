@@ -250,6 +250,45 @@ body {
   line-height: 1.45;
 }
 
+.export-order-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.export-order-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  background: var(--field-bg);
+  color: var(--text);
+  padding: 8px 10px;
+  cursor: grab;
+  user-select: none;
+}
+
+.export-order-item:active {
+  cursor: grabbing;
+}
+
+.export-order-item.is-dragging {
+  opacity: 0.55;
+}
+
+.export-order-handle {
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.export-order-label {
+  font-weight: 600;
+}
+
 .credits-link {
   color: #2563eb;
   text-decoration: none;

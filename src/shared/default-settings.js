@@ -4,8 +4,15 @@
  */
 (() => {
   const root = globalThis.ChatExportAi;
-  const { TEXT_FORMATTING, QUOTE_DIVIDER_STYLE, MEDIA_HANDLING, AI_NAME_MODE, MULTILINE_FORMAT } = root.constants;
+  const { TEXT_FORMATTING, QUOTE_DIVIDER_STYLE, MEDIA_HANDLING, AI_NAME_MODE, MULTILINE_FORMAT, EXPORT_FORMATS } = root.constants;
   const { MAX_EXPORT_TIMEOUT_SECONDS } = root.constants;
+  const DEFAULT_EXPORT_BUTTON_ORDER = [
+    EXPORT_FORMATS.MULTI,
+    EXPORT_FORMATS.PDF,
+    EXPORT_FORMATS.MHT,
+    EXPORT_FORMATS.HTML,
+    EXPORT_FORMATS.TXT
+  ];
 
   root.defaults = {
     settings: {
@@ -104,6 +111,7 @@
       exportTimeoutSeconds: MAX_EXPORT_TIMEOUT_SECONDS,
 
       // Visible export format buttons across popup and inline export menu.
+      exportButtonOrder: [...DEFAULT_EXPORT_BUTTON_ORDER],
       showExportMulti: true,
       showExportPdf: true,
       showExportMht: true,
@@ -144,6 +152,41 @@
 
   function normalizeAutosaveConflictAction(value) {
     return String(value || "").trim().toLowerCase() === "uniquify" ? "uniquify" : "overwrite";
+  }
+
+  function normalizeExportButtonOrder(value, fallbackOrder = DEFAULT_EXPORT_BUTTON_ORDER) {
+    const fallback = Array.isArray(fallbackOrder) && fallbackOrder.length
+      ? fallbackOrder
+      : DEFAULT_EXPORT_BUTTON_ORDER;
+    const seen = new Set();
+    const normalized = [];
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        const format = String(item || "").trim().toLowerCase();
+        if (!fallback.includes(format) || seen.has(format)) {
+          return;
+        }
+
+        seen.add(format);
+        normalized.push(format);
+      });
+    }
+
+    fallback.forEach((format) => {
+      if (!seen.has(format)) {
+        seen.add(format);
+        normalized.push(format);
+      }
+    });
+
+    if (!normalized.length) {
+      return [...DEFAULT_EXPORT_BUTTON_ORDER];
+    }
+
+    const matchesFallback = normalized.length === fallback.length
+      && normalized.every((format, index) => format === fallback[index]);
+    return matchesFallback ? fallback : normalized;
   }
 
   function normalizeCustomDownloadFolder(value, fallback) {
@@ -261,6 +304,10 @@
     next.htmlPdfHumanBorderColor = normalizeHexColor(
       next.htmlPdfHumanBorderColor,
       root.defaults.settings.htmlPdfHumanBorderColor
+    );
+    next.exportButtonOrder = normalizeExportButtonOrder(
+      next.exportButtonOrder,
+      root.defaults.settings.exportButtonOrder
     );
 
     // Keep Multi export valid even if previous versions or manual edits unset all targets.

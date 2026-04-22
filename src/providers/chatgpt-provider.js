@@ -635,54 +635,86 @@
       return false;
     };
 
-    const shouldRunCoverageSweep = () => {
-      if (maxObservedTurnOrder < 18) {
+    const estimateExpectedTurnCount = () => {
+      const observedOrderEstimate = Number(maxObservedTurnOrder || 0);
+      return Math.max(
+        0,
+        Number(initialTurnCount || 0),
+        observedOrderEstimate,
+        Number(collectedByTurn.size || 0)
+      );
+    };
+
+    const shouldRunCoverageSweep = (minimumCoverageRatio = 0.82, minimumMissing = 8) => {
+      const expectedTurnCount = estimateExpectedTurnCount();
+      if (expectedTurnCount < 18) {
         return false;
       }
 
       const collectedCount = collectedByTurn.size;
-      const minimumExpected = Math.max(18, Math.floor(maxObservedTurnOrder * 0.82));
-      const missingByOrder = maxObservedTurnOrder - collectedCount;
-      return collectedCount < minimumExpected || missingByOrder >= 8;
+      const minimumExpected = Math.max(18, Math.floor(expectedTurnCount * minimumCoverageRatio));
+      const missingByEstimate = expectedTurnCount - collectedCount;
+      return collectedCount < minimumExpected || missingByEstimate >= minimumMissing;
     };
 
-    const runCoverageSweep = async () => {
+    const runCoverageSweep = async ({
+      stepFactor = 0.66,
+      waitMs = 100,
+      maxSweepSteps = 140,
+      edgePauseMs = 0
+    } = {}) => {
       const viewportHeight = Math.max(120, clientHeightOf(scrollContainer));
       const maxTop = Math.max(0, scrollHeightOf(scrollContainer) - viewportHeight);
       if (maxTop <= topReachThreshold) {
-        return;
+        return 0;
       }
 
       const horizontal = scrollLeftOf(scrollContainer);
-      const maxSweepSteps = 120;
+      const beforeCount = collectedByTurn.size;
       const step = Math.max(
-        Math.floor(viewportHeight * 0.82),
+        Math.floor(viewportHeight * Math.max(0.35, Math.min(stepFactor, 0.9))),
         Math.ceil(maxTop / maxSweepSteps)
       );
 
       // Traverse down and back up to force virtualized middle segments to mount.
       for (let targetTop = 0; targetTop <= maxTop && !hydrationBudgetExceeded(); targetTop += step) {
         setScrollPosition(scrollContainer, targetTop, horizontal);
-        await waitForRender(92);
+        const countBeforeStep = collectedByTurn.size;
+        await waitForRender(waitMs);
         mergeEntries(collectVisibleConversationEntries());
+        if (!hydrationBudgetExceeded() && collectedByTurn.size > countBeforeStep) {
+          await waitForRender(Math.min(220, waitMs + 80));
+          mergeEntries(collectVisibleConversationEntries());
+        }
       }
 
       if (!hydrationBudgetExceeded()) {
         setScrollPosition(scrollContainer, maxTop, horizontal);
-        await waitForRender(92);
+        await waitForRender(waitMs);
         mergeEntries(collectVisibleConversationEntries());
+        if (edgePauseMs > 0) {
+          await waitForRender(edgePauseMs);
+          mergeEntries(collectVisibleConversationEntries());
+        }
       }
 
       for (let targetTop = maxTop; targetTop >= 0 && !hydrationBudgetExceeded(); targetTop -= step) {
         setScrollPosition(scrollContainer, targetTop, horizontal);
-        await waitForRender(92);
+        const countBeforeStep = collectedByTurn.size;
+        await waitForRender(waitMs);
         mergeEntries(collectVisibleConversationEntries());
+        if (!hydrationBudgetExceeded() && collectedByTurn.size > countBeforeStep) {
+          await waitForRender(Math.min(220, waitMs + 80));
+          mergeEntries(collectVisibleConversationEntries());
+        }
       }
 
       const reachedTop = await ensureScrolledToTop();
       if (!reachedTop) {
         throw new Error("HYDRATION_TOP_REACH_FAILED: ChatGPT coverage sweep did not return to top.");
       }
+
+      return collectedByTurn.size - beforeCount;
     };
 
     try {
@@ -728,38 +760,76 @@
       }
 
       if (!hydrationBudgetExceeded() && shouldRunCoverageSweep()) {
-        await runCoverageSweep();
+        let stagnantSweepPasses = 0;
+        const maxCoveragePasses = 4;
 
-        const postSweepQuietMs = Math.min(4500, Math.max(1800, Math.round(requiredQuietMs * 0.7)));
-        maxCountSeen = Math.max(maxCountSeen, collectedByTurn.size);
-        maxHeightSeen = Math.max(maxHeightSeen, scrollHeightOf(scrollContainer));
-        lastGrowthAt = Date.now();
+        // Run repeated coverage sweeps until estimated coverage is high enough
+        // or additional passes stop improving the merged turn count.
+        for (let pass = 0; pass < maxCoveragePasses && !hydrationBudgetExceeded(); pass += 1) {
+          const densePass = pass > 0;
+          const beforeSweepCount = collectedByTurn.size;
+          await runCoverageSweep(
+            densePass
+              ? {
+                  stepFactor: 0.5,
+                  waitMs: 128,
+                  maxSweepSteps: 220,
+                  edgePauseMs: 110
+                }
+              : {
+                  stepFactor: 0.66,
+                  waitMs: 104,
+                  maxSweepSteps: 150,
+                  edgePauseMs: 0
+                }
+          );
 
-        // After sweep, keep top anchored until there is a short quiet window.
-        while (!hydrationBudgetExceeded()) {
-          await waitForRender(210);
-          mergeEntries(collectVisibleConversationEntries());
+          const postSweepQuietMs = Math.min(
+            4200,
+            Math.max(1500, Math.round(requiredQuietMs * (densePass ? 0.55 : 0.65)))
+          );
+          maxCountSeen = Math.max(maxCountSeen, collectedByTurn.size);
+          maxHeightSeen = Math.max(maxHeightSeen, scrollHeightOf(scrollContainer));
+          lastGrowthAt = Date.now();
 
-          let atTop = scrollTopOf(scrollContainer) <= topReachThreshold;
-          if (!atTop) {
-            const reachedTopAgain = await ensureScrolledToTop();
-            if (!reachedTopAgain) {
-              throw new Error("HYDRATION_TOP_REACH_FAILED: ChatGPT history lost top position after coverage sweep.");
+          // After each sweep, keep top anchored until there is a short quiet window.
+          while (!hydrationBudgetExceeded()) {
+            await waitForRender(210);
+            mergeEntries(collectVisibleConversationEntries());
+
+            let atTop = scrollTopOf(scrollContainer) <= topReachThreshold;
+            if (!atTop) {
+              const reachedTopAgain = await ensureScrolledToTop();
+              if (!reachedTopAgain) {
+                throw new Error("HYDRATION_TOP_REACH_FAILED: ChatGPT history lost top position after coverage sweep.");
+              }
+              atTop = true;
             }
-            atTop = true;
+
+            const currentCount = collectedByTurn.size;
+            const currentHeight = scrollHeightOf(scrollContainer);
+            const discoveredGrowth = currentCount > maxCountSeen || currentHeight > (maxHeightSeen + 4);
+            if (discoveredGrowth) {
+              lastGrowthAt = Date.now();
+            }
+
+            maxCountSeen = Math.max(maxCountSeen, currentCount);
+            maxHeightSeen = Math.max(maxHeightSeen, currentHeight);
+
+            if (atTop && (Date.now() - lastGrowthAt) >= postSweepQuietMs) {
+              break;
+            }
           }
 
-          const currentCount = collectedByTurn.size;
-          const currentHeight = scrollHeightOf(scrollContainer);
-          const discoveredGrowth = currentCount > maxCountSeen || currentHeight > (maxHeightSeen + 4);
-          if (discoveredGrowth) {
-            lastGrowthAt = Date.now();
+          const gainedTurns = collectedByTurn.size - beforeSweepCount;
+          if (gainedTurns <= 0) {
+            stagnantSweepPasses += 1;
+          } else {
+            stagnantSweepPasses = 0;
           }
 
-          maxCountSeen = Math.max(maxCountSeen, currentCount);
-          maxHeightSeen = Math.max(maxHeightSeen, currentHeight);
-
-          if (atTop && (Date.now() - lastGrowthAt) >= postSweepQuietMs) {
+          const stillIncomplete = shouldRunCoverageSweep(0.94, 2);
+          if (!stillIncomplete || stagnantSweepPasses >= 2) {
             break;
           }
         }

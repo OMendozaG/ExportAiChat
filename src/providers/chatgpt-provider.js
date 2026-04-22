@@ -568,8 +568,14 @@
 
     const originalScroll = captureScrollPosition(scrollContainer);
     const collectedByTurn = new Map();
+    let maxObservedTurnOrder = 0;
     const mergeEntries = (entries) => {
       for (const entry of entries) {
+        const observedOrder = Number(entry?.order || 0);
+        if (Number.isFinite(observedOrder) && observedOrder > 0 && observedOrder < 1000000) {
+          maxObservedTurnOrder = Math.max(maxObservedTurnOrder, observedOrder);
+        }
+
         // Keep role in the merge key to avoid collisions when model variants
         // reuse turn containers with slightly different internal structures.
         const key = entryMergeKey(entry);
@@ -605,6 +611,56 @@
       }
 
       return false;
+    };
+
+    const shouldRunCoverageSweep = () => {
+      if (maxObservedTurnOrder < 18) {
+        return false;
+      }
+
+      const collectedCount = collectedByTurn.size;
+      const minimumExpected = Math.max(18, Math.floor(maxObservedTurnOrder * 0.82));
+      const missingByOrder = maxObservedTurnOrder - collectedCount;
+      return collectedCount < minimumExpected || missingByOrder >= 8;
+    };
+
+    const runCoverageSweep = async () => {
+      const viewportHeight = Math.max(120, clientHeightOf(scrollContainer));
+      const maxTop = Math.max(0, scrollHeightOf(scrollContainer) - viewportHeight);
+      if (maxTop <= topReachThreshold) {
+        return;
+      }
+
+      const horizontal = scrollLeftOf(scrollContainer);
+      const maxSweepSteps = 120;
+      const step = Math.max(
+        Math.floor(viewportHeight * 0.82),
+        Math.ceil(maxTop / maxSweepSteps)
+      );
+
+      // Traverse down and back up to force virtualized middle segments to mount.
+      for (let targetTop = 0; targetTop <= maxTop && !hydrationBudgetExceeded(); targetTop += step) {
+        setScrollPosition(scrollContainer, targetTop, horizontal);
+        await waitForRender(92);
+        mergeEntries(collectVisibleConversationEntries());
+      }
+
+      if (!hydrationBudgetExceeded()) {
+        setScrollPosition(scrollContainer, maxTop, horizontal);
+        await waitForRender(92);
+        mergeEntries(collectVisibleConversationEntries());
+      }
+
+      for (let targetTop = maxTop; targetTop >= 0 && !hydrationBudgetExceeded(); targetTop -= step) {
+        setScrollPosition(scrollContainer, targetTop, horizontal);
+        await waitForRender(92);
+        mergeEntries(collectVisibleConversationEntries());
+      }
+
+      const reachedTop = await ensureScrolledToTop();
+      if (!reachedTop) {
+        throw new Error("HYDRATION_TOP_REACH_FAILED: ChatGPT coverage sweep did not return to top.");
+      }
     };
 
     try {
@@ -646,6 +702,44 @@
 
         if (atTop && (Date.now() - lastGrowthAt) >= requiredQuietMs) {
           break;
+        }
+      }
+
+      if (!hydrationBudgetExceeded() && shouldRunCoverageSweep()) {
+        await runCoverageSweep();
+
+        const postSweepQuietMs = Math.min(4500, Math.max(1800, Math.round(requiredQuietMs * 0.7)));
+        maxCountSeen = Math.max(maxCountSeen, collectedByTurn.size);
+        maxHeightSeen = Math.max(maxHeightSeen, scrollHeightOf(scrollContainer));
+        lastGrowthAt = Date.now();
+
+        // After sweep, keep top anchored until there is a short quiet window.
+        while (!hydrationBudgetExceeded()) {
+          await waitForRender(210);
+          mergeEntries(collectVisibleConversationEntries());
+
+          let atTop = scrollTopOf(scrollContainer) <= topReachThreshold;
+          if (!atTop) {
+            const reachedTopAgain = await ensureScrolledToTop();
+            if (!reachedTopAgain) {
+              throw new Error("HYDRATION_TOP_REACH_FAILED: ChatGPT history lost top position after coverage sweep.");
+            }
+            atTop = true;
+          }
+
+          const currentCount = collectedByTurn.size;
+          const currentHeight = scrollHeightOf(scrollContainer);
+          const discoveredGrowth = currentCount > maxCountSeen || currentHeight > (maxHeightSeen + 4);
+          if (discoveredGrowth) {
+            lastGrowthAt = Date.now();
+          }
+
+          maxCountSeen = Math.max(maxCountSeen, currentCount);
+          maxHeightSeen = Math.max(maxHeightSeen, currentHeight);
+
+          if (atTop && (Date.now() - lastGrowthAt) >= postSweepQuietMs) {
+            break;
+          }
         }
       }
 

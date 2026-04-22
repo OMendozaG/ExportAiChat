@@ -474,9 +474,12 @@
     return `(Attached: ${chipsMarkup})`;
   }
 
-  function buildTextMessageBlock(message, settings, conversation) {
+  function buildTextMessageBlock(message, settings, conversation, options = {}) {
     const contentLines = [];
-    const messageHeader = resolveTxtMessageHeader(message, settings, conversation);
+    let messageHeader = resolveTxtMessageHeader(message, settings, conversation);
+    if (options.trimHumanHeaderStart && message.role === root.constants.ROLES.HUMAN) {
+      messageHeader = messageHeader.trimStart();
+    }
     // Always keep the role prefix on the first real content line.
     // TXT header templates are visual separators, not replacements for `<Role>`.
     const prefix = rolePrefix(message, settings);
@@ -526,18 +529,31 @@
   function toChatText(conversation) {
     const settings = conversation.settings || root.defaults.settings;
     const metadataBlock = buildMetadataText(conversation).trimEnd();
-    const messageBlocks = (conversation.messages || []).map((message) => buildTextMessageBlock(message, settings, conversation));
+    const shouldTrimFirstHumanHeader = settings.txtTrimStartFirstHumanHeader !== false;
+    let didTrimFirstHumanHeader = false;
+    const messageBlocks = (conversation.messages || []).map((message) => {
+      const trimHumanHeaderStart = shouldTrimFirstHumanHeader
+        && !didTrimFirstHumanHeader
+        && message.role === root.constants.ROLES.HUMAN;
+      if (trimHumanHeaderStart) {
+        didTrimFirstHumanHeader = true;
+      }
+
+      return buildTextMessageBlock(message, settings, conversation, {
+        trimHumanHeaderStart
+      });
+    });
     const separator = normalizeSeparator(settings);
+    const messageText = messageBlocks.length
+      // Respect an explicit empty-string separator (no gap between message blocks).
+      ? messageBlocks.join(separator)
+      : "";
     const sections = [];
 
     if (metadataBlock) {
       sections.push(metadataBlock);
-      sections.push("[Content]");
-    }
-
-    if (messageBlocks.length) {
-      // Respect an explicit empty-string separator (no gap between message blocks).
-      const messageText = messageBlocks.join(separator);
+      sections.push(messageText ? `[Content]\n\n${messageText}` : "[Content]");
+    } else if (messageText) {
       sections.push(messageText);
     }
 

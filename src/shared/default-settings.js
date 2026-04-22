@@ -39,6 +39,9 @@
       txtHumanMessageHeaderTemplate: "\n\n<<HumanName>>:\n\n",
       txtAiMessageHeaderTemplate: "\n\n<<AiName>>:\n\n",
 
+      // TXT only: trim leading spaces/newlines from the first Human header.
+      txtTrimStartFirstHumanHeader: true,
+
       // Separator inserted between TXT message blocks.
       messageSeparator: "",
 

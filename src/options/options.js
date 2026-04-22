@@ -43,6 +43,7 @@
   const htmlPdfHumanBorderColorInput = document.getElementById("htmlPdfHumanBorderColor");
   const messageSeparatorTextarea = document.getElementById("messageSeparator");
   const txtHumanMessageHeaderTemplateTextarea = document.getElementById("txtHumanMessageHeaderTemplate");
+  const txtTrimStartFirstHumanHeaderCheckbox = document.getElementById("txtTrimStartFirstHumanHeader");
   const txtAiMessageHeaderTemplateTextarea = document.getElementById("txtAiMessageHeaderTemplate");
   const appThemeSelect = document.getElementById("appTheme");
   const autoFileNameCheckbox = document.getElementById("autoFileName");
@@ -469,6 +470,7 @@
     htmlPdfHumanBorderColorInput.value = settings.htmlPdfHumanBorderColor || "#f59e0b";
     messageSeparatorTextarea.value = settings.messageSeparator || "";
     txtHumanMessageHeaderTemplateTextarea.value = settings.txtHumanMessageHeaderTemplate || "\n\n<<HumanName>>:\n\n";
+    txtTrimStartFirstHumanHeaderCheckbox.checked = Boolean(settings.txtTrimStartFirstHumanHeader ?? true);
     txtAiMessageHeaderTemplateTextarea.value = settings.txtAiMessageHeaderTemplate || "\n\n<<AiName>>:\n\n";
     appThemeSelect.value = settings.appTheme || "auto";
     autoFileNameCheckbox.checked = Boolean(settings.autoFileName);
@@ -565,6 +567,7 @@
       htmlPdfHumanBorderColor: htmlPdfHumanBorderColorInput.value,
       messageSeparator: messageSeparatorTextarea.value,
       txtHumanMessageHeaderTemplate: txtHumanMessageHeaderTemplateTextarea.value,
+      txtTrimStartFirstHumanHeader: txtTrimStartFirstHumanHeaderCheckbox.checked,
       txtAiMessageHeaderTemplate: txtAiMessageHeaderTemplateTextarea.value,
       appTheme: appThemeSelect.value,
       autoFileName: autoFileNameCheckbox.checked,

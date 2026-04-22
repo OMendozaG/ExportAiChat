@@ -72,8 +72,9 @@ The TXT export is designed as a readable chat log:
 - TXT thinking notes now always end with a line break and keep a blank line before the message body/attachments
 - TXT thinking notes are normalized as `(...)` without role prefix
 - TXT first-line indentation now follows the TXT indentation style with a dedicated toggle (`Apply indentation style to the first content line`, default on)
+- TXT includes a dedicated toggle to trim leading spaces/newlines from the first Human TXT header (default on)
 - TXT exports no longer print the chat title line at the top
-- TXT adds a `[Content]` header after `[Metadata]` when metadata is present
+- TXT adds a `[Content]` header after `[Metadata]` when metadata is present, with two line breaks before the first message block
 - DeepSeek thinking-only blocks no longer duplicate into separate assistant reply messages
 - MHT and PDF exports now inline chat images as data URLs when possible, so generated-image replies are preserved more reliably
 - ChatGPT extraction now prefers section-level turns over nested legacy placeholders so image-only assistant replies are not dropped
@@ -150,6 +151,7 @@ The settings page supports:
 - TXT option to apply indentation style to the first content line (default on)
 - Editable TXT message separator
 - Editable TXT per-role message header templates for Human and AI messages
+- TXT option to trim leading spaces/newlines on the first Human header (default on)
 - TXT template placeholders: `<HumanName>`, `<AiName>`
 - TXT header placeholders resolve Human/AI names from the General tab settings
 - Default TXT headers use `<<HumanName>>:` and `<<AiName>>:` with the same surrounding line breaks

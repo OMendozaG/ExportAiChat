@@ -53,7 +53,7 @@ The TXT export is designed as a readable chat log:
 - ChatGPT thought blocks are now detected structurally from assistant turn DOM (pre-message block in `agent-turn`) and stripped from assistant body text before sanitize
 - ChatGPT extraction now supports modern `conversation-turn` sections, including assistant image-only turns
 - ChatGPT now preserves user turns even when they are attachment-only (and attachment names are hidden) or rendered in alternate user DOM wrappers, reducing dropped Human entries
-- Virtualized hydration now uses the same cycle across ChatGPT, Claude, Gemini, Grok, and DeepSeek: scroll to top, animate down in 1700px steps to bottom, wait 5s, scroll to top, wait 5s, and repeat until top is confirmed
+- Virtualized hydration now uses the same cycle across ChatGPT, Claude, Gemini, Grok, and DeepSeek: scroll to top, move down in immediate 1700px steps to bottom, wait 5s, scroll to top, wait 5s, and repeat until top is confirmed
 - If a provider cannot reach top before hydration timeout, export is canceled and an explicit user-facing alert is shown
 - ChatGPT turn deduplication now uses stable turn ids (not message ids), preventing dropped/imbalanced turns on edited or regenerated branches
 - ChatGPT turn merge/dedup now keys by `turnId + role` when stable ids exist, and falls back to role-aware content fingerprints when ids are synthetic or missing
@@ -104,6 +104,7 @@ The TXT export is designed as a readable chat log:
 - Inline header integration now swaps the `Export To...` label for a centered in-button spinner during export across all providers
 - Inline `Export To...` keeps a fixed button width while loading so the spinner stays centered and the button width does not jump
 - Inline export menu refresh is now serialized and interaction-aware to avoid missed first clicks during heavy host DOM updates
+- Inline integrated export entry point now stays clickable as soon as it is mounted (it no longer waits on transient live message counters)
 - Per-format success state stays visible after export and resets to download when the conversation gets new messages
 - Drag-and-drop export button order in Settings is shared by both popup and inline integrated export menus
 - Refined line-art robot export icon with transparent background assets

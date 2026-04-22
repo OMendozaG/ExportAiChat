@@ -293,6 +293,15 @@
     document.body.appendChild(menuNode);
     setFormatOrder();
 
+    // Keep host header listeners from consuming inline export interactions
+    // before this UI can open/dispatch the intended export action.
+    rootNode.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+    });
+    menuNode.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+    });
+
     function hasVisibleFormats() {
       return formatButtons.some((button) => !button.hidden);
     }
@@ -517,7 +526,9 @@
       rootNode.remove();
     }
 
-    mainButton.addEventListener("click", () => {
+    mainButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       if (mainButton.disabled) {
         return;
       }

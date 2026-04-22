@@ -238,7 +238,7 @@
       await waitForRender(220);
       onCollect();
 
-      // 2) Sweep down in animated 1700px steps until bottom (no long waits).
+      // 2) Sweep down in immediate 1700px steps until bottom (no long waits).
       let iterations = 0;
       while (!hydrationBudgetExceeded() && iterations < maxSweepIterations) {
         const maxTop = Math.max(0, scrollHeightOf(scrollContainer) - clientHeightOf(scrollContainer));
@@ -248,7 +248,7 @@
         }
 
         const nextTop = Math.min(maxTop, currentTop + sweepStepPx);
-        scrollToPositionAnimated(scrollContainer, nextTop, horizontal);
+        setScrollPosition(scrollContainer, nextTop, horizontal);
         await waitForRender(36);
         onCollect();
         iterations += 1;
@@ -256,7 +256,7 @@
 
       // Ensure true bottom and hold for 5s.
       const bottomTop = Math.max(0, scrollHeightOf(scrollContainer) - clientHeightOf(scrollContainer));
-      scrollToPositionAnimated(scrollContainer, bottomTop, horizontal);
+      setScrollPosition(scrollContainer, bottomTop, horizontal);
       await waitForRender(90);
       onCollect();
       await waitForRender(holdBottomMs);
@@ -333,7 +333,7 @@
       messageNodes = readNodes().map((node) => node.cloneNode(true));
       const horizontal = scrollLeftOf(scrollContainer);
       const bottomTop = Math.max(0, scrollHeightOf(scrollContainer) - clientHeightOf(scrollContainer));
-      scrollToPositionAnimated(scrollContainer, bottomTop, horizontal);
+      setScrollPosition(scrollContainer, bottomTop, horizontal);
       await waitForRender(140);
 
       hydrationSucceeded = true;

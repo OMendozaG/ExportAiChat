@@ -610,14 +610,14 @@
         }
 
         const nextTop = Math.min(maxTop, currentTop + sweepStepPx);
-        scrollToPositionAnimated(scrollContainer, nextTop, horizontal);
+        setScrollPosition(scrollContainer, nextTop, horizontal);
         await waitForRender(36);
         onCollect();
         iterations += 1;
       }
 
       const bottomTop = Math.max(0, scrollHeightOf(scrollContainer) - clientHeightOf(scrollContainer));
-      scrollToPositionAnimated(scrollContainer, bottomTop, horizontal);
+      setScrollPosition(scrollContainer, bottomTop, horizontal);
       await waitForRender(90);
       onCollect();
       await waitForRender(holdBottomMs);
@@ -704,7 +704,7 @@
       const mergedEntries = Array.from(collectedByTurn.values()).sort((left, right) => left.order - right.order);
       const horizontal = scrollLeftOf(scrollContainer);
       const bottomTop = Math.max(0, scrollHeightOf(scrollContainer) - clientHeightOf(scrollContainer));
-      scrollToPositionAnimated(scrollContainer, bottomTop, horizontal);
+      setScrollPosition(scrollContainer, bottomTop, horizontal);
       await waitForRender(140);
 
       hydrationSucceeded = true;

@@ -443,7 +443,6 @@
   async function refreshInlineUi() {
     const provider = getActiveProvider();
     const settings = cachedInlineUiSettings || await root.storage.getSettings();
-    const liveStatus = provider?.getLiveStatus ? provider.getLiveStatus() : null;
     cachedInlineUiSettings = settings;
 
     if (root.appTheme?.syncActionIconTheme) {
@@ -454,8 +453,7 @@
       !provider ||
       !getProviderButtonSetting(settings, provider.id) ||
       typeof provider.findInlineActionAnchor !== "function" ||
-      !provider.isChatPage() ||
-      !liveStatus?.messageCount
+      !provider.isChatPage()
     ) {
       if (inlineUi) {
         inlineUi.setVisible(false);
@@ -510,7 +508,10 @@
     }
 
     ui.setVisible(true);
-    ui.setEnabled(!exportInProgress && Boolean(liveStatus?.messageCount));
+    // Keep the inline entry point immediately actionable once mounted.
+    // Message counters can transiently flap during host DOM hydration and
+    // should not block user clicks when no export is in progress.
+    ui.setEnabled(!exportInProgress);
   }
 
   async function handleInlineExport(format) {

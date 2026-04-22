@@ -119,8 +119,9 @@
       showExportTxt: true,
 
       // When using the "Multi" export button, export all selected formats.
-      multiExportPdf: true,
-      multiExportMht: true,
+      // Default set: PDF/MHT off, HTML/TXT on.
+      multiExportPdf: false,
+      multiExportMht: false,
       multiExportHtml: true,
       multiExportTxt: true,
 

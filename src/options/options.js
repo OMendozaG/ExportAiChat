@@ -521,10 +521,10 @@
     showExportHtmlCheckbox.checked = Boolean(settings.showExportHtml);
     showExportTxtCheckbox.checked = Boolean(settings.showExportTxt);
     showExportMultiCheckbox.checked = Boolean(settings.showExportMulti ?? true);
-    multiExportPdfCheckbox.checked = Boolean(settings.multiExportPdf ?? true);
-    multiExportMhtCheckbox.checked = Boolean(settings.multiExportMht ?? true);
-    multiExportHtmlCheckbox.checked = Boolean(settings.multiExportHtml ?? true);
-    multiExportTxtCheckbox.checked = Boolean(settings.multiExportTxt ?? true);
+    multiExportPdfCheckbox.checked = Boolean(settings.multiExportPdf ?? root.defaults.settings.multiExportPdf);
+    multiExportMhtCheckbox.checked = Boolean(settings.multiExportMht ?? root.defaults.settings.multiExportMht);
+    multiExportHtmlCheckbox.checked = Boolean(settings.multiExportHtml ?? root.defaults.settings.multiExportHtml);
+    multiExportTxtCheckbox.checked = Boolean(settings.multiExportTxt ?? root.defaults.settings.multiExportTxt);
     exportButtonOrder = normalizeExportButtonOrder(settings.exportButtonOrder);
     renderExportButtonOrderList();
     ensureAtLeastOneMultiTarget();

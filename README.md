@@ -150,6 +150,7 @@ The settings page supports:
 - Dedicated HTML/PDF/MHT appearance section with AI and Human border colors (default AI blue, Human orange)
 - Visible export format toggles are configured in the General tab
 - `Multi` export target toggles (`.PDF`, `.MHT`, `.HTML`, `.TXT`) with at least one required target
+- Default `Multi` targets: `.PDF` off, `.MHT` off, `.HTML` on, `.TXT` on
 - Drag-and-drop export button ordering for popup and inline integrated menus
 - Media handling rules
 - Metadata toggles

@@ -104,10 +104,17 @@
       exportTimeoutSeconds: MAX_EXPORT_TIMEOUT_SECONDS,
 
       // Visible export format buttons across popup and inline export menu.
+      showExportMulti: true,
       showExportPdf: true,
       showExportMht: true,
       showExportHtml: true,
       showExportTxt: true,
+
+      // When using the "Multi" export button, export all selected formats.
+      multiExportPdf: true,
+      multiExportMht: true,
+      multiExportHtml: true,
+      multiExportTxt: true,
 
       // Gestión global de media/no texto.
       mediaHandling: MEDIA_HANDLING.PLACEHOLDER,
@@ -255,6 +262,18 @@
       next.htmlPdfHumanBorderColor,
       root.defaults.settings.htmlPdfHumanBorderColor
     );
+
+    // Keep Multi export valid even if previous versions or manual edits unset all targets.
+    const multiTargets = [
+      "multiExportPdf",
+      "multiExportMht",
+      "multiExportHtml",
+      "multiExportTxt"
+    ];
+    const hasAtLeastOneMultiTarget = multiTargets.some((key) => Boolean(next[key]));
+    if (!hasAtLeastOneMultiTarget) {
+      next.multiExportTxt = true;
+    }
 
     return next;
   };

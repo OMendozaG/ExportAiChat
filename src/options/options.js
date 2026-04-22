@@ -70,6 +70,11 @@
   const showExportMhtCheckbox = document.getElementById("showExportMht");
   const showExportHtmlCheckbox = document.getElementById("showExportHtml");
   const showExportTxtCheckbox = document.getElementById("showExportTxt");
+  const showExportMultiCheckbox = document.getElementById("showExportMulti");
+  const multiExportPdfCheckbox = document.getElementById("multiExportPdf");
+  const multiExportMhtCheckbox = document.getElementById("multiExportMht");
+  const multiExportHtmlCheckbox = document.getElementById("multiExportHtml");
+  const multiExportTxtCheckbox = document.getElementById("multiExportTxt");
   const counterTotalCountInput = document.getElementById("counterTotalCount");
   const counterDayCountInput = document.getElementById("counterDayCount");
   const counterNextChatNameCountInput = document.getElementById("counterNextChatNameCount");
@@ -183,6 +188,34 @@
     }
 
     return Math.max(0, Math.round(numericValue));
+  }
+
+  function ensureAtLeastOneMultiTarget(preferredCheckbox = null) {
+    const targetCheckboxes = [
+      multiExportPdfCheckbox,
+      multiExportMhtCheckbox,
+      multiExportHtmlCheckbox,
+      multiExportTxtCheckbox
+    ].filter(Boolean);
+    const hasAnySelected = targetCheckboxes.some((checkbox) => checkbox.checked);
+
+    if (hasAnySelected) {
+      return;
+    }
+
+    if (preferredCheckbox) {
+      preferredCheckbox.checked = true;
+      return;
+    }
+
+    if (multiExportTxtCheckbox) {
+      multiExportTxtCheckbox.checked = true;
+      return;
+    }
+
+    if (targetCheckboxes[0]) {
+      targetCheckboxes[0].checked = true;
+    }
   }
 
   function clampPositiveInteger(value, fallback = 1) {
@@ -396,6 +429,12 @@
     showExportMhtCheckbox.checked = Boolean(settings.showExportMht);
     showExportHtmlCheckbox.checked = Boolean(settings.showExportHtml);
     showExportTxtCheckbox.checked = Boolean(settings.showExportTxt);
+    showExportMultiCheckbox.checked = Boolean(settings.showExportMulti ?? true);
+    multiExportPdfCheckbox.checked = Boolean(settings.multiExportPdf ?? true);
+    multiExportMhtCheckbox.checked = Boolean(settings.multiExportMht ?? true);
+    multiExportHtmlCheckbox.checked = Boolean(settings.multiExportHtml ?? true);
+    multiExportTxtCheckbox.checked = Boolean(settings.multiExportTxt ?? true);
+    ensureAtLeastOneMultiTarget();
     saveModeRadios.forEach((radio) => {
       radio.checked = radio.value === settings.saveMode;
     });
@@ -411,6 +450,16 @@
   }
 
   function readSettingsFromForm() {
+    const multiTargets = {
+      multiExportPdf: multiExportPdfCheckbox.checked,
+      multiExportMht: multiExportMhtCheckbox.checked,
+      multiExportHtml: multiExportHtmlCheckbox.checked,
+      multiExportTxt: multiExportTxtCheckbox.checked
+    };
+    if (!Object.values(multiTargets).some(Boolean)) {
+      multiTargets.multiExportTxt = true;
+    }
+
     return {
       humanName: humanNameInput.value.trim() || "Human",
       aiNameMode: getAiNameModeFromForm(),
@@ -462,10 +511,12 @@
       showHeaderExportButtonDeepseek: showHeaderExportButtonDeepseekCheckbox.checked,
       showHeaderExportButtonGrok: showHeaderExportButtonGrokCheckbox.checked,
       exportTimeoutSeconds: clampTimeoutSeconds(exportTimeoutSecondsInput.value),
+      showExportMulti: showExportMultiCheckbox.checked,
       showExportPdf: showExportPdfCheckbox.checked,
       showExportMht: showExportMhtCheckbox.checked,
       showExportHtml: showExportHtmlCheckbox.checked,
-      showExportTxt: showExportTxtCheckbox.checked
+      showExportTxt: showExportTxtCheckbox.checked,
+      ...multiTargets
     };
   }
 
@@ -611,6 +662,20 @@
   });
   exportTimeoutSecondsInput.addEventListener("change", () => {
     exportTimeoutSecondsInput.value = String(clampTimeoutSeconds(exportTimeoutSecondsInput.value));
+  });
+  [
+    multiExportPdfCheckbox,
+    multiExportMhtCheckbox,
+    multiExportHtmlCheckbox,
+    multiExportTxtCheckbox
+  ].forEach((checkbox) => {
+    if (!checkbox) {
+      return;
+    }
+
+    checkbox.addEventListener("change", () => {
+      ensureAtLeastOneMultiTarget(checkbox.checked ? checkbox : null);
+    });
   });
   if (counterTotalCountInput) {
     counterTotalCountInput.addEventListener("change", () => {

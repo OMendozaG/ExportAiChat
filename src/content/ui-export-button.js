@@ -228,13 +228,15 @@
     const menuNode = document.createElement("div");
     menuNode.id = MENU_ID;
 
+    const exportMulti = createActionButton("Multi", root.constants.EXPORT_FORMATS.MULTI, onExport);
     const exportPdf = createActionButton(".PDF", root.constants.EXPORT_FORMATS.PDF, onExport);
     const exportMht = createActionButton(".MHT", root.constants.EXPORT_FORMATS.MHT, onExport);
     const exportHtml = createActionButton(".HTML", root.constants.EXPORT_FORMATS.HTML, onExport);
     const exportTxt = createActionButton(".TXT", root.constants.EXPORT_FORMATS.TXT, onExport);
-    const formatButtons = [exportPdf, exportMht, exportHtml, exportTxt];
+    const formatButtons = [exportMulti, exportPdf, exportMht, exportHtml, exportTxt];
     let isLoading = false;
 
+    menuNode.appendChild(exportMulti);
     menuNode.appendChild(exportPdf);
     menuNode.appendChild(exportMht);
     menuNode.appendChild(exportHtml);
@@ -400,6 +402,7 @@
     }
 
     function setVisibleFormats(nextVisibility) {
+      exportMulti.hidden = !nextVisibility.showExportMulti;
       exportPdf.hidden = !nextVisibility.showExportPdf;
       exportMht.hidden = !nextVisibility.showExportMht;
       exportHtml.hidden = !nextVisibility.showExportHtml;

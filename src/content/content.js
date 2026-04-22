@@ -293,6 +293,28 @@
     return Object.values(EXPORT_FORMATS);
   }
 
+  function resolveMultiTargetFormats(settings) {
+    const targets = [];
+    if (settings?.multiExportPdf) {
+      targets.push(EXPORT_FORMATS.PDF);
+    }
+    if (settings?.multiExportMht) {
+      targets.push(EXPORT_FORMATS.MHT);
+    }
+    if (settings?.multiExportHtml) {
+      targets.push(EXPORT_FORMATS.HTML);
+    }
+    if (settings?.multiExportTxt) {
+      targets.push(EXPORT_FORMATS.TXT);
+    }
+
+    return targets;
+  }
+
+  function shouldForceRichMediaForFormat(format) {
+    return format === EXPORT_FORMATS.MHT || format === EXPORT_FORMATS.PDF;
+  }
+
   function getConversationKey(provider) {
     return `${provider?.id || "unknown"}:${location.pathname}`;
   }
@@ -390,6 +412,7 @@
     }
 
     ui.setVisibleFormats({
+      showExportMulti: Boolean(settings.showExportMulti),
       showExportPdf: Boolean(settings.showExportPdf),
       showExportMht: Boolean(settings.showExportMht),
       showExportHtml: Boolean(settings.showExportHtml),
@@ -445,6 +468,12 @@
       throw new Error("An export is already in progress.");
     }
 
+    const requestedFormat = String(format || "").trim().toLowerCase();
+    const allowedFormats = new Set(allFormats());
+    if (!allowedFormats.has(requestedFormat)) {
+      throw new Error("Unsupported format: " + format);
+    }
+
     exportInProgress = true;
 
     try {
@@ -453,150 +482,186 @@
       const timeoutMs = settings.exportTimeoutSeconds * 1000;
       const hydrationTimeoutMs = resolveHydrationTimeoutMs(settings);
       const liveMessageCountBeforeExport = getLiveMessageCount(provider);
-      const shouldForceRichMedia = format === EXPORT_FORMATS.MHT || format === EXPORT_FORMATS.PDF;
-      const extractionSettings = shouldForceRichMedia
-        ? settingsForRichMediaExport(settings)
-        : settings;
-      const processedConversation = await buildProcessedConversation(provider, extractionSettings, {
-        hydrateVirtualized: true,
-        maxHydrationMs: hydrationTimeoutMs
-      });
       const exporter = root.exporters;
+      const targetFormats = requestedFormat === EXPORT_FORMATS.MULTI
+        ? resolveMultiTargetFormats(settings)
+        : [requestedFormat];
 
       if (!exporter) {
         throw new Error("Export engine is not initialized.");
       }
 
-      if (!processedConversation.messages.length) {
-        throw new Error("No exportable messages found in current chat.");
+      if (!targetFormats.length) {
+        throw new Error("Multi export requires at least one target format selected in Settings.");
       }
 
-      if (typeof root.storage.reserveExportCounters === "function") {
-        try {
-          const counterSnapshot = await root.storage.reserveExportCounters(processedConversation);
-          applyCounterSnapshotToConversation(processedConversation, counterSnapshot);
-        } catch (_error) {
-          // Keep exporting even if counter persistence fails unexpectedly.
-        }
-      }
+      const processedConversationByMode = new Map();
+      let counterSnapshot = null;
+      let maxMessageCount = 0;
+      let lastFilename = "";
 
-      let filename = "";
-      let mimeType = "text/plain;charset=utf-8";
-      let content = "";
-      let htmlDocument = "";
-
-      if (format === EXPORT_FORMATS.TXT) {
-        filename = resolveDownloadFilename(exporter.buildFileName(processedConversation, "txt"), settings);
-        root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
-        const formatter = exporter.toIrcText || exporter.toChatText;
-
-        if (typeof formatter !== "function") {
-          throw new Error("TXT formatter is not available.");
+      const getProcessedConversation = async (forceRichMedia) => {
+        const cacheKey = forceRichMedia ? "rich" : "normal";
+        if (processedConversationByMode.has(cacheKey)) {
+          return processedConversationByMode.get(cacheKey);
         }
 
-        content = formatter(processedConversation);
-      } else if (format === EXPORT_FORMATS.HTML) {
-        filename = resolveDownloadFilename(exporter.buildFileName(processedConversation, "html"), settings);
-        root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
-        htmlDocument = exporter.toHtmlDocument(processedConversation, settings);
-        content = htmlDocument;
-        mimeType = "text/html;charset=utf-8";
-      } else if (format === EXPORT_FORMATS.MHT) {
-        filename = resolveDownloadFilename(exporter.buildFileName(processedConversation, "mht"), settings);
-        root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
-        htmlDocument = exporter.toHtmlDocument(processedConversation, settings);
-        htmlDocument = await inlineImagesInHtmlDocument(htmlDocument);
-        content = exporter.toMhtDocument(htmlDocument, processedConversation);
-        mimeType = "application/octet-stream";
-      } else if (format === EXPORT_FORMATS.PDF) {
-        filename = resolveDownloadFilename(exporter.buildFileName(processedConversation, "pdf"), settings);
-        root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
-        htmlDocument = typeof exporter.toPdfDocument === "function"
-          ? exporter.toPdfDocument(processedConversation, settings)
-          : exporter.toHtmlDocument(processedConversation, settings);
-        htmlDocument = await inlineImagesInHtmlDocument(htmlDocument);
-      } else {
-        throw new Error("Unsupported format: " + format);
-      }
+        const extractionSettings = forceRichMedia
+          ? settingsForRichMediaExport(settings)
+          : settings;
+        const processedConversation = await buildProcessedConversation(provider, extractionSettings, {
+          hydrateVirtualized: true,
+          maxHydrationMs: hydrationTimeoutMs
+        });
 
-      if (format === EXPORT_FORMATS.PDF) {
-        const response = await withTimeout(
-          root.chromeHelpers.runtimeSendMessage({
-            type: MSG_RENDER_HTML_TO_PDF,
-            payload: {
-              filename,
-              html: htmlDocument,
-              saveAs: shouldAskForDownloadLocation(settings),
-              conflictAction: settings.autosaveConflictAction,
-              timeoutMs
+        if (!processedConversation.messages.length) {
+          throw new Error("No exportable messages found in current chat.");
+        }
+
+        if (typeof root.storage.reserveExportCounters === "function") {
+          try {
+            if (!counterSnapshot) {
+              counterSnapshot = await root.storage.reserveExportCounters(processedConversation);
             }
-          }),
-          timeoutMs + 1000,
-          `The PDF export exceeded the ${settings.exportTimeoutSeconds}s timeout.`
-        );
-
-        if (!response || !response.ok) {
-          throw new Error(response?.error || "Unknown PDF render error.");
+            if (counterSnapshot) {
+              applyCounterSnapshotToConversation(processedConversation, counterSnapshot);
+            }
+          } catch (_error) {
+            // Keep exporting even if counter persistence fails unexpectedly.
+          }
         }
-      } else {
-        await withTimeout(
-          requestFileDownload({
-            filename,
-            mimeType,
-            content,
-            saveAs: shouldAskForDownloadLocation(settings),
-            conflictAction: settings.autosaveConflictAction
-          }),
-          timeoutMs,
-          `The ${format.toUpperCase()} export exceeded the ${settings.exportTimeoutSeconds}s timeout.`
+
+        maxMessageCount = Math.max(maxMessageCount, processedConversation.messages.length);
+        processedConversationByMode.set(cacheKey, processedConversation);
+        return processedConversation;
+      };
+
+      const exportSingleFormat = async (targetFormat) => {
+        const shouldForceRichMedia = shouldForceRichMediaForFormat(targetFormat);
+        const processedConversation = await getProcessedConversation(shouldForceRichMedia);
+        let filename = "";
+        let mimeType = "text/plain;charset=utf-8";
+        let content = "";
+        let htmlDocument = "";
+
+        if (targetFormat === EXPORT_FORMATS.TXT) {
+          filename = resolveDownloadFilename(exporter.buildFileName(processedConversation, "txt"), settings);
+          root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
+          const formatter = exporter.toIrcText || exporter.toChatText;
+
+          if (typeof formatter !== "function") {
+            throw new Error("TXT formatter is not available.");
+          }
+
+          content = formatter(processedConversation);
+        } else if (targetFormat === EXPORT_FORMATS.HTML) {
+          filename = resolveDownloadFilename(exporter.buildFileName(processedConversation, "html"), settings);
+          root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
+          htmlDocument = exporter.toHtmlDocument(processedConversation, settings);
+          content = htmlDocument;
+          mimeType = "text/html;charset=utf-8";
+        } else if (targetFormat === EXPORT_FORMATS.MHT) {
+          filename = resolveDownloadFilename(exporter.buildFileName(processedConversation, "mht"), settings);
+          root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
+          htmlDocument = exporter.toHtmlDocument(processedConversation, settings);
+          htmlDocument = await inlineImagesInHtmlDocument(htmlDocument);
+          content = exporter.toMhtDocument(htmlDocument, processedConversation);
+          mimeType = "application/octet-stream";
+        } else if (targetFormat === EXPORT_FORMATS.PDF) {
+          filename = resolveDownloadFilename(exporter.buildFileName(processedConversation, "pdf"), settings);
+          root.postProcess.setResolvedFileNameMetadata(processedConversation, filename);
+          htmlDocument = typeof exporter.toPdfDocument === "function"
+            ? exporter.toPdfDocument(processedConversation, settings)
+            : exporter.toHtmlDocument(processedConversation, settings);
+          htmlDocument = await inlineImagesInHtmlDocument(htmlDocument);
+        } else {
+          throw new Error("Unsupported format: " + targetFormat);
+        }
+
+        if (targetFormat === EXPORT_FORMATS.PDF) {
+          const response = await withTimeout(
+            root.chromeHelpers.runtimeSendMessage({
+              type: MSG_RENDER_HTML_TO_PDF,
+              payload: {
+                filename,
+                html: htmlDocument,
+                saveAs: shouldAskForDownloadLocation(settings),
+                conflictAction: settings.autosaveConflictAction,
+                timeoutMs
+              }
+            }),
+            timeoutMs + 1000,
+            `The PDF export exceeded the ${settings.exportTimeoutSeconds}s timeout.`
+          );
+
+          if (!response || !response.ok) {
+            throw new Error(response?.error || "Unknown PDF render error.");
+          }
+        } else {
+          await withTimeout(
+            requestFileDownload({
+              filename,
+              mimeType,
+              content,
+              saveAs: shouldAskForDownloadLocation(settings),
+              conflictAction: settings.autosaveConflictAction
+            }),
+            timeoutMs,
+            `The ${targetFormat.toUpperCase()} export exceeded the ${settings.exportTimeoutSeconds}s timeout.`
+          );
+        }
+
+        markExportSuccess(
+          provider,
+          targetFormat,
+          liveMessageCountBeforeExport > 0 ? liveMessageCountBeforeExport : processedConversation.messages.length
         );
+        lastFilename = filename || lastFilename;
+      };
+
+      for (const targetFormat of targetFormats) {
+        await exportSingleFormat(targetFormat);
       }
 
       if (
+        requestedFormat !== EXPORT_FORMATS.MULTI &&
         settings.mediaHandling === MEDIA_HANDLING.MHT &&
         settings.companionMhtOnMedia &&
-        processedConversation.hasMedia &&
-        format !== EXPORT_FORMATS.MHT
+        !targetFormats.includes(EXPORT_FORMATS.MHT)
       ) {
-        const conversationForCompanion = await buildProcessedConversation(
-          provider,
-          settingsForRichMediaExport(settings),
-          {
-            hydrateVirtualized: true,
-            maxHydrationMs: hydrationTimeoutMs
-          }
-        );
-        if (processedConversation.exportCounters) {
-          applyCounterSnapshotToConversation(conversationForCompanion, processedConversation.exportCounters);
-        }
-        const htmlDoc = await inlineImagesInHtmlDocument(
-          exporter.toHtmlDocument(conversationForCompanion, settingsForRichMediaExport(settings))
-        );
-        const companionFilename = resolveDownloadFilename(
-          exporter.buildFileName(conversationForCompanion, "mht"),
-          settings
-        );
-        root.postProcess.setResolvedFileNameMetadata(conversationForCompanion, companionFilename);
-        const mhtContent = exporter.toMhtDocument(htmlDoc, conversationForCompanion);
+        const conversationForCompanion = await getProcessedConversation(true);
+        if (conversationForCompanion.hasMedia) {
+          const htmlDoc = await inlineImagesInHtmlDocument(
+            exporter.toHtmlDocument(conversationForCompanion, settingsForRichMediaExport(settings))
+          );
+          const companionFilename = resolveDownloadFilename(
+            exporter.buildFileName(conversationForCompanion, "mht"),
+            settings
+          );
+          root.postProcess.setResolvedFileNameMetadata(conversationForCompanion, companionFilename);
+          const mhtContent = exporter.toMhtDocument(htmlDoc, conversationForCompanion);
 
-        await withTimeout(
-          requestFileDownload({
-            filename: companionFilename,
-            mimeType: "application/octet-stream",
-            content: mhtContent,
-            saveAs: shouldAskForDownloadLocation(settings),
-            conflictAction: settings.autosaveConflictAction
-          }),
-          timeoutMs,
-          `The companion MHT export exceeded the ${settings.exportTimeoutSeconds}s timeout.`
-        );
+          await withTimeout(
+            requestFileDownload({
+              filename: companionFilename,
+              mimeType: "application/octet-stream",
+              content: mhtContent,
+              saveAs: shouldAskForDownloadLocation(settings),
+              conflictAction: settings.autosaveConflictAction
+            }),
+            timeoutMs,
+            `The companion MHT export exceeded the ${settings.exportTimeoutSeconds}s timeout.`
+          );
+        }
       }
 
-      markExportSuccess(
-        provider,
-        format,
-        liveMessageCountBeforeExport > 0 ? liveMessageCountBeforeExport : processedConversation.messages.length
-      );
+      if (requestedFormat === EXPORT_FORMATS.MULTI) {
+        markExportSuccess(
+          provider,
+          EXPORT_FORMATS.MULTI,
+          liveMessageCountBeforeExport > 0 ? liveMessageCountBeforeExport : maxMessageCount
+        );
+      }
 
       const liveMessageCountAfterExport = getLiveMessageCount(provider);
       const exportStates = getExportStates(
@@ -606,9 +671,10 @@
 
       return {
         ok: true,
-        format,
-        messageCount: processedConversation.messages.length,
-        filename,
+        format: requestedFormat,
+        messageCount: maxMessageCount,
+        filename: lastFilename,
+        formats: targetFormats,
         exportStates
       };
     } catch (error) {

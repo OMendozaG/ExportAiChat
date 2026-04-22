@@ -11,6 +11,7 @@
   const summaryProviderNode = document.getElementById("summaryProvider");
   const summaryChatNameNode = document.getElementById("summaryChatName");
 
+  const exportMultiButton = document.getElementById("exportMulti");
   const exportPdfButton = document.getElementById("exportPdf");
   const exportTxtButton = document.getElementById("exportTxt");
   const exportHtmlButton = document.getElementById("exportHtml");
@@ -20,8 +21,9 @@
   let activeTabId = null;
   let popupSettings = null;
   let exportInProgress = false;
-  const exportButtons = [exportPdfButton, exportMhtButton, exportHtmlButton, exportTxtButton];
+  const exportButtons = [exportMultiButton, exportPdfButton, exportMhtButton, exportHtmlButton, exportTxtButton];
   const exportButtonByFormat = {
+    [EXPORT_FORMATS.MULTI]: exportMultiButton,
     [EXPORT_FORMATS.PDF]: exportPdfButton,
     [EXPORT_FORMATS.MHT]: exportMhtButton,
     [EXPORT_FORMATS.HTML]: exportHtmlButton,
@@ -74,6 +76,7 @@
 
   function visibleExportButtons(settings) {
     return [
+      settings.showExportMulti,
       settings.showExportPdf,
       settings.showExportMht,
       settings.showExportHtml,
@@ -84,6 +87,7 @@
   function applyButtonVisibility(settings) {
     popupSettings = settings;
     [
+      [exportMultiButton, settings.showExportMulti],
       [exportPdfButton, settings.showExportPdf],
       [exportMhtButton, settings.showExportMht],
       [exportHtmlButton, settings.showExportHtml],
@@ -112,6 +116,7 @@
     root.appTheme.applyThemeDocument(settings.appTheme);
     root.buttonSystem.ensureDocumentStyles(document);
     applyButtonVisibility(settings);
+    root.buttonSystem.decorateButton(exportMultiButton, { label: "Multi", stacked: true });
     root.buttonSystem.decorateButton(exportPdfButton, { label: ".PDF", stacked: true });
     root.buttonSystem.decorateButton(exportMhtButton, { label: ".MHT", stacked: true });
     root.buttonSystem.decorateButton(exportHtmlButton, { label: ".HTML", stacked: true });
@@ -211,6 +216,7 @@
     }
   }
 
+  exportMultiButton.addEventListener("click", () => runExport(EXPORT_FORMATS.MULTI, exportMultiButton));
   exportPdfButton.addEventListener("click", () => runExport(EXPORT_FORMATS.PDF, exportPdfButton));
   exportMhtButton.addEventListener("click", () => runExport(EXPORT_FORMATS.MHT, exportMhtButton));
   exportHtmlButton.addEventListener("click", () => runExport(EXPORT_FORMATS.HTML, exportHtmlButton));

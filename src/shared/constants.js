@@ -25,6 +25,7 @@
 
     // Export format contracts shared across content and popup.
     EXPORT_FORMATS: {
+      MULTI: "multi",
       PDF: "pdf",
       TXT: "txt",
       HTML: "html",

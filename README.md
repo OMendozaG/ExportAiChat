@@ -34,6 +34,7 @@ The TXT export is designed as a readable chat log:
 
 - Modular provider architecture for adding more LLM websites later
 - Export formats for text, web archive, printable HTML, and PDF
+- `Multi` export button (enabled by default) to export one or more configured formats in one click
 - Persistent settings stored locally in the browser
 - Configurable visible names for the human and the AI
 - Configurable text handling for markdown, quotes, separators, and multiline output
@@ -147,6 +148,7 @@ The settings page supports:
 - TXT first content line follows indentation style: tab, repeated speaker name, or no prefix (configurable), with optional legacy speaker-prefix behavior by disabling first-line indentation style
 - Dedicated HTML/PDF/MHT appearance section with AI and Human border colors (default AI blue, Human orange)
 - Visible export format toggles are configured in the General tab
+- `Multi` export target toggles (`.PDF`, `.MHT`, `.HTML`, `.TXT`) with at least one required target
 - Media handling rules
 - Metadata toggles
 - Export title toggle (default on) that prints `Chat Name` as the first line/header

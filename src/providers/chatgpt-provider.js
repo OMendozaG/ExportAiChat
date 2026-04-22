@@ -212,20 +212,69 @@
     return textWeight + mediaWeight + richWeight;
   }
 
+  function isSyntheticEntryId(value) {
+    const normalized = normalizeText(value);
+    return /^chatgpt-(?:turn|legacy)-\d+$/i.test(normalized);
+  }
+
+  function fingerprintEntryNode(entryNode) {
+    if (!entryNode) {
+      return "";
+    }
+
+    const normalizedText = normalizeText(entryNode.textContent).toLowerCase();
+    const head = normalizedText.slice(0, 220);
+    const tail = normalizedText.length > 220 ? normalizedText.slice(-120) : "";
+    const mediaSignature = [
+      entryNode.querySelectorAll("img").length,
+      entryNode.querySelectorAll("video").length,
+      entryNode.querySelectorAll("audio").length,
+      entryNode.querySelectorAll("canvas").length,
+      entryNode.querySelectorAll("a[href]").length
+    ].join(":");
+    const raw = `${head}|${tail}|${normalizedText.length}|${mediaSignature}`;
+
+    // Lightweight stable hash for merge-key fallback when real turn/message ids
+    // are missing in virtualized DOM variants.
+    let hash = 2166136261;
+    for (let index = 0; index < raw.length; index += 1) {
+      hash ^= raw.charCodeAt(index);
+      hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+    }
+
+    return (hash >>> 0).toString(16).padStart(8, "0");
+  }
+
   function entryMergeKey(entry) {
     const roleKey = normalizeRole(entry?.rawRole || "unknown") || "unknown";
+    const fingerprint = normalizeText(entry?.contentFingerprint);
     const turnId = normalizeText(entry?.turnId);
     if (turnId) {
+      if (isSyntheticEntryId(turnId) && fingerprint) {
+        return `${turnId}::${roleKey}::${fingerprint}`;
+      }
       return `${turnId}::${roleKey}`;
     }
 
     const messageId = normalizeText(entry?.messageId);
     if (messageId) {
+      if (isSyntheticEntryId(messageId) && fingerprint) {
+        return `${messageId}::${roleKey}::${fingerprint}`;
+      }
       return `${messageId}::${roleKey}`;
     }
 
+    const dataTestId = normalizeText(entry?.dataTestId);
+    if (dataTestId) {
+      return fingerprint
+        ? `${dataTestId}::${roleKey}::${fingerprint}`
+        : `${dataTestId}::${roleKey}`;
+    }
+
     const order = Number(entry?.order || 0);
-    return `chatgpt-order-${order}::${roleKey}`;
+    return fingerprint
+      ? `chatgpt-order-${order}::${roleKey}::${fingerprint}`
+      : `chatgpt-order-${order}::${roleKey}::w${Number(entry?.weight || 0)}`;
   }
 
   function readEntryFromTurnSection(section, fallbackIndex) {
@@ -247,12 +296,29 @@
       || section.querySelector(".text-message")
       || section.querySelector(".agent-turn")
       || section;
-    const turnId = section.getAttribute("data-turn-id")
+    const dataTestId = normalizeText(section.getAttribute("data-testid"));
+    const explicitTurnId = section.getAttribute("data-turn-id")
       || section.closest("[data-turn-id-container]")?.getAttribute("data-turn-id-container")
-      || `chatgpt-turn-${fallbackIndex + 1}`;
-    const messageId = messageNode?.getAttribute("data-message-id")
+      || section.getAttribute("data-turn-start-message")
+      || section.querySelector("[data-turn-start-message]")?.getAttribute("data-turn-start-message")
+      || "";
+    const explicitMessageId = messageNode?.getAttribute("data-message-id")
       || section.getAttribute("data-message-id")
-      || turnId;
+      || section.getAttribute("data-turn-message-id")
+      || section.querySelector("[data-turn-message-id]")?.getAttribute("data-turn-message-id")
+      || "";
+    const turnId = normalizeText(
+      explicitTurnId
+      || explicitMessageId
+      || dataTestId
+      || `chatgpt-turn-${fallbackIndex + 1}`
+    );
+    const messageId = normalizeText(
+      explicitMessageId
+      || explicitTurnId
+      || dataTestId
+      || turnId
+    );
     const clonedNode = section.cloneNode(true);
 
     return {
@@ -260,8 +326,10 @@
       rawRole,
       turnId,
       messageId,
+      dataTestId,
       order: parseTurnOrder(section, fallbackIndex + 1),
-      weight: getEntryWeight(clonedNode)
+      weight: getEntryWeight(clonedNode),
+      contentFingerprint: fingerprintEntryNode(clonedNode)
     };
   }
 
@@ -298,13 +366,18 @@
       }
 
       const clonedNode = node.cloneNode(true);
+      const dataTestId = normalizeText(node.getAttribute("data-testid"));
+      const explicitMessageId = normalizeText(node.getAttribute("data-message-id"));
+
       entries.push({
         node: clonedNode,
         rawRole,
-        turnId: node.getAttribute("data-message-id") || `chatgpt-legacy-${index + 1}`,
-        messageId: node.getAttribute("data-message-id") || `chatgpt-legacy-${index + 1}`,
+        turnId: explicitMessageId || dataTestId || `chatgpt-legacy-${index + 1}`,
+        messageId: explicitMessageId || dataTestId || `chatgpt-legacy-${index + 1}`,
+        dataTestId,
         order: Number.MAX_SAFE_INTEGER - 1000 + index,
-        weight: getEntryWeight(clonedNode)
+        weight: getEntryWeight(clonedNode),
+        contentFingerprint: fingerprintEntryNode(clonedNode)
       });
     }
 

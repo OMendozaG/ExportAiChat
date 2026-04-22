@@ -100,9 +100,32 @@
     return Boolean(provider && provider.isChatPage());
   }
 
+  function cloneRawConversationSnapshot(rawConversation) {
+    if (typeof globalThis.structuredClone === "function") {
+      try {
+        return globalThis.structuredClone(rawConversation);
+      } catch (_error) {
+        // Fall through to JSON clone for plain-data provider payloads.
+      }
+    }
+
+    return JSON.parse(JSON.stringify(rawConversation || {}));
+  }
+
+  async function buildRawConversation(provider, settings, options = {}) {
+    return Promise.resolve(provider.extractConversation(settings, options));
+  }
+
+  function processRawConversation(rawConversation, settings, provider) {
+    // Post-processing mutates some fields (for example `settings`), so each
+    // format gets an isolated raw snapshot.
+    const rawSnapshot = cloneRawConversationSnapshot(rawConversation);
+    return root.postProcess.processConversation(rawSnapshot, settings, provider);
+  }
+
   async function buildProcessedConversation(provider, settings, options = {}) {
-    const rawConversation = await Promise.resolve(provider.extractConversation(settings, options));
-    return root.postProcess.processConversation(rawConversation, settings, provider);
+    const rawConversation = await buildRawConversation(provider, settings, options);
+    return processRawConversation(rawConversation, settings, provider);
   }
 
   function settingsForRichMediaExport(settings) {
@@ -561,9 +584,17 @@
       const hydrationTimeoutMs = resolveHydrationTimeoutMs(settings);
       const liveMessageCountBeforeExport = getLiveMessageCount(provider);
       const exporter = root.exporters;
+      const isMultiExport = requestedFormat === EXPORT_FORMATS.MULTI;
       const targetFormats = requestedFormat === EXPORT_FORMATS.MULTI
         ? resolveMultiTargetFormats(settings)
         : [requestedFormat];
+      const needsRichMediaHydration = targetFormats.some((targetFormat) => shouldForceRichMediaForFormat(targetFormat))
+        || (
+          !isMultiExport
+          && settings.mediaHandling === MEDIA_HANDLING.MHT
+          && settings.companionMhtOnMedia
+          && !targetFormats.includes(EXPORT_FORMATS.MHT)
+        );
 
       if (!exporter) {
         throw new Error("Export engine is not initialized.");
@@ -577,6 +608,20 @@
       let counterSnapshot = null;
       let maxMessageCount = 0;
       let lastFilename = "";
+      let sharedHydratedRawConversation = null;
+
+      if (isMultiExport) {
+        const sharedExtractionSettings = needsRichMediaHydration
+          ? settingsForRichMediaExport(settings)
+          : settings;
+
+        // Multi export hydrates once per click and reuses the same hydrated
+        // conversation snapshot for all selected formats.
+        sharedHydratedRawConversation = await buildRawConversation(provider, sharedExtractionSettings, {
+          hydrateVirtualized: true,
+          maxHydrationMs: hydrationTimeoutMs
+        });
+      }
 
       const getProcessedConversation = async (forceRichMedia, targetFormat) => {
         const isTxtExport = targetFormat === EXPORT_FORMATS.TXT;
@@ -591,10 +636,12 @@
         const extractionSettings = forceRichMedia
           ? settingsForRichMediaExport(baseExtractionSettings)
           : baseExtractionSettings;
-        const processedConversation = await buildProcessedConversation(provider, extractionSettings, {
-          hydrateVirtualized: true,
-          maxHydrationMs: hydrationTimeoutMs
-        });
+        const processedConversation = isMultiExport && sharedHydratedRawConversation
+          ? processRawConversation(sharedHydratedRawConversation, extractionSettings, provider)
+          : await buildProcessedConversation(provider, extractionSettings, {
+            hydrateVirtualized: true,
+            maxHydrationMs: hydrationTimeoutMs
+          });
 
         if (!processedConversation.messages.length) {
           throw new Error("No exportable messages found in current chat.");

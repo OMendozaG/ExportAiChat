@@ -54,6 +54,7 @@ The TXT export is designed as a readable chat log:
 - ChatGPT extraction now supports modern `conversation-turn` sections, including assistant image-only turns
 - ChatGPT now preserves user turns even when they are attachment-only (and attachment names are hidden) or rendered in alternate user DOM wrappers, reducing dropped Human entries
 - Virtualized hydration now uses the same cycle across ChatGPT, Claude, Gemini, Grok, and DeepSeek: scroll to top, move down in 1700px immediate steps (0.5s between steps), wait 2s, move to top and wait 2s, force top every 1s until confirmed, then force bottom every 1s until confirmed
+- Multi export now performs a single hydration pass per click and reuses that hydrated snapshot across selected formats (while each new export click still rehydrates again)
 - If a provider cannot reach top before hydration timeout, export is canceled and an explicit user-facing alert is shown
 - ChatGPT turn deduplication now uses stable turn ids (not message ids), preventing dropped/imbalanced turns on edited or regenerated branches
 - ChatGPT turn merge/dedup now keys by `turnId + role` when stable ids exist, and falls back to role-aware content fingerprints when ids are synthetic or missing

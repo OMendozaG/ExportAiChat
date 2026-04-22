@@ -343,7 +343,7 @@
     }
 
     if (includeThinkingTime && durationLabel) {
-      return toParenthesizedLabel(durationLabel);
+      return toParenthesizedLabel(`Pensó: ${durationLabel}`);
     }
 
     if (!includeReasoningText) {

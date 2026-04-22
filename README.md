@@ -62,6 +62,7 @@ The TXT export is designed as a readable chat log:
 - Virtualized turn hydration now restores the original chat scroll position after export collection (ChatGPT, Claude, Gemini, Grok, and DeepSeek)
 - Thinking labels now export inline under the AI message header as `(<label>)` using provider wording (for example, `(Pensó por 18s)`), and no longer create standalone messages
 - When a provider exposes both a thinking label and thinking body, exports now format it inline as `(<label>: <thinking text>)`
+- When only thinking time is exported (without reasoning text), exports now format it as `(Pensó: <duration>)`
 - Reasoning text and thinking-time exports are now independent toggles, so each can be exported alone or together
 - Thought notes no longer emit generic placeholders when reasoning/time data is missing for a message
 - Thinking-label normalization in post-processing no longer depends on provider-global helpers, avoiding runtime export failures in TXT/HTML/PDF/MHT

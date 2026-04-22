@@ -344,8 +344,8 @@
     htmlPdfAiBorderColorInput.value = settings.htmlPdfAiBorderColor || "#2563eb";
     htmlPdfHumanBorderColorInput.value = settings.htmlPdfHumanBorderColor || "#f59e0b";
     messageSeparatorTextarea.value = settings.messageSeparator || "";
-    txtHumanMessageHeaderTemplateTextarea.value = settings.txtHumanMessageHeaderTemplate || "\n\n----- <HumanName>:\n\n";
-    txtAiMessageHeaderTemplateTextarea.value = settings.txtAiMessageHeaderTemplate || "\n\n----- <AiName>:\n\n";
+    txtHumanMessageHeaderTemplateTextarea.value = settings.txtHumanMessageHeaderTemplate || "\n\n<<HumanName>>:\n\n";
+    txtAiMessageHeaderTemplateTextarea.value = settings.txtAiMessageHeaderTemplate || "\n\n<<AiName>>:\n\n";
     appThemeSelect.value = settings.appTheme || "auto";
     autoFileNameCheckbox.checked = Boolean(settings.autoFileName);
     fileNameTemplateInput.value = settings.fileNameTemplate || "";

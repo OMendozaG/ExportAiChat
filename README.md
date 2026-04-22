@@ -141,7 +141,7 @@ The settings page supports:
 - Editable TXT per-role message header templates for Human and AI messages
 - TXT template placeholders: `<HumanName>`, `<AiName>`
 - TXT header placeholders resolve Human/AI names from the General tab settings
-- Default TXT headers use `----- <HumanName>:` and `----- <AiName>:` with the same surrounding line breaks
+- Default TXT headers use `<<HumanName>>:` and `<<AiName>>:` with the same surrounding line breaks
 - TXT first content line follows indentation style: tab, repeated speaker name, or no prefix (configurable), with optional legacy speaker-prefix behavior by disabling first-line indentation style
 - Dedicated HTML/PDF/MHT appearance section with AI and Human border colors (default AI blue, Human orange)
 - Visible export format toggles are configured in the General tab

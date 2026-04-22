@@ -29,8 +29,8 @@
       txtApplyMultilineOnFirstLine: true,
 
       // Per-role TXT message headers, supports <HumanName>/<AiName>.
-      txtHumanMessageHeaderTemplate: "\n\n----- <HumanName>:\n\n",
-      txtAiMessageHeaderTemplate: "\n\n----- <AiName>:\n\n",
+      txtHumanMessageHeaderTemplate: "\n\n<<HumanName>>:\n\n",
+      txtAiMessageHeaderTemplate: "\n\n<<AiName>>:\n\n",
 
       // Separator inserted between TXT message blocks.
       messageSeparator: "",

@@ -109,6 +109,7 @@ The TXT export is designed as a readable chat log:
 - Inline `Export To...` keeps a fixed button width while loading so the spinner stays centered and the button width does not jump
 - Inline export menu refresh is now serialized and interaction-aware to avoid missed first clicks during heavy host DOM updates
 - Inline integrated export entry point now stays clickable as soon as it is mounted (it no longer waits on transient live message counters)
+- Inline export interactions now apply a short refresh lock so host DOM mutations do not steal the first integrated click
 - Per-format success state stays visible after export and resets to download when the conversation gets new messages
 - Drag-and-drop export button order in Settings is shared by both popup and inline integrated export menus
 - Refined line-art robot export icon with transparent background assets

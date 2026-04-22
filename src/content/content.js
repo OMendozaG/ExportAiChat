@@ -24,7 +24,10 @@
   let inlineUiRefreshQueued = false;
   let domObserver = null;
   let cachedInlineUiSettings = null;
+  let inlineUiInteractionUntil = 0;
+  let inlineUiInteractionReleaseTimer = null;
   const exportSnapshotsByConversation = new Map();
+  const INLINE_UI_INTERACTION_LOCK_MS = 1500;
   const HYDRATION_TOP_ERROR_TOKEN = "HYDRATION_TOP_REACH_FAILED";
   const DEFAULT_EXPORT_BUTTON_ORDER = [
     EXPORT_FORMATS.MULTI,
@@ -426,7 +429,20 @@
 
     if (!inlineUi) {
       inlineUi = root.contentUi.createHeaderExportUi({
-        onExport: handleInlineExport
+        onExport: handleInlineExport,
+        onInteraction: () => {
+          const lockMs = INLINE_UI_INTERACTION_LOCK_MS;
+          inlineUiInteractionUntil = Math.max(inlineUiInteractionUntil, Date.now() + lockMs);
+
+          if (inlineUiInteractionReleaseTimer !== null) {
+            window.clearTimeout(inlineUiInteractionReleaseTimer);
+          }
+
+          inlineUiInteractionReleaseTimer = window.setTimeout(() => {
+            inlineUiInteractionReleaseTimer = null;
+            scheduleInlineUiRefresh();
+          }, lockMs + 40);
+        }
       });
     }
 
@@ -466,6 +482,7 @@
   async function refreshInlineUi() {
     const provider = getActiveProvider();
     const settings = cachedInlineUiSettings || await root.storage.getSettings();
+    const interactionLocked = inlineUiInteractionUntil > Date.now();
     cachedInlineUiSettings = settings;
 
     if (root.appTheme?.syncActionIconTheme) {
@@ -479,6 +496,12 @@
       !provider.isChatPage()
     ) {
       if (inlineUi) {
+        // Avoid transient hide/remount while user is clicking.
+        if (!exportInProgress && interactionLocked) {
+          inlineUi.setVisible(true);
+          inlineUi.setEnabled(true);
+          return;
+        }
         inlineUi.setVisible(false);
       }
       return;
@@ -498,6 +521,12 @@
     }
     if (typeof ui.setFormatOrder === "function") {
       ui.setFormatOrder(normalizeExportButtonOrder(settings.exportButtonOrder));
+    }
+
+    if (!exportInProgress && interactionLocked) {
+      ui.setVisible(true);
+      ui.setEnabled(true);
+      return;
     }
 
     // Keep the menu stable while the user is interacting with it.

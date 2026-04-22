@@ -190,7 +190,7 @@
     document.documentElement.appendChild(style);
   }
 
-  function createActionButton(label, format, onExport) {
+  function createActionButton(label, format, onExport, onInteraction) {
     const button = document.createElement("button");
     button.type = "button";
     button.dataset.format = format;
@@ -198,9 +198,17 @@
       label,
       stacked: true
     });
+    button.addEventListener("pointerdown", () => {
+      if (typeof onInteraction === "function") {
+        onInteraction();
+      }
+    });
     button.addEventListener("click", async (event) => {
       event.preventDefault();
       event.stopPropagation();
+      if (typeof onInteraction === "function") {
+        onInteraction();
+      }
       root.buttonSystem.setButtonState(button, "loading");
 
       try {
@@ -213,7 +221,7 @@
     return button;
   }
 
-  function createHeaderExportUi({ onExport }) {
+  function createHeaderExportUi({ onExport, onInteraction }) {
     ensureStyles();
 
     const rootNode = document.createElement("div");
@@ -230,11 +238,11 @@
     const menuNode = document.createElement("div");
     menuNode.id = MENU_ID;
 
-    const exportMulti = createActionButton("Multi", root.constants.EXPORT_FORMATS.MULTI, onExport);
-    const exportPdf = createActionButton(".PDF", root.constants.EXPORT_FORMATS.PDF, onExport);
-    const exportMht = createActionButton(".MHT", root.constants.EXPORT_FORMATS.MHT, onExport);
-    const exportHtml = createActionButton(".HTML", root.constants.EXPORT_FORMATS.HTML, onExport);
-    const exportTxt = createActionButton(".TXT", root.constants.EXPORT_FORMATS.TXT, onExport);
+    const exportMulti = createActionButton("Multi", root.constants.EXPORT_FORMATS.MULTI, onExport, onInteraction);
+    const exportPdf = createActionButton(".PDF", root.constants.EXPORT_FORMATS.PDF, onExport, onInteraction);
+    const exportMht = createActionButton(".MHT", root.constants.EXPORT_FORMATS.MHT, onExport, onInteraction);
+    const exportHtml = createActionButton(".HTML", root.constants.EXPORT_FORMATS.HTML, onExport, onInteraction);
+    const exportTxt = createActionButton(".TXT", root.constants.EXPORT_FORMATS.TXT, onExport, onInteraction);
     const defaultOrder = [
       root.constants.EXPORT_FORMATS.MULTI,
       root.constants.EXPORT_FORMATS.PDF,
@@ -297,9 +305,15 @@
     // before this UI can open/dispatch the intended export action.
     rootNode.addEventListener("pointerdown", (event) => {
       event.stopPropagation();
+      if (typeof onInteraction === "function") {
+        onInteraction();
+      }
     });
     menuNode.addEventListener("pointerdown", (event) => {
       event.stopPropagation();
+      if (typeof onInteraction === "function") {
+        onInteraction();
+      }
     });
 
     function hasVisibleFormats() {
@@ -529,6 +543,9 @@
     mainButton.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
+      if (typeof onInteraction === "function") {
+        onInteraction();
+      }
       if (mainButton.disabled) {
         return;
       }

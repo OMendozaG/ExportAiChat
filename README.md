@@ -63,6 +63,7 @@ The TXT export is designed as a readable chat log:
 - Thinking labels now export inline under the AI message header using a unified format: `(Thought: <duration>)` or `(Thought: <duration> - <thinking text>)`
 - When only reasoning payload is exported (without duration), exports format it as `(Thought: <thinking text>)`
 - Attachment references are grouped as `(Attached: [File 1], [File 2], ...)` and rendered consistently across TXT, HTML, MHT, and PDF
+- Attachment descriptors that include URLs (for example `File.pdf - https://...`) are normalized as attachments so they do not disappear from exports
 - Reasoning text and thinking-time exports are now independent toggles, so each can be exported alone or together
 - Thought notes no longer emit generic placeholders when reasoning/time data is missing for a message
 - Thinking-label normalization in post-processing no longer depends on provider-global helpers, avoiding runtime export failures in TXT/HTML/PDF/MHT

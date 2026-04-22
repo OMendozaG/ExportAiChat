@@ -329,13 +329,60 @@
     return lines.join("\n");
   }
 
-  function isLikelyWebReferenceLine(value) {
+  function isLikelyUrlValue(value) {
     const normalized = String(value || "").trim();
     if (!normalized) {
       return false;
     }
 
-    return /\bhttps?:\/\/\S+/i.test(normalized) || /\bwww\.\S+/i.test(normalized);
+    return /^(?:https?:\/\/|www\.|blob:https?:\/\/)/i.test(normalized);
+  }
+
+  function wrapAttachmentLabel(label) {
+    const normalized = String(label || "").trim();
+    if (!normalized) {
+      return "";
+    }
+
+    if (/^\[.*\]$/s.test(normalized)) {
+      return normalized;
+    }
+
+    return `[${normalized}]`;
+  }
+
+  function parseReferenceLine(value) {
+    const normalized = String(value || "").trim();
+    if (!normalized) {
+      return {
+        kind: "unknown",
+        label: ""
+      };
+    }
+
+    const descriptorMatch = normalized.match(/^(.+?)\s+-\s+(\S+)$/);
+    if (descriptorMatch) {
+      const left = String(descriptorMatch[1] || "").trim();
+      const right = String(descriptorMatch[2] || "").trim();
+      if (left && isLikelyUrlValue(right)) {
+        return {
+          kind: "attachment",
+          label: left
+        };
+      }
+    }
+
+    if (isLikelyUrlValue(normalized)) {
+      return {
+        kind: "web",
+        label: normalized
+      };
+    }
+
+    return {
+      kind: "attachment",
+      label: normalized
+    };
   }
 
   function buildAttachedLine(referenceLines) {
@@ -347,7 +394,7 @@
       return "";
     }
 
-    const payload = attachments.map((line) => `[${line}]`).join(", ");
+    const payload = attachments.map((line) => wrapAttachmentLabel(line)).filter(Boolean).join(", ");
     return `(Attached: ${payload})`;
   }
 
@@ -363,12 +410,16 @@
     const nonAttachmentLines = [];
 
     references.forEach((line) => {
-      if (isLikelyWebReferenceLine(line)) {
-        nonAttachmentLines.push(`[${line}]`);
+      const parsed = parseReferenceLine(line);
+      if (parsed.kind === "web") {
+        nonAttachmentLines.push(`[${parsed.label}]`);
         return;
       }
 
-      attachmentLines.push(line);
+      if (parsed.kind === "attachment" && parsed.label) {
+        attachmentLines.push(parsed.label);
+        return;
+      }
     });
 
     const outputLines = [];
@@ -379,6 +430,10 @@
 
     outputLines.push(...nonAttachmentLines);
     return outputLines;
+  }
+
+  function isAttachedOutputLine(value) {
+    return /^\(Attached:\s*/i.test(String(value || "").trim());
   }
 
   function buildTextMessageBlock(message, settings, conversation) {
@@ -538,7 +593,12 @@
     }
 
     const markup = displayLines
-      .map((line) => `    <p>${escapeHtml(line)}</p>`)
+      .map((line) => {
+        const className = isAttachedOutputLine(line)
+          ? "ceai-reference-line ceai-reference-line--attached"
+          : "ceai-reference-line";
+        return `    <p class="${className}">${escapeHtml(line)}</p>`;
+      })
       .join("\n");
 
     return [
@@ -629,6 +689,7 @@
       ".ceai-thinking-note { margin: -2px 0 10px; color: #475569; font-size: 0.84rem; font-style: italic; }",
       ".ceai-reference-block { margin: 0 0 10px; }",
       ".ceai-reference-block p { margin: 0 0 6px; color: #334155; font-size: 0.92rem; font-weight: 600; }",
+      ".ceai-reference-line--attached { color: #64748b; font-size: 0.84rem; font-weight: 400; white-space: nowrap; }",
       ".ceai-reference-block--trailing { margin-top: 10px; margin-bottom: 0; }",
       ".ceai-reference-block--trailing p:last-child, .ceai-reference-block--leading p:last-child { margin-bottom: 0; }",
       `.ceai-message.role-human { border-left: 6px solid ${roleColors.human}; }`,
@@ -676,6 +737,7 @@
       ".ceai-thinking-note { margin: -2px 0 8px; color: #475467; font-size: 11px; font-style: italic; }",
       ".ceai-reference-block { margin: 0 0 8px; }",
       ".ceai-reference-block p { margin: 0 0 4px; color: #475467; font-size: 11px; font-weight: 600; }",
+      ".ceai-reference-line--attached { color: #667085; font-size: 10px; font-weight: 400; white-space: nowrap; }",
       ".ceai-reference-block--trailing { margin-top: 8px; margin-bottom: 0; }",
       ".ceai-reference-block--trailing p:last-child, .ceai-reference-block--leading p:last-child { margin-bottom: 0; }",
       `.ceai-message.role-human { border-left: 5px solid ${roleColors.human}; }`,

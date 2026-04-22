@@ -51,8 +51,8 @@ The TXT export is designed as a readable chat log:
 - Broader ChatGPT thinking/reasoning block detection, including localized labels and timing extraction
 - ChatGPT thought blocks are now detected structurally from assistant turn DOM (pre-message block in `agent-turn`) and stripped from assistant body text before sanitize
 - ChatGPT extraction now supports modern `conversation-turn` sections, including assistant image-only turns
-- ChatGPT export now keeps forcing scroll to top until `scrollTop` reaches zero, then waits for a continuous no-growth settle window before finishing hydration
-- Virtualized hydration now uses the same strict top+settle verification across ChatGPT, Claude, Gemini, Grok, and DeepSeek: repeated animated scroll-to-top plus no-growth settle waits (no incremental sweep)
+- ChatGPT export now keeps forcing scroll to top until `scrollTop` reaches zero, then waits for a short adaptive no-growth settle window before finishing hydration
+- Virtualized hydration now uses the same strict top+settle verification across ChatGPT, Claude, Gemini, Grok, and DeepSeek: repeated animated scroll-to-top plus short no-growth settle waits (no incremental sweep)
 - If a provider cannot reach top before hydration timeout, export is canceled and an explicit user-facing alert is shown
 - ChatGPT turn deduplication now uses stable turn ids (not message ids), preventing dropped/imbalanced turns on edited or regenerated branches
 - ChatGPT turn merge/dedup now keys by `turnId + role`, preventing rare collisions when mixed model DOM variants reuse turn containers

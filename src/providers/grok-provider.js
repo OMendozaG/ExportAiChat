@@ -253,7 +253,7 @@
         throw new Error("HYDRATION_TOP_REACH_FAILED: Grok history did not reach top within timeout.");
       }
 
-      const requiredQuietMs = Math.min(45000, Math.max(15000, Math.round(maxHydrationMs * 0.2)));
+      const requiredQuietMs = Math.min(6000, Math.max(2500, Math.round(maxHydrationMs * 0.04)));
       let maxCountSeen = messageNodes.length;
       let maxHeightSeen = scrollHeightOf(scrollContainer);
       let lastGrowthAt = Date.now();

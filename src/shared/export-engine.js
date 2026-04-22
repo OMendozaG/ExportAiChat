@@ -436,6 +436,44 @@
     return /^\(Attached:\s*/i.test(String(value || "").trim());
   }
 
+  function parseAttachedOutputLineLabels(line) {
+    const normalized = String(line || "").trim();
+    const attachedMatch = normalized.match(/^\(Attached:\s*(.*)\)$/i);
+    if (!attachedMatch) {
+      return [];
+    }
+
+    const payload = String(attachedMatch[1] || "").trim();
+    if (!payload) {
+      return [];
+    }
+
+    const wrappedLabelMatches = Array.from(payload.matchAll(/\[([^\]]+)\]/g))
+      .map((match) => String(match[1] || "").trim())
+      .filter(Boolean);
+    if (wrappedLabelMatches.length) {
+      return wrappedLabelMatches;
+    }
+
+    return payload
+      .split(/\s*,\s*/)
+      .map((part) => String(part || "").replace(/^\[|\]$/g, "").trim())
+      .filter(Boolean);
+  }
+
+  function buildAttachedOutputLineHtml(line) {
+    const escapeHtml = root.sanitize.escapeHtml;
+    const labels = parseAttachedOutputLineLabels(line);
+    if (!labels.length) {
+      return escapeHtml(String(line || ""));
+    }
+
+    const chipsMarkup = labels
+      .map((label) => `<span class="ceai-attachment-chip">[${escapeHtml(label)}]</span>`)
+      .join(", ");
+    return `(Attached: ${chipsMarkup})`;
+  }
+
   function buildTextMessageBlock(message, settings, conversation) {
     const contentLines = [];
     const messageHeader = resolveTxtMessageHeader(message, settings, conversation);
@@ -594,10 +632,14 @@
 
     const markup = displayLines
       .map((line) => {
-        const className = isAttachedOutputLine(line)
+        const isAttached = isAttachedOutputLine(line);
+        const lineClassName = isAttached
           ? "ceai-reference-line ceai-reference-line--attached"
           : "ceai-reference-line";
-        return `    <p class="${className}">${escapeHtml(line)}</p>`;
+        const lineMarkup = isAttached
+          ? buildAttachedOutputLineHtml(line)
+          : escapeHtml(line);
+        return `    <p class="${lineClassName}">${lineMarkup}</p>`;
       })
       .join("\n");
 
@@ -612,8 +654,14 @@
     const escapeHtml = root.sanitize.escapeHtml;
     const roleClass = `role-${escapeHtml(message.role || "unknown")}`;
     const headerMarkup = buildMessageHeader(message, settings);
-    const leadingReferencesMarkup = buildReferenceBlockHtml(message.leadingReferenceLines, "ceai-reference-block--leading");
-    const trailingReferencesMarkup = buildReferenceBlockHtml(message.trailingReferenceLines, "ceai-reference-block--trailing");
+    const leadingReferencesMarkup = buildReferenceBlockHtml(
+      message.leadingReferenceLines,
+      "ceai-reference-block--leading ceai-reference-block--html"
+    );
+    const trailingReferencesMarkup = buildReferenceBlockHtml(
+      message.trailingReferenceLines,
+      "ceai-reference-block--trailing ceai-reference-block--html"
+    );
     const plainTextMarkup = message.text ? `  <pre>${escapeHtml(message.text || "")}</pre>` : "";
     const richMarkup = message.safeHtml ? `  <div class="ceai-rich">${message.safeHtml || ""}</div>` : "";
 
@@ -642,8 +690,14 @@
     const escapeHtml = root.sanitize.escapeHtml;
     const roleClass = `role-${escapeHtml(message.role || "unknown")}`;
     const text = escapeHtml(message.text || "");
-    const leadingReferencesMarkup = buildReferenceBlockHtml(message.leadingReferenceLines, "ceai-reference-block--leading");
-    const trailingReferencesMarkup = buildReferenceBlockHtml(message.trailingReferenceLines, "ceai-reference-block--trailing");
+    const leadingReferencesMarkup = buildReferenceBlockHtml(
+      message.leadingReferenceLines,
+      "ceai-reference-block--leading ceai-reference-block--pdf"
+    );
+    const trailingReferencesMarkup = buildReferenceBlockHtml(
+      message.trailingReferenceLines,
+      "ceai-reference-block--trailing ceai-reference-block--pdf"
+    );
     const textMarkup = message.text ? `  <pre>${text}</pre>` : "";
     const richMarkup = message.safeHtml ? `  <div class="ceai-rich">${message.safeHtml || ""}</div>` : "";
     const bodyMarkup = settings.textFormatting === root.constants.TEXT_FORMATTING.CLEAN
@@ -689,7 +743,8 @@
       ".ceai-thinking-note { margin: -2px 0 10px; color: #475569; font-size: 0.84rem; font-style: italic; }",
       ".ceai-reference-block { margin: 0 0 10px; }",
       ".ceai-reference-block p { margin: 0 0 6px; color: #334155; font-size: 0.92rem; font-weight: 600; }",
-      ".ceai-reference-line--attached { color: #64748b; font-size: 0.84rem; font-weight: 400; white-space: nowrap; }",
+      ".ceai-reference-block--html .ceai-reference-line--attached { color: #64748b; font-size: calc(0.92rem - 2px); font-weight: 400; white-space: nowrap; }",
+      ".ceai-reference-block--html .ceai-reference-line--attached .ceai-attachment-chip { display: inline-block; margin: 0 1px; padding: 1px 6px; border-radius: 6px; background: #e5e7eb; border: 1px solid #d1d5db; color: #475569; font-weight: 500; line-height: 1.3; }",
       ".ceai-reference-block--trailing { margin-top: 10px; margin-bottom: 0; }",
       ".ceai-reference-block--trailing p:last-child, .ceai-reference-block--leading p:last-child { margin-bottom: 0; }",
       `.ceai-message.role-human { border-left: 6px solid ${roleColors.human}; }`,

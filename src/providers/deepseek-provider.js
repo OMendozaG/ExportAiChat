@@ -710,6 +710,39 @@
     setScrollPosition(container, 0, safeLeft);
   }
 
+  function scrollToPositionAnimated(container, top, left) {
+    if (!container) {
+      return;
+    }
+
+    const safeTop = Math.max(0, Number(top || 0));
+    const safeLeft = Number(left || 0);
+
+    try {
+      if (isDocumentScrollContainer(container)) {
+        window.scrollTo({
+          top: safeTop,
+          left: safeLeft,
+          behavior: "smooth"
+        });
+        return;
+      }
+
+      if (typeof container.scrollTo === "function") {
+        container.scrollTo({
+          top: safeTop,
+          left: safeLeft,
+          behavior: "smooth"
+        });
+        return;
+      }
+    } catch (_error) {
+      // Fall back to immediate positioning for hosts that reject smooth scroll.
+    }
+
+    setScrollPosition(container, safeTop, safeLeft);
+  }
+
   function captureScrollPosition(container) {
     return {
       top: scrollTopOf(container),
@@ -736,6 +769,52 @@
         window.requestAnimationFrame(() => resolve());
       }, ms);
     });
+  }
+
+  async function runRequestedHydrationCycle(scrollContainer, hydrationBudgetExceeded, onCollect, topReachThreshold = 2) {
+    const sweepStepPx = 1700;
+    const holdBottomMs = 5000;
+    const holdTopMs = 5000;
+    const horizontal = scrollLeftOf(scrollContainer);
+    const maxSweepIterations = 1200;
+
+    while (!hydrationBudgetExceeded()) {
+      scrollToTopAnimated(scrollContainer);
+      await waitForRender(220);
+      onCollect();
+
+      let iterations = 0;
+      while (!hydrationBudgetExceeded() && iterations < maxSweepIterations) {
+        const maxTop = Math.max(0, scrollHeightOf(scrollContainer) - clientHeightOf(scrollContainer));
+        const currentTop = scrollTopOf(scrollContainer);
+        if (currentTop >= maxTop - 2) {
+          break;
+        }
+
+        const nextTop = Math.min(maxTop, currentTop + sweepStepPx);
+        scrollToPositionAnimated(scrollContainer, nextTop, horizontal);
+        await waitForRender(36);
+        onCollect();
+        iterations += 1;
+      }
+
+      const bottomTop = Math.max(0, scrollHeightOf(scrollContainer) - clientHeightOf(scrollContainer));
+      scrollToPositionAnimated(scrollContainer, bottomTop, horizontal);
+      await waitForRender(90);
+      onCollect();
+      await waitForRender(holdBottomMs);
+      onCollect();
+
+      scrollToTopAnimated(scrollContainer);
+      await waitForRender(holdTopMs);
+      onCollect();
+
+      if (scrollTopOf(scrollContainer) <= topReachThreshold) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   async function collectTurnEntries(options = {}) {
@@ -769,6 +848,7 @@
     const hydrationBudgetExceeded = () => (Date.now() - hydrationStartedAt) >= maxHydrationMs;
     const topReachThreshold = 2;
     const collectedByKey = new Map();
+    let hydrationSucceeded = false;
     const mergeEntries = (entries) => {
       entries.forEach((entry) => {
         const key = String(entry.key || "");
@@ -783,79 +863,33 @@
       });
     };
 
-    const ensureScrolledToTop = async () => {
-      let reachedTopPasses = 0;
-
-      while (!hydrationBudgetExceeded()) {
-        scrollToTopAnimated(scrollContainer);
-        await waitForRender(180);
-        mergeEntries(readVisibleTurnEntries());
-
-        const atTop = scrollTopOf(scrollContainer) <= topReachThreshold;
-        if (atTop) {
-          reachedTopPasses += 1;
-          if (reachedTopPasses >= 2) {
-            return true;
-          }
-        } else {
-          reachedTopPasses = 0;
-        }
-      }
-
-      return false;
-    };
-
     try {
       mergeEntries(visibleEntries);
-      const reachedTop = await ensureScrolledToTop();
+      const reachedTop = await runRequestedHydrationCycle(
+        scrollContainer,
+        hydrationBudgetExceeded,
+        () => {
+          mergeEntries(readVisibleTurnEntries());
+        },
+        topReachThreshold
+      );
       if (!reachedTop) {
-        throw new Error("HYDRATION_TOP_REACH_FAILED: DeepSeek history did not reach top within timeout.");
-      }
-
-      const requiredQuietMs = Math.min(6000, Math.max(2500, Math.round(maxHydrationMs * 0.04)));
-      let maxCountSeen = collectedByKey.size;
-      let maxHeightSeen = scrollHeightOf(scrollContainer);
-      let lastGrowthAt = Date.now();
-
-      // Keep top anchored and wait for a continuous quiet window. Some
-      // virtualized hosts prepend more messages after first hitting top.
-      while (!hydrationBudgetExceeded()) {
-        await waitForRender(260);
-        mergeEntries(readVisibleTurnEntries());
-
-        let atTop = scrollTopOf(scrollContainer) <= topReachThreshold;
-        if (!atTop) {
-          const reachedTopAgain = await ensureScrolledToTop();
-          if (!reachedTopAgain) {
-            throw new Error("HYDRATION_TOP_REACH_FAILED: DeepSeek history lost top position before completion.");
-          }
-          atTop = true;
-        }
-
-        const currentCount = collectedByKey.size;
-        const currentHeight = scrollHeightOf(scrollContainer);
-        const discoveredGrowth = currentCount > maxCountSeen || currentHeight > (maxHeightSeen + 4);
-        if (discoveredGrowth) {
-          lastGrowthAt = Date.now();
-        }
-
-        maxCountSeen = Math.max(maxCountSeen, currentCount);
-        maxHeightSeen = Math.max(maxHeightSeen, currentHeight);
-
-        if (atTop && (Date.now() - lastGrowthAt) >= requiredQuietMs) {
-          break;
-        }
-      }
-
-      if (hydrationBudgetExceeded()) {
-        throw new Error("HYDRATION_TOP_REACH_FAILED: DeepSeek history kept growing until hydration timeout.");
+        throw new Error("HYDRATION_TOP_REACH_FAILED: DeepSeek hydration did not reach top within timeout.");
       }
 
       const merged = Array.from(collectedByKey.values())
         .sort((left, right) => left.order - right.order);
+      const horizontal = scrollLeftOf(scrollContainer);
+      const bottomTop = Math.max(0, scrollHeightOf(scrollContainer) - clientHeightOf(scrollContainer));
+      scrollToPositionAnimated(scrollContainer, bottomTop, horizontal);
+      await waitForRender(140);
+
+      hydrationSucceeded = true;
       return merged.length ? merged : visibleEntries;
     } finally {
-      await restoreScrollPosition(scrollContainer, originalScroll);
+      if (!hydrationSucceeded) {
+        await restoreScrollPosition(scrollContainer, originalScroll);
+      }
     }
   }
 

@@ -528,6 +528,39 @@
     setScrollPosition(container, 0, safeLeft);
   }
 
+  function scrollToPositionAnimated(container, top, left) {
+    if (!container) {
+      return;
+    }
+
+    const safeTop = Math.max(0, Number(top || 0));
+    const safeLeft = Number(left || 0);
+
+    try {
+      if (isDocumentScrollContainer(container)) {
+        window.scrollTo({
+          top: safeTop,
+          left: safeLeft,
+          behavior: "smooth"
+        });
+        return;
+      }
+
+      if (typeof container.scrollTo === "function") {
+        container.scrollTo({
+          top: safeTop,
+          left: safeLeft,
+          behavior: "smooth"
+        });
+        return;
+      }
+    } catch (_error) {
+      // Fall back to immediate positioning for hosts that reject smooth scroll.
+    }
+
+    setScrollPosition(container, safeTop, safeLeft);
+  }
+
   function captureScrollPosition(container) {
     return {
       top: scrollTopOf(container),
@@ -554,6 +587,52 @@
         window.requestAnimationFrame(() => resolve());
       }, ms);
     });
+  }
+
+  async function runRequestedHydrationCycle(scrollContainer, hydrationBudgetExceeded, onCollect, topReachThreshold = 2) {
+    const sweepStepPx = 1700;
+    const holdBottomMs = 5000;
+    const holdTopMs = 5000;
+    const horizontal = scrollLeftOf(scrollContainer);
+    const maxSweepIterations = 1400;
+
+    while (!hydrationBudgetExceeded()) {
+      scrollToTopAnimated(scrollContainer);
+      await waitForRender(220);
+      onCollect();
+
+      let iterations = 0;
+      while (!hydrationBudgetExceeded() && iterations < maxSweepIterations) {
+        const maxTop = Math.max(0, scrollHeightOf(scrollContainer) - clientHeightOf(scrollContainer));
+        const currentTop = scrollTopOf(scrollContainer);
+        if (currentTop >= maxTop - 2) {
+          break;
+        }
+
+        const nextTop = Math.min(maxTop, currentTop + sweepStepPx);
+        scrollToPositionAnimated(scrollContainer, nextTop, horizontal);
+        await waitForRender(36);
+        onCollect();
+        iterations += 1;
+      }
+
+      const bottomTop = Math.max(0, scrollHeightOf(scrollContainer) - clientHeightOf(scrollContainer));
+      scrollToPositionAnimated(scrollContainer, bottomTop, horizontal);
+      await waitForRender(90);
+      onCollect();
+      await waitForRender(holdBottomMs);
+      onCollect();
+
+      scrollToTopAnimated(scrollContainer);
+      await waitForRender(holdTopMs);
+      onCollect();
+
+      if (scrollTopOf(scrollContainer) <= topReachThreshold) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   async function collectConversationEntries(options = {}) {
@@ -590,14 +669,9 @@
 
     const originalScroll = captureScrollPosition(scrollContainer);
     const collectedByTurn = new Map();
-    let maxObservedTurnOrder = 0;
+    let hydrationSucceeded = false;
     const mergeEntries = (entries) => {
       for (const entry of entries) {
-        const observedOrder = Number(entry?.order || 0);
-        if (Number.isFinite(observedOrder) && observedOrder > 0 && observedOrder < 1000000) {
-          maxObservedTurnOrder = Math.max(maxObservedTurnOrder, observedOrder);
-        }
-
         // Keep role in the merge key to avoid collisions when model variants
         // reuse turn containers with slightly different internal structures.
         const key = entryMergeKey(entry);
@@ -613,236 +687,32 @@
     };
 
     const topReachThreshold = 2;
-    const ensureScrolledToTop = async () => {
-      let reachedTopPasses = 0;
-
-      while (!hydrationBudgetExceeded()) {
-        scrollToTopAnimated(scrollContainer);
-        await waitForRender(180);
-        mergeEntries(collectVisibleConversationEntries());
-
-        const atTop = scrollTopOf(scrollContainer) <= topReachThreshold;
-        if (atTop) {
-          reachedTopPasses += 1;
-          if (reachedTopPasses >= 2) {
-            return true;
-          }
-        } else {
-          reachedTopPasses = 0;
-        }
-      }
-
-      return false;
-    };
-
-    const estimateExpectedTurnCount = () => {
-      const observedOrderEstimate = Number(maxObservedTurnOrder || 0);
-      return Math.max(
-        0,
-        Number(initialTurnCount || 0),
-        observedOrderEstimate,
-        Number(collectedByTurn.size || 0)
-      );
-    };
-
-    const shouldRunCoverageSweep = (minimumCoverageRatio = 0.82, minimumMissing = 8) => {
-      const expectedTurnCount = estimateExpectedTurnCount();
-      if (expectedTurnCount < 18) {
-        return false;
-      }
-
-      const collectedCount = collectedByTurn.size;
-      const minimumExpected = Math.max(18, Math.floor(expectedTurnCount * minimumCoverageRatio));
-      const missingByEstimate = expectedTurnCount - collectedCount;
-      return collectedCount < minimumExpected || missingByEstimate >= minimumMissing;
-    };
-
-    const runCoverageSweep = async ({
-      stepFactor = 0.66,
-      waitMs = 100,
-      maxSweepSteps = 140,
-      edgePauseMs = 0
-    } = {}) => {
-      const viewportHeight = Math.max(120, clientHeightOf(scrollContainer));
-      const maxTop = Math.max(0, scrollHeightOf(scrollContainer) - viewportHeight);
-      if (maxTop <= topReachThreshold) {
-        return 0;
-      }
-
-      const horizontal = scrollLeftOf(scrollContainer);
-      const beforeCount = collectedByTurn.size;
-      const step = Math.max(
-        Math.floor(viewportHeight * Math.max(0.35, Math.min(stepFactor, 0.9))),
-        Math.ceil(maxTop / maxSweepSteps)
-      );
-
-      // Traverse down and back up to force virtualized middle segments to mount.
-      for (let targetTop = 0; targetTop <= maxTop && !hydrationBudgetExceeded(); targetTop += step) {
-        setScrollPosition(scrollContainer, targetTop, horizontal);
-        const countBeforeStep = collectedByTurn.size;
-        await waitForRender(waitMs);
-        mergeEntries(collectVisibleConversationEntries());
-        if (!hydrationBudgetExceeded() && collectedByTurn.size > countBeforeStep) {
-          await waitForRender(Math.min(220, waitMs + 80));
-          mergeEntries(collectVisibleConversationEntries());
-        }
-      }
-
-      if (!hydrationBudgetExceeded()) {
-        setScrollPosition(scrollContainer, maxTop, horizontal);
-        await waitForRender(waitMs);
-        mergeEntries(collectVisibleConversationEntries());
-        if (edgePauseMs > 0) {
-          await waitForRender(edgePauseMs);
-          mergeEntries(collectVisibleConversationEntries());
-        }
-      }
-
-      for (let targetTop = maxTop; targetTop >= 0 && !hydrationBudgetExceeded(); targetTop -= step) {
-        setScrollPosition(scrollContainer, targetTop, horizontal);
-        const countBeforeStep = collectedByTurn.size;
-        await waitForRender(waitMs);
-        mergeEntries(collectVisibleConversationEntries());
-        if (!hydrationBudgetExceeded() && collectedByTurn.size > countBeforeStep) {
-          await waitForRender(Math.min(220, waitMs + 80));
-          mergeEntries(collectVisibleConversationEntries());
-        }
-      }
-
-      const reachedTop = await ensureScrolledToTop();
-      if (!reachedTop) {
-        throw new Error("HYDRATION_TOP_REACH_FAILED: ChatGPT coverage sweep did not return to top.");
-      }
-
-      return collectedByTurn.size - beforeCount;
-    };
-
     try {
       mergeEntries(visibleEntries);
-      const reachedTop = await ensureScrolledToTop();
+      const reachedTop = await runRequestedHydrationCycle(
+        scrollContainer,
+        hydrationBudgetExceeded,
+        () => {
+          mergeEntries(collectVisibleConversationEntries());
+        },
+        topReachThreshold
+      );
       if (!reachedTop) {
-        throw new Error("HYDRATION_TOP_REACH_FAILED: ChatGPT history did not reach top within timeout.");
-      }
-
-      const requiredQuietMs = Math.min(6000, Math.max(2500, Math.round(maxHydrationMs * 0.04)));
-      let maxCountSeen = collectedByTurn.size;
-      let maxHeightSeen = scrollHeightOf(scrollContainer);
-      let lastGrowthAt = Date.now();
-
-      // Keep top anchored and wait until prepending settles for a continuous
-      // quiet window. Some hosts keep adding older turns after reaching top.
-      while (!hydrationBudgetExceeded()) {
-        await waitForRender(260);
-        mergeEntries(collectVisibleConversationEntries());
-
-        let atTop = scrollTopOf(scrollContainer) <= topReachThreshold;
-        if (!atTop) {
-          const reachedTopAgain = await ensureScrolledToTop();
-          if (!reachedTopAgain) {
-            throw new Error("HYDRATION_TOP_REACH_FAILED: ChatGPT history lost top position before completion.");
-          }
-          atTop = true;
-        }
-
-        const currentCount = collectedByTurn.size;
-        const currentHeight = scrollHeightOf(scrollContainer);
-        const discoveredGrowth = currentCount > maxCountSeen || currentHeight > (maxHeightSeen + 4);
-        if (discoveredGrowth) {
-          lastGrowthAt = Date.now();
-        }
-
-        maxCountSeen = Math.max(maxCountSeen, currentCount);
-        maxHeightSeen = Math.max(maxHeightSeen, currentHeight);
-
-        if (atTop && (Date.now() - lastGrowthAt) >= requiredQuietMs) {
-          break;
-        }
-      }
-
-      if (!hydrationBudgetExceeded() && shouldRunCoverageSweep()) {
-        let stagnantSweepPasses = 0;
-        const maxCoveragePasses = 4;
-
-        // Run repeated coverage sweeps until estimated coverage is high enough
-        // or additional passes stop improving the merged turn count.
-        for (let pass = 0; pass < maxCoveragePasses && !hydrationBudgetExceeded(); pass += 1) {
-          const densePass = pass > 0;
-          const beforeSweepCount = collectedByTurn.size;
-          await runCoverageSweep(
-            densePass
-              ? {
-                  stepFactor: 0.5,
-                  waitMs: 128,
-                  maxSweepSteps: 220,
-                  edgePauseMs: 110
-                }
-              : {
-                  stepFactor: 0.66,
-                  waitMs: 104,
-                  maxSweepSteps: 150,
-                  edgePauseMs: 0
-                }
-          );
-
-          const postSweepQuietMs = Math.min(
-            4200,
-            Math.max(1500, Math.round(requiredQuietMs * (densePass ? 0.55 : 0.65)))
-          );
-          maxCountSeen = Math.max(maxCountSeen, collectedByTurn.size);
-          maxHeightSeen = Math.max(maxHeightSeen, scrollHeightOf(scrollContainer));
-          lastGrowthAt = Date.now();
-
-          // After each sweep, keep top anchored until there is a short quiet window.
-          while (!hydrationBudgetExceeded()) {
-            await waitForRender(210);
-            mergeEntries(collectVisibleConversationEntries());
-
-            let atTop = scrollTopOf(scrollContainer) <= topReachThreshold;
-            if (!atTop) {
-              const reachedTopAgain = await ensureScrolledToTop();
-              if (!reachedTopAgain) {
-                throw new Error("HYDRATION_TOP_REACH_FAILED: ChatGPT history lost top position after coverage sweep.");
-              }
-              atTop = true;
-            }
-
-            const currentCount = collectedByTurn.size;
-            const currentHeight = scrollHeightOf(scrollContainer);
-            const discoveredGrowth = currentCount > maxCountSeen || currentHeight > (maxHeightSeen + 4);
-            if (discoveredGrowth) {
-              lastGrowthAt = Date.now();
-            }
-
-            maxCountSeen = Math.max(maxCountSeen, currentCount);
-            maxHeightSeen = Math.max(maxHeightSeen, currentHeight);
-
-            if (atTop && (Date.now() - lastGrowthAt) >= postSweepQuietMs) {
-              break;
-            }
-          }
-
-          const gainedTurns = collectedByTurn.size - beforeSweepCount;
-          if (gainedTurns <= 0) {
-            stagnantSweepPasses += 1;
-          } else {
-            stagnantSweepPasses = 0;
-          }
-
-          const stillIncomplete = shouldRunCoverageSweep(0.94, 2);
-          if (!stillIncomplete || stagnantSweepPasses >= 2) {
-            break;
-          }
-        }
-      }
-
-      if (hydrationBudgetExceeded()) {
-        throw new Error("HYDRATION_TOP_REACH_FAILED: ChatGPT history kept growing until hydration timeout.");
+        throw new Error("HYDRATION_TOP_REACH_FAILED: ChatGPT hydration did not reach top within timeout.");
       }
 
       const mergedEntries = Array.from(collectedByTurn.values()).sort((left, right) => left.order - right.order);
+      const horizontal = scrollLeftOf(scrollContainer);
+      const bottomTop = Math.max(0, scrollHeightOf(scrollContainer) - clientHeightOf(scrollContainer));
+      scrollToPositionAnimated(scrollContainer, bottomTop, horizontal);
+      await waitForRender(140);
+
+      hydrationSucceeded = true;
       return mergedEntries.length ? mergedEntries : visibleEntries;
     } finally {
-      await restoreScrollPosition(scrollContainer, originalScroll);
+      if (!hydrationSucceeded) {
+        await restoreScrollPosition(scrollContainer, originalScroll);
+      }
     }
   }
 

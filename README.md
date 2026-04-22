@@ -52,14 +52,12 @@ The TXT export is designed as a readable chat log:
 - Broader ChatGPT thinking/reasoning block detection, including localized labels and timing extraction
 - ChatGPT thought blocks are now detected structurally from assistant turn DOM (pre-message block in `agent-turn`) and stripped from assistant body text before sanitize
 - ChatGPT extraction now supports modern `conversation-turn` sections, including assistant image-only turns
-- ChatGPT export now keeps forcing scroll to top until `scrollTop` reaches zero, then waits for a short adaptive no-growth settle window before finishing hydration
-- When ChatGPT top-settle coverage looks incomplete, extraction now runs repeated intermediate coverage sweeps (including denser follow-up passes) until counts stabilize
 - ChatGPT now preserves user turns even when they are attachment-only (and attachment names are hidden) or rendered in alternate user DOM wrappers, reducing dropped Human entries
-- Virtualized hydration now uses the same strict top+settle verification across ChatGPT, Claude, Gemini, Grok, and DeepSeek: repeated animated scroll-to-top plus short no-growth settle waits (no incremental sweep)
+- Virtualized hydration now uses the same cycle across ChatGPT, Claude, Gemini, Grok, and DeepSeek: scroll to top, animate down in 1700px steps to bottom, wait 5s, scroll to top, wait 5s, and repeat until top is confirmed
 - If a provider cannot reach top before hydration timeout, export is canceled and an explicit user-facing alert is shown
 - ChatGPT turn deduplication now uses stable turn ids (not message ids), preventing dropped/imbalanced turns on edited or regenerated branches
 - ChatGPT turn merge/dedup now keys by `turnId + role` when stable ids exist, and falls back to role-aware content fingerprints when ids are synthetic or missing
-- Virtualized turn hydration now restores the original chat scroll position after export collection (ChatGPT, Claude, Gemini, Grok, and DeepSeek)
+- After top confirmation, hydration moves back to the conversation bottom before export continues
 - Thinking labels now export inline under the AI message header using a unified format: `(Thought: <duration>)` or `(Thought: <duration> - <thinking text>)`
 - When only reasoning payload is exported (without duration), exports format it as `(Thought: <thinking text>)`
 - Attachment references are grouped as `(Attached: [File 1], [File 2], ...)` and rendered consistently across TXT, HTML, MHT, and PDF

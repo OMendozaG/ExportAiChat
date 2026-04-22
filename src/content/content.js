@@ -20,6 +20,8 @@
   let exportInProgress = false;
   let inlineUi = null;
   let inlineUiRefreshTimer = null;
+  let inlineUiRefreshInFlight = false;
+  let inlineUiRefreshQueued = false;
   let domObserver = null;
   let cachedInlineUiSettings = null;
   const exportSnapshotsByConversation = new Map();
@@ -408,6 +410,25 @@
     return inlineUi;
   }
 
+  function requestInlineUiRefresh() {
+    if (inlineUiRefreshInFlight) {
+      inlineUiRefreshQueued = true;
+      return;
+    }
+
+    inlineUiRefreshInFlight = true;
+    refreshInlineUi()
+      .catch(() => {})
+      .finally(() => {
+        inlineUiRefreshInFlight = false;
+
+        if (inlineUiRefreshQueued) {
+          inlineUiRefreshQueued = false;
+          scheduleInlineUiRefresh();
+        }
+      });
+  }
+
   function scheduleInlineUiRefresh() {
     if (inlineUiRefreshTimer !== null) {
       return;
@@ -415,8 +436,8 @@
 
     inlineUiRefreshTimer = window.setTimeout(() => {
       inlineUiRefreshTimer = null;
-      refreshInlineUi().catch(() => {});
-    }, 120);
+      requestInlineUiRefresh();
+    }, 140);
   }
 
   async function refreshInlineUi() {
@@ -456,6 +477,15 @@
     }
     if (typeof ui.setFormatOrder === "function") {
       ui.setFormatOrder(normalizeExportButtonOrder(settings.exportButtonOrder));
+    }
+
+    // Keep the menu stable while the user is interacting with it.
+    // Without this guard, rapid host DOM mutations can race with mount/update
+    // and make first clicks feel ignored.
+    if (!exportInProgress && typeof ui.isMenuOpen === "function" && ui.isMenuOpen()) {
+      ui.setVisible(true);
+      ui.setEnabled(true);
+      return;
     }
 
     ui.setVisibleFormats({

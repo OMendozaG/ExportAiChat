@@ -198,7 +198,9 @@
       label,
       stacked: true
     });
-    button.addEventListener("click", async () => {
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       root.buttonSystem.setButtonState(button, "loading");
 
       try {
@@ -297,6 +299,10 @@
 
     function closeMenu() {
       menuNode.classList.remove("is-open");
+    }
+
+    function isMenuOpen() {
+      return menuNode.classList.contains("is-open");
     }
 
     function syncMenuPosition() {
@@ -550,6 +556,7 @@
       setVisible,
       setEnabled,
       setLoading,
+      isMenuOpen,
       closeMenu,
       destroy
     };

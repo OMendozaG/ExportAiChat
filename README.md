@@ -75,6 +75,7 @@ The TXT export is designed as a readable chat log:
 - TXT includes a dedicated toggle to trim leading spaces/newlines from the first Human TXT header (default on)
 - TXT exports no longer print the chat title line at the top
 - TXT adds a `[Content]` header after `[Metadata]` when metadata is present, with two line breaks before the first message block
+- TXT `clean` mode now strips markdown syntax tokens from message/thinking text (`##`, `**`, links, fences, inline code) so plain TXT stays markdown-free
 - DeepSeek thinking-only blocks no longer duplicate into separate assistant reply messages
 - MHT and PDF exports now inline chat images as data URLs when possible, so generated-image replies are preserved more reliably
 - ChatGPT extraction now prefers section-level turns over nested legacy placeholders so image-only assistant replies are not dropped
@@ -147,6 +148,7 @@ The settings page supports:
 - Human display name
 - AI display name by provider name or custom name
 - Markdown or clean text formatting (TXT only)
+- In TXT `clean` mode, markdown syntax markers are removed from message/thinking body text
 - Quote and divider style (TXT only)
 - Dedicated TXT section with message indentation style (default `Indent with tab`)
 - TXT option to apply indentation style to the first content line (default on)

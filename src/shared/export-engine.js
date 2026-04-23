@@ -264,6 +264,90 @@
     return `(${cleaned})`;
   }
 
+  function normalizeMarkdownLinkTarget(value) {
+    const raw = String(value || "").trim();
+    if (!raw) {
+      return "";
+    }
+
+    // Strip optional markdown link title payloads: `(url "title")`.
+    return raw.replace(/\s+["'][^"']*["']\s*$/, "").trim();
+  }
+
+  function markdownLinkToText(_match, label, target) {
+    const normalizedLabel = String(label || "").trim();
+    const normalizedTarget = normalizeMarkdownLinkTarget(target);
+    if (normalizedLabel && normalizedTarget) {
+      return `${normalizedLabel} (${normalizedTarget})`;
+    }
+
+    return normalizedLabel || normalizedTarget;
+  }
+
+  function stripMarkdownSyntaxForPlainTxt(value) {
+    const source = String(value || "").replace(/\r/g, "");
+    if (!source) {
+      return "";
+    }
+
+    const lines = source.split("\n");
+    const output = [];
+    let inFencedCodeBlock = false;
+    let fencedCodeMarker = "";
+
+    for (const rawLine of lines) {
+      const line = String(rawLine || "");
+      const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/);
+      if (fenceMatch) {
+        const marker = fenceMatch[1].charAt(0);
+        if (!inFencedCodeBlock) {
+          inFencedCodeBlock = true;
+          fencedCodeMarker = marker;
+        } else if (!fencedCodeMarker || fencedCodeMarker === marker) {
+          inFencedCodeBlock = false;
+          fencedCodeMarker = "";
+        }
+        // Keep code payload only, never markdown fence markers.
+        continue;
+      }
+
+      if (inFencedCodeBlock) {
+        output.push(line);
+        continue;
+      }
+
+      // Remove markdown-only block markers while preserving readable payload.
+      let normalizedLine = line
+        .replace(/^\s{0,3}#{1,6}\s+/, "")
+        .replace(/^\s{0,3}>\s?/, "");
+      if (/^\s{0,3}(?:-{3,}|_{3,}|\*{3,})\s*$/.test(normalizedLine)) {
+        continue;
+      }
+
+      normalizedLine = normalizedLine
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, markdownLinkToText)
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, markdownLinkToText)
+        .replace(/`([^`\n]+)`/g, "$1")
+        .replace(/\*\*([^*\n]+)\*\*/g, "$1")
+        .replace(/__([^_\n]+)__/g, "$1")
+        .replace(/~~([^~\n]+)~~/g, "$1")
+        .replace(/\\([\\`*_{}\[\]()#+.!>~|-])/g, "$1");
+
+      output.push(normalizedLine);
+    }
+
+    return output.join("\n");
+  }
+
+  function normalizeTxtBodyText(value, settings) {
+    const source = String(value || "");
+    if (settings?.textFormatting === root.constants.TEXT_FORMATTING.MARKDOWN) {
+      return source;
+    }
+
+    return stripMarkdownSyntaxForPlainTxt(source);
+  }
+
   function normalizeSeparator(settings) {
     const rawValue = settings.messageSeparator ?? root.defaults.settings.messageSeparator;
     return String(rawValue).replace(/\r\n/g, "\n");
@@ -483,7 +567,7 @@
     // Always keep the role prefix on the first real content line.
     // TXT header templates are visual separators, not replacements for `<Role>`.
     const prefix = rolePrefix(message, settings);
-    const thinkingNoteLines = String(message.thinkingNote || "")
+    const thinkingNoteLines = normalizeTxtBodyText(message.thinkingNote, settings)
       .split("\n")
       .map((line) => String(line || "").trim())
       .filter(Boolean);
@@ -491,7 +575,7 @@
       .map((line) => ensureParenthesizedThinkingLine(line))
       .filter(Boolean);
     const leadingLines = buildReferenceOutputLines(message.leadingReferenceLines);
-    const messageLines = String(message.text || "").split("\n");
+    const messageLines = normalizeTxtBodyText(message.text, settings).split("\n");
     const trailingLines = buildReferenceOutputLines(message.trailingReferenceLines);
     contentLines.push(...leadingLines);
 

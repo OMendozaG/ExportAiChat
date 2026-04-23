@@ -65,6 +65,7 @@ The TXT export is designed as a readable chat log:
 - Attachment references are grouped as `(Attached: [File 1], [File 2], ...)` and rendered consistently across TXT, HTML, MHT, and PDF
 - HTML attachment lines now render as a slightly smaller `(Attached: ...)` line with per-file gray chips for easier scanning
 - Long attachment lines in HTML/MHT/PDF now wrap naturally instead of forcing a single line
+- In HTML/MHT/PDF, assistant reference lines (attachments and links) now render as compact gray chips without the `(Attached: ...)` text prefix
 - Attachment descriptors that include URLs (for example `File.pdf - https://...`) are normalized as attachments so they do not disappear from exports
 - Reasoning text and thinking-time exports are now independent toggles, so each can be exported alone or together
 - Thought notes no longer emit generic placeholders when reasoning/time data is missing for a message

@@ -520,6 +520,17 @@
     return /^\(Attached:\s*/i.test(String(value || "").trim());
   }
 
+  function parseBracketedOutputLineLabels(line) {
+    const normalized = String(line || "").trim();
+    if (!normalized) {
+      return [];
+    }
+
+    return Array.from(normalized.matchAll(/\[([^\]]+)\]/g))
+      .map((match) => String(match[1] || "").trim())
+      .filter(Boolean);
+  }
+
   function parseAttachedOutputLineLabels(line) {
     const normalized = String(line || "").trim();
     const attachedMatch = normalized.match(/^\(Attached:\s*(.*)\)$/i);
@@ -545,17 +556,15 @@
       .filter(Boolean);
   }
 
-  function buildAttachedOutputLineHtml(line) {
+  function buildReferenceOutputChipsHtml(labels) {
     const escapeHtml = root.sanitize.escapeHtml;
-    const labels = parseAttachedOutputLineLabels(line);
     if (!labels.length) {
-      return escapeHtml(String(line || ""));
+      return "";
     }
 
-    const chipsMarkup = labels
-      .map((label) => `<span class="ceai-attachment-chip">[${escapeHtml(label)}]</span>`)
+    return labels
+      .map((label) => `<span class="ceai-reference-chip">[${escapeHtml(label)}]</span>`)
       .join(", ");
-    return `(Attached: ${chipsMarkup})`;
   }
 
   function buildTextMessageBlock(message, settings, conversation, options = {}) {
@@ -732,12 +741,18 @@
 
     const markup = displayLines
       .map((line) => {
-        const isAttached = isAttachedOutputLine(line);
-        const lineClassName = isAttached
-          ? "ceai-reference-line ceai-reference-line--attached"
+        const attachedLabels = isAttachedOutputLine(line)
+          ? parseAttachedOutputLineLabels(line)
+          : [];
+        const chipLabels = attachedLabels.length
+          ? attachedLabels
+          : parseBracketedOutputLineLabels(line);
+        const isChipLine = chipLabels.length > 0;
+        const lineClassName = isChipLine
+          ? "ceai-reference-line ceai-reference-line--chip"
           : "ceai-reference-line";
-        const lineMarkup = isAttached
-          ? buildAttachedOutputLineHtml(line)
+        const lineMarkup = isChipLine
+          ? buildReferenceOutputChipsHtml(chipLabels)
           : escapeHtml(line);
         return `    <p class="${lineClassName}">${lineMarkup}</p>`;
       })
@@ -843,8 +858,8 @@
       ".ceai-thinking-note { margin: -2px 0 10px; color: #475569; font-size: 0.84rem; font-style: italic; }",
       ".ceai-reference-block { margin: 0 0 10px; }",
       ".ceai-reference-block p { margin: 0 0 6px; color: #334155; font-size: 0.92rem; font-weight: 600; }",
-      ".ceai-reference-block--html .ceai-reference-line--attached { color: #64748b; font-size: calc(0.92rem - 2px); font-weight: 400; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }",
-      ".ceai-reference-block--html .ceai-reference-line--attached .ceai-attachment-chip { display: inline-block; margin: 0 1px; padding: 1px 6px; border-radius: 6px; background: #e5e7eb; border: 1px solid #d1d5db; color: #475569; font-weight: 500; line-height: 1.3; white-space: normal; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }",
+      ".ceai-reference-block--html .ceai-reference-line--chip { color: #64748b; font-size: calc(0.92rem - 2px); font-weight: 400; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }",
+      ".ceai-reference-block--html .ceai-reference-line--chip .ceai-reference-chip { display: inline-block; margin: 0 1px; padding: 1px 6px; border-radius: 6px; background: #e5e7eb; border: 1px solid #d1d5db; color: #475569; font-weight: 500; line-height: 1.3; white-space: normal; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; font-size: calc(0.92rem - 2px); }",
       ".ceai-reference-block--trailing { margin-top: 10px; margin-bottom: 0; }",
       ".ceai-reference-block--trailing p:last-child, .ceai-reference-block--leading p:last-child { margin-bottom: 0; }",
       `.ceai-message.role-human { border-left: 6px solid ${roleColors.human}; }`,
@@ -892,8 +907,8 @@
       ".ceai-thinking-note { margin: -2px 0 8px; color: #475467; font-size: 11px; font-style: italic; }",
       ".ceai-reference-block { margin: 0 0 8px; }",
       ".ceai-reference-block p { margin: 0 0 4px; color: #475467; font-size: 11px; font-weight: 600; }",
-      ".ceai-reference-line--attached { color: #667085; font-size: 10px; font-weight: 400; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }",
-      ".ceai-reference-line--attached .ceai-attachment-chip { white-space: normal; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }",
+      ".ceai-reference-line--chip { color: #667085; font-size: 10px; font-weight: 400; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }",
+      ".ceai-reference-line--chip .ceai-reference-chip { display: inline-block; margin: 0 1px; padding: 1px 6px; border-radius: 6px; background: #e5e7eb; border: 1px solid #d1d5db; color: #475569; font-weight: 500; line-height: 1.3; white-space: normal; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; font-size: 10px; }",
       ".ceai-reference-block--trailing { margin-top: 8px; margin-bottom: 0; }",
       ".ceai-reference-block--trailing p:last-child, .ceai-reference-block--leading p:last-child { margin-bottom: 0; }",
       `.ceai-message.role-human { border-left: 5px solid ${roleColors.human}; }`,

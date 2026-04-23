@@ -126,7 +126,23 @@
               compress: true
             },
             pagebreak: {
-              mode: ["css", "legacy"]
+              mode: ["css", "legacy"],
+              avoid: [
+                ".ceai-message-head",
+                ".ceai-thinking-note",
+                ".ceai-reference-block p",
+                ".ceai-message pre",
+                ".ceai-rich p",
+                ".ceai-rich li",
+                ".ceai-rich blockquote",
+                ".ceai-rich pre",
+                ".ceai-rich table",
+                ".ceai-rich figure",
+                ".ceai-rich h1",
+                ".ceai-rich h2",
+                ".ceai-rich h3",
+                ".ceai-rich h4"
+              ]
             }
           })
           .from(sourceNode)

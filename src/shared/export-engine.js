@@ -915,6 +915,8 @@
       `.ceai-message.role-assistant { border-left: 5px solid ${roleColors.ai}; }`,
       `.ceai-message.role-system { border-left: 5px solid ${roleColors.system}; }`,
       ".ceai-message pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: \"Segoe UI Emoji\", \"Apple Color Emoji\", \"Segoe UI\", Tahoma, sans-serif; line-height: 1.45; }",
+      ".ceai-message p, .ceai-message li, .ceai-message pre, .ceai-message blockquote, .ceai-reference-block p, .ceai-thinking-note { break-inside: avoid; page-break-inside: avoid; orphans: 2; widows: 2; }",
+      ".ceai-rich ul, .ceai-rich ol, .ceai-rich table, .ceai-rich pre, .ceai-rich blockquote, .ceai-rich figure { break-inside: avoid; page-break-inside: avoid; }",
       ".ceai-rich p { margin: 0 0 0.75em; }",
       ".ceai-rich figure, .ceai-rich picture { display: block; max-width: 100%; margin: 0 0 0.75em; }",
       ".ceai-rich img, .ceai-rich video, .ceai-rich canvas, .ceai-rich svg { display: block; max-width: 100%; width: auto !important; height: auto !important; max-height: 58vh; object-fit: contain; border-radius: 10px; }",

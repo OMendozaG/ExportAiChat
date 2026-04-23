@@ -121,9 +121,9 @@ The TXT export is designed as a readable chat log:
 - Higher-contrast export button labels for better readability
 - Defensive settings fallback when a shared script runs without extension storage APIs
 - Guarded runtime/storage listeners and caught inline refresh failures to avoid uncaught extension-context errors
-- PDF rendering now injects HTML directly into the debug target instead of navigating to a `data:` URL, to reduce renderer failures
-- PDF download now uses direct base64 data URLs from the background worker to avoid blob URL lifecycle failures
-- PDF exports now use a warmed shared background renderer (queued + reused) so tab/debugger startup is not repeated on every export, reducing latency while staying off-screen
+- PDF rendering now runs in an offscreen extension document (no visible temporary tab) using local HTML-to-PDF conversion
+- PDF download uses direct base64 data URLs from the background worker to avoid blob URL lifecycle failures
+- PDF exports warm up and reuse the offscreen renderer between close exports (queued + reused) to reduce latency
 - Reset defaults now asks for confirmation before overwriting the current settings
 - Shared Chrome API helpers no longer throw path-based missing-API errors
 - Current builds load a dedicated `extension-bridge.js` wrapper for Chrome APIs, while the legacy helper path is kept as a harmless shim for stale tabs
@@ -266,9 +266,9 @@ The current extension uses these permissions:
 - `storage`: save persistent settings
 - `downloads`: save exported files
 - `activeTab`: interact with the current supported tab
-- `tabs`: query the active tab and create a temporary tab for PDF rendering
+- `tabs`: query the active tab when needed for status and MHT capture
 - `pageCapture`: capture MHT when needed
-- `debugger`: render reliable PDFs from generated HTML
+- `offscreen`: render PDFs in a hidden extension document without opening visible tabs
 - `https://chatgpt.com/*`
 - `https://claude.ai/*`
 - `https://gemini.google.com/*`
@@ -295,9 +295,11 @@ The current extension uses these permissions:
 - `src/providers/`: provider-specific adapters
 - `src/shared/`: shared export, processing, storage, and utility modules
 - `src/content/`: content script controller and inline UI
+- `src/background/`: service worker and offscreen PDF renderer page/script
 - `src/popup/`: popup UI
 - `src/options/`: settings UI
 - `src/assets/`: extension icons and static assets
+- `src/vendor/`: bundled third-party client-side libraries used by the extension
 
 ## Adding New Providers
 

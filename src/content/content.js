@@ -634,8 +634,8 @@
         throw new Error("Multi export requires at least one target format selected in Settings.");
       }
 
-      // Pre-warm the background PDF renderer as soon as we know PDF is needed.
-      // This overlaps tab/debugger setup with extraction/hydration work.
+      // Pre-warm the background offscreen PDF renderer as soon as we know PDF is needed.
+      // This overlaps renderer initialization with extraction/hydration work.
       const pdfWarmupPromise = targetFormats.includes(EXPORT_FORMATS.PDF)
         ? root.chromeHelpers.runtimeSendMessage({
             type: MSG_WARMUP_PDF_RENDERER,

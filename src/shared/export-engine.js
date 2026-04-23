@@ -887,7 +887,7 @@
       "* { box-sizing: border-box; }",
       "html, body { background: #ffffff; color: #101828; margin: 0; }",
       "body { font-family: \"Segoe UI Emoji\", \"Apple Color Emoji\", \"Segoe UI\", Tahoma, sans-serif; }",
-      "main { padding: 0; }",
+      "main { width: 80%; margin: 0 auto; padding: 0; }",
       ".ceai-header, .ceai-meta, .ceai-message { border: 1px solid #d7deea; border-radius: 12px; background: #ffffff; }",
       ".ceai-header { padding: 16px 18px; margin: 0 0 12px; }",
       ".ceai-header h1 { margin: 0; font-size: 20px; line-height: 1.2; }",

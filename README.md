@@ -125,6 +125,7 @@ The TXT export is designed as a readable chat log:
 - PDF rendering now runs in an offscreen extension document (no visible temporary tab) using local HTML-to-PDF conversion
 - PDF download uses direct base64 data URLs from the background worker to avoid blob URL lifecycle failures
 - PDF exports warm up and reuse the offscreen renderer between close exports (queued + reused) to reduce latency
+- PDF layout now keeps printable page margins and constrains chat content to ~80% page width (centered) to avoid edge-to-edge blocks
 - Reset defaults now asks for confirmation before overwriting the current settings
 - Shared Chrome API helpers no longer throw path-based missing-API errors
 - Current builds load a dedicated `extension-bridge.js` wrapper for Chrome APIs, while the legacy helper path is kept as a harmless shim for stale tabs

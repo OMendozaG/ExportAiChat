@@ -110,7 +110,8 @@
 
         const dataUri = await globalThis.html2pdf()
           .set({
-            margin: 0,
+            // Leave printable whitespace around the page (top/sides/bottom).
+            margin: [14, 12, 12, 12],
             image: { type: "jpeg", quality: 0.96 },
             html2canvas: {
               scale: 1.35,

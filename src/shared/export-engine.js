@@ -732,8 +732,9 @@
     };
   }
 
-  function buildReferenceBlockHtml(lines, className) {
+  function buildReferenceBlockHtml(lines, className, options = {}) {
     const escapeHtml = root.sanitize.escapeHtml;
+    const showAttachedPrefix = Boolean(options.showAttachedPrefix);
     const displayLines = buildReferenceOutputLines(lines);
     if (!displayLines.length) {
       return "";
@@ -741,19 +742,24 @@
 
     const markup = displayLines
       .map((line) => {
-        const attachedLabels = isAttachedOutputLine(line)
-          ? parseAttachedOutputLineLabels(line)
-          : [];
-        const chipLabels = attachedLabels.length
-          ? attachedLabels
-          : parseBracketedOutputLineLabels(line);
+        const attachedLabels = isAttachedOutputLine(line) ? parseAttachedOutputLineLabels(line) : [];
+        const bracketedLabels = attachedLabels.length ? [] : parseBracketedOutputLineLabels(line);
+        const chipLabels = attachedLabels.length ? attachedLabels : bracketedLabels;
         const isChipLine = chipLabels.length > 0;
         const lineClassName = isChipLine
           ? "ceai-reference-line ceai-reference-line--chip"
           : "ceai-reference-line";
-        const lineMarkup = isChipLine
-          ? buildReferenceOutputChipsHtml(chipLabels)
-          : escapeHtml(line);
+        let lineMarkup = escapeHtml(line);
+
+        if (attachedLabels.length) {
+          const chipsMarkup = buildReferenceOutputChipsHtml(attachedLabels);
+          lineMarkup = showAttachedPrefix
+            ? `(Attached: ${chipsMarkup})`
+            : chipsMarkup;
+        } else if (bracketedLabels.length) {
+          lineMarkup = buildReferenceOutputChipsHtml(bracketedLabels);
+        }
+
         return `    <p class="${lineClassName}">${lineMarkup}</p>`;
       })
       .join("\n");
@@ -768,14 +774,17 @@
   function messageHtml(message, settings) {
     const escapeHtml = root.sanitize.escapeHtml;
     const roleClass = `role-${escapeHtml(message.role || "unknown")}`;
+    const showAttachedPrefix = message.role === root.constants.ROLES.HUMAN;
     const headerMarkup = buildMessageHeader(message, settings);
     const leadingReferencesMarkup = buildReferenceBlockHtml(
       message.leadingReferenceLines,
-      "ceai-reference-block--leading ceai-reference-block--html"
+      "ceai-reference-block--leading ceai-reference-block--html",
+      { showAttachedPrefix }
     );
     const trailingReferencesMarkup = buildReferenceBlockHtml(
       message.trailingReferenceLines,
-      "ceai-reference-block--trailing ceai-reference-block--html"
+      "ceai-reference-block--trailing ceai-reference-block--html",
+      { showAttachedPrefix }
     );
     const plainTextMarkup = message.text ? `  <pre>${escapeHtml(message.text || "")}</pre>` : "";
     const richMarkup = message.safeHtml ? `  <div class="ceai-rich">${message.safeHtml || ""}</div>` : "";
@@ -805,13 +814,16 @@
     const escapeHtml = root.sanitize.escapeHtml;
     const roleClass = `role-${escapeHtml(message.role || "unknown")}`;
     const text = escapeHtml(message.text || "");
+    const showAttachedPrefix = message.role === root.constants.ROLES.HUMAN;
     const leadingReferencesMarkup = buildReferenceBlockHtml(
       message.leadingReferenceLines,
-      "ceai-reference-block--leading ceai-reference-block--pdf"
+      "ceai-reference-block--leading ceai-reference-block--pdf",
+      { showAttachedPrefix }
     );
     const trailingReferencesMarkup = buildReferenceBlockHtml(
       message.trailingReferenceLines,
-      "ceai-reference-block--trailing ceai-reference-block--pdf"
+      "ceai-reference-block--trailing ceai-reference-block--pdf",
+      { showAttachedPrefix }
     );
     const textMarkup = message.text ? `  <pre>${text}</pre>` : "";
     const richMarkup = message.safeHtml ? `  <div class="ceai-rich">${message.safeHtml || ""}</div>` : "";
@@ -875,6 +887,7 @@
       ".ceai-rich code { background: #eef1f6; padding: 0.08em 0.3em; border-radius: 4px; }",
       ".ceai-rich pre { background: #f8fafc; color: #111827; border: 1px solid #d6d9e0; padding: 12px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; }",
       ".ceai-rich a { color: #1d4ed8; }",
+      ".ceai-rich .ceai-inline-reference-chip { display: inline-block; margin: 0 1px; padding: 1px 6px; border-radius: 6px; background: #e5e7eb; border: 1px solid #d1d5db; color: #475569; font-weight: 500; line-height: 1.3; white-space: normal; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; font-size: calc(1em - 2px); vertical-align: baseline; }",
       "@media print { html, body { background: #ffffff !important; } main { max-width: none; padding: 0; } .ceai-header, .ceai-meta, .ceai-message { box-shadow: none; background: #ffffff !important; } .ceai-message { break-inside: auto; page-break-inside: auto; } .ceai-rich pre, .ceai-message pre { overflow: visible; } .ceai-rich img, .ceai-rich video, .ceai-rich canvas, .ceai-rich svg { max-height: 60vh; } }"
     ].join("\n");
   }
@@ -925,7 +938,8 @@
       ".ceai-rich hr { border: 0; border-top: 1px dashed #9ba4b3; margin: 0.8em 0; }",
       ".ceai-rich code { background: #eef1f6; padding: 0.05em 0.24em; border-radius: 4px; }",
       ".ceai-rich pre { background: #f8fafc; color: #111827; border: 1px solid #d6d9e0; padding: 10px; border-radius: 8px; overflow-wrap: anywhere; white-space: pre-wrap; }",
-      ".ceai-rich a { color: #1d4ed8; }"
+      ".ceai-rich a { color: #1d4ed8; }",
+      ".ceai-rich .ceai-inline-reference-chip { display: inline-block; margin: 0 1px; padding: 1px 6px; border-radius: 6px; background: #e5e7eb; border: 1px solid #d1d5db; color: #475569; font-weight: 500; line-height: 1.3; white-space: normal; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; font-size: calc(1em - 1px); vertical-align: baseline; }",
     ].join("\n");
   }
 
@@ -957,33 +971,12 @@
     ].join("\n");
   }
 
-  function toPdfDocument(conversation) {
-    const escapeHtml = root.sanitize.escapeHtml;
-    const settings = conversation.settings || root.defaults.settings;
-    const exportTitle = resolveExportTitle(conversation);
-    const htmlDocumentTitle = settings.includeExportTitle ? exportTitle : "Chat Export AI";
-    const messageMarkup = (conversation.messages || [])
-      .map((message) => messagePdfHtml(message, settings))
-      .join("\n");
-
-    return [
-      "<!doctype html>",
-      "<html lang=\"en\">",
-      "<head>",
-      "  <meta charset=\"utf-8\">",
-      "  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
-      `  <title>${escapeHtml(htmlDocumentTitle)}</title>`,
-      `  <style>${buildPdfHtmlStyle(settings)}</style>`,
-      "</head>",
-      "<body>",
-      "  <main>",
-      buildHtmlHeader(conversation, settings),
-      buildMetadataHtml(conversation),
-      messageMarkup,
-      "  </main>",
-      "</body>",
-      "</html>"
-    ].join("\n");
+  function toPdfDocument(conversation, settingsOverride) {
+    const settings = settingsOverride || conversation.settings || root.defaults.settings;
+    // Keep PDF visual output aligned with the HTML export template. The
+    // background worker prints this HTML through Chrome's print engine, so
+    // the PDF remains styled while keeping selectable/searchable text.
+    return toHtmlDocument(conversation, settings);
   }
 
   function toBase64Utf8(text) {

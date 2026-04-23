@@ -328,8 +328,264 @@
     return unique;
   }
 
+  function readClassName(node) {
+    if (!node) {
+      return "";
+    }
+
+    const rawClassName = node.className;
+    if (typeof rawClassName === "string") {
+      return rawClassName;
+    }
+
+    if (rawClassName && typeof rawClassName.baseVal === "string") {
+      return rawClassName.baseVal;
+    }
+
+    return String(node.getAttribute?.("class") || "");
+  }
+
+  function hasAttachmentHint(node) {
+    if (!node) {
+      return false;
+    }
+
+    const className = normalizeText(readClassName(node)).toLowerCase();
+    const ariaLabel = normalizeText(node.getAttribute?.("aria-label")).toLowerCase();
+    const title = normalizeText(node.getAttribute?.("title")).toLowerCase();
+    const combined = `${className} ${ariaLabel} ${title}`.trim();
+
+    if (!combined) {
+      return false;
+    }
+
+    return /(?:file|upload|attach|adjunt|archivo|document|doc)/i.test(combined);
+  }
+
+  function deriveAttachmentLabelFromHref(href) {
+    const normalizedHref = normalizeText(href);
+    if (!normalizedHref) {
+      return "";
+    }
+
+    try {
+      const parsedUrl = new URL(normalizedHref, location.href);
+      const fromPath = decodeURIComponent((parsedUrl.pathname || "").split("/").pop() || "");
+      if (fromPath && isLikelyAttachmentLabel(fromPath)) {
+        return normalizeText(fromPath);
+      }
+    } catch (_error) {
+      const fallbackSegment = decodeURIComponent(normalizedHref.split("?")[0].split("#")[0].split("/").pop() || "");
+      if (fallbackSegment && isLikelyAttachmentLabel(fallbackSegment)) {
+        return normalizeText(fallbackSegment);
+      }
+    }
+
+    return "";
+  }
+
+  function pickUserAttachmentScope(turnNode, userRoot) {
+    if (!turnNode) {
+      return null;
+    }
+
+    const root = userRoot || pickUserContentRoot(turnNode) || turnNode;
+    return root.closest("._81e7b5e, [data-virtual-list-item-key]") || root.parentElement || turnNode;
+  }
+
+  function isIgnoredAttachmentActionLabel(label) {
+    const normalized = normalizeText(label).toLowerCase();
+    return /^(?:copy|copiar|share|compartir|editar|edit|delete|eliminar|more|m[aá]s)$/i.test(normalized);
+  }
+
+  function isLikelyAttachmentMetadataLabel(label) {
+    const normalized = normalizeText(label).replace(/[·•|]/g, " ");
+    if (!normalized) {
+      return false;
+    }
+
+    // DeepSeek renders attachment metadata rows like:
+    // "PDF 338.37KB", "TXT 44.03KB", or "338 KB".
+    return /^(?:[a-z]{2,8}\s+)?\d+(?:[.,]\d+)?\s*(?:bytes?|[kmgtp]i?b)\b/i.test(normalized);
+  }
+
+  function isLikelyAttachmentFormatOnlyLabel(label) {
+    const normalized = normalizeText(label).toLowerCase();
+    if (!normalized) {
+      return false;
+    }
+
+    return /^(?:pdf|txt|docx?|xlsx?|pptx?|csv|tsv|json|xml|html?|md|rtf|zip|7z|rar|gz|png|jpe?g|gif|webp|svg|bmp|mp3|wav|mp4|mov|avi)$/i.test(normalized);
+  }
+
+  function extractLikelyAttachmentFileName(label) {
+    const normalized = normalizeText(label);
+    if (!normalized) {
+      return "";
+    }
+
+    // Accept common filename extensions while rejecting decimal-size fragments
+    // like ".37KB". Extension must either start with a letter (pdf, txt, ...)
+    // or match the known digit+letter pattern (for example "7z").
+    const fileNamePattern = /[^\\/\n\r]+?\.(?:[a-z][a-z0-9]{1,7}|[0-9][a-z][a-z0-9]{0,6})(?=$|\s|[,;:!?)]|\])/ig;
+    const matches = Array.from(normalized.matchAll(fileNamePattern))
+      .map((match) => normalizeText(match?.[0] || ""))
+      .filter(Boolean)
+      .filter((candidate) => !isLikelyAttachmentMetadataLabel(candidate));
+
+    if (!matches.length) {
+      return "";
+    }
+
+    return matches
+      .sort((left, right) => right.length - left.length)[0]
+      .replace(/^["'([{]+/, "")
+      .replace(/["')\]}.,;:!?]+$/g, "")
+      .trim();
+  }
+
+  function normalizeUserAttachmentLabel(rawLabel) {
+    const normalized = normalizeText(rawLabel);
+    if (!normalized) {
+      return "";
+    }
+
+    if (isIgnoredAttachmentActionLabel(normalized)) {
+      return "";
+    }
+
+    if (isLikelyAttachmentMetadataLabel(normalized)) {
+      return "";
+    }
+
+    if (isLikelyAttachmentFormatOnlyLabel(normalized)) {
+      return "";
+    }
+
+    const extractedFileName = extractLikelyAttachmentFileName(normalized);
+    if (extractedFileName) {
+      return extractedFileName;
+    }
+
+    return normalized;
+  }
+
+  function extractUserAttachmentReferences(turnNode, userRoot) {
+    const scope = pickUserAttachmentScope(turnNode, userRoot);
+    if (!scope) {
+      return [];
+    }
+
+    const candidateNodes = Array.from(
+      scope.querySelectorAll(
+        [
+          "a[href]",
+          "[download]",
+          "button[aria-label]",
+          "[role='button'][aria-label]",
+          "[aria-label*='file' i]",
+          "[aria-label*='archivo' i]",
+          "[aria-label*='adjunt' i]",
+          "[title*='file' i]",
+          "[title*='archivo' i]",
+          "[title*='adjunt' i]",
+          "[class*='file']",
+          "[class*='upload']",
+          "[class*='attach']"
+        ].join(", ")
+      )
+    );
+
+    const linkLikeItems = candidateNodes.map((node) => {
+      const anchorNode = node.matches?.("a[href]") ? node : node.closest?.("a[href]");
+      const href = normalizeText(
+        anchorNode?.getAttribute?.("href")
+        || node.getAttribute?.("href")
+      );
+      const downloadLabel = normalizeText(node.getAttribute?.("download") || anchorNode?.getAttribute?.("download"));
+      const visibleLabel = normalizeText(
+        downloadLabel
+        || node.getAttribute?.("aria-label")
+        || node.getAttribute?.("title")
+        || node.textContent
+      );
+      const derivedHrefLabel = deriveAttachmentLabelFromHref(href);
+      const visibleAttachmentLabel = normalizeUserAttachmentLabel(visibleLabel);
+      const hrefAttachmentLabel = normalizeUserAttachmentLabel(derivedHrefLabel);
+      const label = visibleAttachmentLabel || hrefAttachmentLabel;
+
+      if (!label && !href) {
+        return null;
+      }
+
+      if (label && (label.length > 180 || isIgnoredAttachmentActionLabel(label))) {
+        return null;
+      }
+
+      const fileLike = Boolean(
+        downloadLabel
+        || isLikelyAttachmentHref(href)
+        || isLikelyAttachmentLabel(label)
+      );
+      const hintedAttachment = hasAttachmentHint(node) || hasAttachmentHint(anchorNode);
+
+      if (!fileLike && !hintedAttachment) {
+        return null;
+      }
+
+      const finalLabel = normalizeUserAttachmentLabel(label || derivedHrefLabel);
+      if (!finalLabel) {
+        return null;
+      }
+
+      return {
+        kind: "attachment",
+        label: finalLabel,
+        url: href || ""
+      };
+    }).filter(Boolean);
+
+    const fileLabelItems = Array.from(scope.querySelectorAll("div, span, p"))
+      .map((node) => {
+        if (node.childElementCount > 0) {
+          return null;
+        }
+
+        if (node.closest("._72b6158, .ds-markdown, .ds-think-content")) {
+          return null;
+        }
+
+        const label = normalizeUserAttachmentLabel(node.textContent);
+        if (!label || label.length > 180 || !isLikelyAttachmentLabel(label)) {
+          return null;
+        }
+
+        return {
+          kind: "attachment",
+          label,
+          url: ""
+        };
+      })
+      .filter(Boolean);
+
+    return dedupeByLabelAndUrl([...linkLikeItems, ...fileLabelItems]);
+  }
+
   function isLikelyAttachmentLabel(label) {
-    return /\.[a-z0-9]{2,8}(?:\b|$)/i.test(String(label || ""));
+    const normalized = normalizeText(label);
+    if (!normalized) {
+      return false;
+    }
+
+    if (isLikelyAttachmentMetadataLabel(normalized)) {
+      return false;
+    }
+
+    if (isLikelyAttachmentFormatOnlyLabel(normalized)) {
+      return false;
+    }
+
+    return Boolean(extractLikelyAttachmentFileName(normalized));
   }
 
   function isLikelyAttachmentHref(href) {
@@ -906,10 +1162,13 @@
     for (let index = 0; index < turnEntries.length; index += 1) {
       const turnNode = turnEntries[index].node;
       const messageId = `deepseek-${index + 1}`;
+      const userRoot = pickUserContentRoot(turnNode);
+      const detectedUserAttachments = extractUserAttachmentReferences(turnNode, userRoot);
+      const hasUserAttachmentContent = detectedUserAttachments.length > 0;
       const hasAssistantContent = hasAssistantRenderableContent(turnNode);
-      const hasUserContent = hasUserRenderableContent(turnNode);
+      const hasUserContent = hasUserRenderableContent(turnNode) || hasUserAttachmentContent;
       const assistantTurn = isAssistantTurn(turnNode);
-      const userTurn = isUserTurn(turnNode);
+      const userTurn = isUserTurn(turnNode) || hasUserAttachmentContent;
 
       if (!hasAssistantContent && !hasUserContent) {
         continue;
@@ -961,14 +1220,16 @@
         continue;
       }
 
-      const contentRoot = pickUserContentRoot(turnNode);
-      const sanitizeRoot = prepareContentRootForSanitize(contentRoot, settings, {});
+      const sanitizeRoot = prepareContentRootForSanitize(userRoot, settings, {});
       const sanitized = root.sanitize.sanitizeMessageNode(sanitizeRoot, {
         mediaHandling: settings.mediaHandling
       });
       const textContent = normalizeText((sanitized.safeHtml || "").replace(/<[^>]*>/g, " "));
+      const userAttachments = settings.showUserAttachmentNames
+        ? detectedUserAttachments
+        : [];
 
-      if (!textContent && !sanitized.hasMedia) {
+      if (!textContent && !sanitized.hasMedia && !detectedUserAttachments.length) {
         continue;
       }
 
@@ -977,7 +1238,7 @@
         role: ROLES.HUMAN,
         safeHtml: sanitized.safeHtml,
         hasMedia: sanitized.hasMedia,
-        attachments: [],
+        attachments: userAttachments,
         references: []
       });
     }
@@ -988,23 +1249,28 @@
       for (let index = 0; index < turnEntries.length; index += 1) {
         const turnNode = turnEntries[index].node;
         const messageId = `deepseek-fallback-${index + 1}`;
+        const userRoot = pickUserContentRoot(turnNode);
+        const detectedUserAttachments = extractUserAttachmentReferences(turnNode, userRoot);
+        const hasUserAttachmentContent = detectedUserAttachments.length > 0;
         const hasUserHint = Boolean(turnNode.querySelector(".fbb737a4"));
 
-        if (hasUserHint) {
-          const userRoot = pickUserContentRoot(turnNode);
+        if (hasUserHint || hasUserAttachmentContent) {
           const userSanitizeRoot = prepareContentRootForSanitize(userRoot, settings, {});
           const userSanitized = root.sanitize.sanitizeMessageNode(userSanitizeRoot, {
             mediaHandling: settings.mediaHandling
           });
           const userText = normalizeText((userSanitized.safeHtml || "").replace(/<[^>]*>/g, " "));
+          const userAttachments = settings.showUserAttachmentNames
+            ? detectedUserAttachments
+            : [];
 
-          if (userText || userSanitized.hasMedia) {
+          if (userText || userSanitized.hasMedia || detectedUserAttachments.length) {
             messages.push({
               id: messageId,
               role: ROLES.HUMAN,
               safeHtml: userSanitized.safeHtml,
               hasMedia: userSanitized.hasMedia,
-              attachments: [],
+              attachments: userAttachments,
               references: []
             });
           }

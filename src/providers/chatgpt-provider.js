@@ -1197,6 +1197,7 @@
       }
 
       const replacement = clone.ownerDocument.createElement("span");
+      replacement.className = "ceai-inline-reference-chip";
       replacement.textContent = `[${label}]`;
       button.replaceWith(replacement);
     }

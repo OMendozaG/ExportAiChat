@@ -63,9 +63,10 @@ The TXT export is designed as a readable chat log:
 - Thinking labels now export inline under the AI message header using a unified format: `(Thought: <duration>)` or `(Thought: <duration> - <thinking text>)`
 - When only reasoning payload is exported (without duration), exports format it as `(Thought: <thinking text>)`
 - Attachment references are grouped as `(Attached: [File 1], [File 2], ...)` and rendered consistently across TXT, HTML, MHT, and PDF
-- HTML attachment lines now render as a slightly smaller `(Attached: ...)` line with per-file gray chips for easier scanning
+- In HTML/MHT/PDF, Human attachment lines keep the `(Attached: ...)` prefix and render each file as a gray chip
 - Long attachment lines in HTML/MHT/PDF now wrap naturally instead of forcing a single line
 - In HTML/MHT/PDF, assistant reference lines (attachments and links) now render as compact gray chips without the `(Attached: ...)` text prefix
+- ChatGPT inline assistant reference chips embedded inside body text are now preserved as inline gray chips (instead of plain bracket text)
 - Attachment descriptors that include URLs (for example `File.pdf - https://...`) are normalized as attachments so they do not disappear from exports
 - Reasoning text and thinking-time exports are now independent toggles, so each can be exported alone or together
 - Thought notes no longer emit generic placeholders when reasoning/time data is missing for a message
@@ -87,6 +88,8 @@ The TXT export is designed as a readable chat log:
 - Claude extraction for user/assistant turns, title, model, and share-anchor integration
 - Gemini extraction for user/assistant turns, title, mode/model label, share-anchor integration, and uploaded-file labels
 - DeepSeek extraction for user/assistant turns plus visible thinking duration labels from current DOM logs
+- DeepSeek now extracts user attachment references (including attachment-only user turns), so human `(Attached: ...)` lines are preserved in exports
+- DeepSeek attachment extraction now filters metadata-only labels (for example `PDF 338.37KB` or `TXT 44.03KB`) so size/format rows are not exported as extra attachments
 - DeepSeek export now strips decorative inline SVG icons from message sanitization to avoid repeated `[SVG: non-textual content]` noise
 - DeepSeek now strips inline web anchors/citation links from assistant and thinking HTML when `Show assistant web links` is disabled (default `false`)
 - DeepSeek now includes a relaxed fallback extraction pass when strict role heuristics return zero messages, preventing empty exports on recent DOM variants
@@ -114,6 +117,7 @@ The TXT export is designed as a readable chat log:
 - Inline export menu refresh is now serialized and interaction-aware to avoid missed first clicks during heavy host DOM updates
 - Inline integrated export entry point now stays clickable as soon as it is mounted (it no longer waits on transient live message counters)
 - Inline export interactions now apply a short refresh lock so host DOM mutations do not steal the first integrated click
+- Inline refresh now defers export-button reordering while the user is interacting, reducing missed clicks on the integrated menu
 - Settings `Backup` tab can export/import JSON overrides (only manually changed keys are exported)
 - Per-format success state stays visible after export and resets to download when the conversation gets new messages
 - Drag-and-drop export button order in Settings is shared by both popup and inline integrated export menus
@@ -122,11 +126,11 @@ The TXT export is designed as a readable chat log:
 - Higher-contrast export button labels for better readability
 - Defensive settings fallback when a shared script runs without extension storage APIs
 - Guarded runtime/storage listeners and caught inline refresh failures to avoid uncaught extension-context errors
-- PDF rendering now runs in an offscreen extension document (no visible temporary tab) using local HTML-to-PDF conversion
+- PDF rendering now runs through Chrome print (`Page.printToPDF`) in a hidden extension render tab and prints the same HTML template used by `.HTML` export
 - PDF download uses direct base64 data URLs from the background worker to avoid blob URL lifecycle failures
-- PDF exports warm up and reuse the offscreen renderer between close exports (queued + reused) to reduce latency
+- PDF exports warm up and reuse the hidden renderer tab between close exports (queued + reused) to reduce latency
 - PDF layout now keeps printable page margins and constrains chat content to ~80% page width (centered) to avoid edge-to-edge blocks
-- PDF pagebreak handling now avoids splitting common text/reference blocks mid-line when possible by pushing them to the next page
+- PDF output now keeps styled HTML look while preserving selectable/searchable text (browser print engine)
 - Reset defaults now asks for confirmation before overwriting the current settings
 - Shared Chrome API helpers no longer throw path-based missing-API errors
 - Current builds load a dedicated `extension-bridge.js` wrapper for Chrome APIs, while the legacy helper path is kept as a harmless shim for stale tabs
@@ -271,7 +275,7 @@ The current extension uses these permissions:
 - `activeTab`: interact with the current supported tab
 - `tabs`: query the active tab when needed for status and MHT capture
 - `pageCapture`: capture MHT when needed
-- `offscreen`: render PDFs in a hidden extension document without opening visible tabs
+- `debugger`: call Chrome `Page.printToPDF` for styled, selectable PDF exports
 - `https://chatgpt.com/*`
 - `https://claude.ai/*`
 - `https://gemini.google.com/*`
@@ -298,7 +302,7 @@ The current extension uses these permissions:
 - `src/providers/`: provider-specific adapters
 - `src/shared/`: shared export, processing, storage, and utility modules
 - `src/content/`: content script controller and inline UI
-- `src/background/`: service worker and offscreen PDF renderer page/script
+- `src/background/`: service worker and hidden PDF render-tab page/script
 - `src/popup/`: popup UI
 - `src/options/`: settings UI
 - `src/assets/`: extension icons and static assets

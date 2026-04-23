@@ -9,6 +9,7 @@
   const ALLOWED_TAGS = new Set([
     "p",
     "br",
+    "span",
     "strong",
     "b",
     "em",
@@ -59,6 +60,11 @@
     "div",
     "section",
     "article"
+  ]);
+
+  // Span classes are restricted to extension-owned semantic markers.
+  const ALLOWED_SPAN_CLASSES = new Set([
+    "ceai-inline-reference-chip"
   ]);
 
   function escapeHtml(text) {
@@ -193,6 +199,21 @@
       }
     }
 
+    let keepSpanTag = true;
+
+    if (tag === "span") {
+      const classTokens = String(node.getAttribute("class") || "")
+        .split(/\s+/)
+        .map((token) => String(token || "").trim())
+        .filter((token) => ALLOWED_SPAN_CLASSES.has(token));
+      if (classTokens.length) {
+        attrs += ` class="${escapeAttribute(Array.from(new Set(classTokens)).join(" "))}"`;
+      } else {
+        // Flatten regular spans to keep previous sanitize behavior.
+        keepSpanTag = false;
+      }
+    }
+
     if (SELF_CLOSING_TAGS.has(tag)) {
       return `<${tag}${attrs}>`;
     }
@@ -200,6 +221,10 @@
     const children = Array.from(node.childNodes)
       .map((child) => sanitizeNode(child, options, state))
       .join("");
+
+    if (tag === "span" && !keepSpanTag) {
+      return children;
+    }
 
     return `<${tag}${attrs}>${children}</${tag}>`;
   }

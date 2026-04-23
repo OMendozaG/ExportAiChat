@@ -520,9 +520,8 @@
     if (typeof ui.setProvider === "function") {
       ui.setProvider(provider.id || "");
     }
-    if (typeof ui.setFormatOrder === "function") {
-      ui.setFormatOrder(normalizeExportButtonOrder(settings.exportButtonOrder));
-    }
+
+    const menuOpen = Boolean(!exportInProgress && typeof ui.isMenuOpen === "function" && ui.isMenuOpen());
 
     if (!exportInProgress && interactionLocked) {
       ui.setVisible(true);
@@ -533,10 +532,16 @@
     // Keep the menu stable while the user is interacting with it.
     // Without this guard, rapid host DOM mutations can race with mount/update
     // and make first clicks feel ignored.
-    if (!exportInProgress && typeof ui.isMenuOpen === "function" && ui.isMenuOpen()) {
+    if (menuOpen) {
       ui.setVisible(true);
       ui.setEnabled(true);
       return;
+    }
+
+    // Reorder only when interaction is idle; moving menu buttons during
+    // pointer/click sequences can make the integrated action miss clicks.
+    if (typeof ui.setFormatOrder === "function") {
+      ui.setFormatOrder(normalizeExportButtonOrder(settings.exportButtonOrder));
     }
 
     ui.setVisibleFormats({
@@ -634,7 +639,7 @@
         throw new Error("Multi export requires at least one target format selected in Settings.");
       }
 
-      // Pre-warm the background offscreen PDF renderer as soon as we know PDF is needed.
+      // Pre-warm the hidden background PDF print renderer as soon as PDF is needed.
       // This overlaps renderer initialization with extraction/hydration work.
       const pdfWarmupPromise = targetFormats.includes(EXPORT_FORMATS.PDF)
         ? root.chromeHelpers.runtimeSendMessage({

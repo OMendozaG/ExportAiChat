@@ -81,6 +81,7 @@ The TXT export is designed as a readable chat log:
 - ChatGPT extraction now prefers section-level turns over nested legacy placeholders so image-only assistant replies are not dropped
 - ChatGPT button-based assistant references are now limited to file/url-like labels so generic UI action text is not exported across locales
 - ChatGPT now strips inline citation/web pills from assistant body HTML when `Show assistant web links` is disabled, including labels like `arXiv+1`
+- ChatGPT now preserves internal document chips/references (for example `39. Define perfecto (GPT)`) as attachment references even when `Show assistant web links` is disabled
 - MHT export now forces rich media extraction for the current export and companion MHT generation, improving generated-image preservation
 - Claude extraction for user/assistant turns, title, model, and share-anchor integration
 - Gemini extraction for user/assistant turns, title, mode/model label, share-anchor integration, and uploaded-file labels

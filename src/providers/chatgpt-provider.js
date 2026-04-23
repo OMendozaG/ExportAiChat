@@ -753,6 +753,25 @@
     return /^(?:https?:\/\/|www\.)/i.test(label);
   }
 
+  function isLikelyInternalDocumentLabel(label) {
+    const normalized = normalizeText(label);
+    if (!normalized) {
+      return false;
+    }
+
+    // Common ChatGPT internal document pills:
+    // `39. Define perfecto (GPT)`, `12. Documento ...`, etc.
+    if (/^\d{1,4}\.\s+\S+/u.test(normalized)) {
+      return true;
+    }
+
+    if (/\((?:gpt|chatgpt|claude|gemini|deepseek|grok)\)\s*$/i.test(normalized)) {
+      return true;
+    }
+
+    return false;
+  }
+
   function isCitationOnlyLabel(label) {
     const normalized = normalizeText(label).replace(/[\[\]().,:;#]/g, "");
     if (!normalized) {
@@ -785,8 +804,8 @@
         continue;
       }
 
-      // Preserve file-like links; dedicated reference settings control visibility.
-      if (isLikelyAttachmentHref(href) || isLikelyAttachmentLabel(label)) {
+      // Preserve file-like links and internal document labels.
+      if (isLikelyAttachmentHref(href) || isLikelyAttachmentLabel(label) || isLikelyInternalDocumentLabel(label)) {
         continue;
       }
 
@@ -876,8 +895,8 @@
         continue;
       }
 
-      // Keep only content-bearing reference labels (file/url like) to avoid UI action text.
-      if (isLikelyAttachmentLabel(label) || isLikelyUrlLabel(label)) {
+      // Keep only content-bearing reference labels (file/url/internal-doc) to avoid UI action text.
+      if (isLikelyAttachmentLabel(label) || isLikelyUrlLabel(label) || isLikelyInternalDocumentLabel(label)) {
         return label;
       }
     }
@@ -962,7 +981,9 @@
       }
 
       return {
-        kind: isLikelyAttachmentHref(href) ? "attachment" : "url",
+        kind: (isLikelyAttachmentHref(href) || isLikelyAttachmentLabel(label) || isLikelyInternalDocumentLabel(label))
+          ? "attachment"
+          : "url",
         label,
         url: href || ""
       };
@@ -992,7 +1013,9 @@
       }
 
       return {
-        kind: isLikelyAttachmentLabel(label) ? "attachment" : "url",
+        // Button-based chips in ChatGPT are usually internal references; classify
+        // non-URL labels as attachments so they are not hidden by the web-link toggle.
+        kind: isLikelyUrlLabel(label) ? "url" : "attachment",
         label,
         url: ""
       };

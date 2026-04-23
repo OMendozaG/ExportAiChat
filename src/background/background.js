@@ -5,10 +5,12 @@
   const MSG_DOWNLOAD_FILE = "CHAT_EXPORT_AI_DOWNLOAD_FILE";
   const MSG_CAPTURE_TAB_MHTML = "CHAT_EXPORT_AI_CAPTURE_TAB_MHTML";
   const MSG_RENDER_HTML_TO_PDF = "CHAT_EXPORT_AI_RENDER_HTML_TO_PDF";
+  const MSG_WARMUP_PDF_RENDERER = "CHAT_EXPORT_AI_WARMUP_PDF_RENDERER";
   const MSG_SET_ACTION_ICON_THEME = "CHAT_EXPORT_AI_SET_ACTION_ICON_THEME";
   const DEBUGGER_VERSION = "1.3";
   const DEFAULT_EXPORT_TIMEOUT_MS = 20000;
   const MAX_EXPORT_TIMEOUT_MS = 20000;
+  const PDF_RENDERER_IDLE_CLOSE_MS = 45000;
   const ACTION_ICON_PATHS = {
     default: {
       16: "src/assets/robot-download-16.png",
@@ -29,6 +31,16 @@
       128: "src/assets/robot-download-dark-128.png"
     }
   };
+
+  const pdfRenderer = {
+    tabId: null,
+    target: null,
+    frameId: null,
+    debuggerAttached: false,
+    warmupPromise: null,
+    idleTimerId: null
+  };
+  let pdfRenderQueue = Promise.resolve();
 
   function bytesToBase64(bytes) {
     let binary = "";
@@ -288,16 +300,156 @@
     return frameTree?.frameTree?.frame?.id || null;
   }
 
+  function clearPdfRendererIdleTimer() {
+    if (!pdfRenderer.idleTimerId) {
+      return;
+    }
+
+    clearTimeout(pdfRenderer.idleTimerId);
+    pdfRenderer.idleTimerId = null;
+  }
+
+  function schedulePdfRendererIdleClose() {
+    clearPdfRendererIdleTimer();
+    pdfRenderer.idleTimerId = setTimeout(() => {
+      void disposePdfRenderer();
+    }, PDF_RENDERER_IDLE_CLOSE_MS);
+  }
+
+  function resetPdfRendererState() {
+    pdfRenderer.tabId = null;
+    pdfRenderer.target = null;
+    pdfRenderer.frameId = null;
+    pdfRenderer.debuggerAttached = false;
+    pdfRenderer.warmupPromise = null;
+  }
+
+  function getTab(tabId) {
+    return new Promise((resolve) => {
+      if (!tabId) {
+        resolve(null);
+        return;
+      }
+
+      chrome.tabs.get(tabId, (tab) => {
+        const error = chrome.runtime.lastError;
+        if (error) {
+          resolve(null);
+          return;
+        }
+
+        resolve(tab || null);
+      });
+    });
+  }
+
+  async function disposePdfRenderer() {
+    clearPdfRendererIdleTimer();
+
+    const currentTabId = pdfRenderer.tabId;
+    const currentTarget = pdfRenderer.target;
+    const wasAttached = pdfRenderer.debuggerAttached;
+    resetPdfRendererState();
+
+    if (wasAttached && currentTarget) {
+      try {
+        await detachDebugger(currentTarget);
+      } catch (_error) {
+        // Renderer detach can fail if the tab was already destroyed.
+      }
+    }
+
+    if (currentTabId) {
+      await removeTab(currentTabId);
+    }
+  }
+
+  async function ensurePdfRenderer(timeoutMs) {
+    clearPdfRendererIdleTimer();
+
+    if (pdfRenderer.warmupPromise) {
+      await withTimeout(
+        pdfRenderer.warmupPromise,
+        timeoutMs,
+        "Timed out while preparing the shared PDF renderer."
+      );
+      return;
+    }
+
+    pdfRenderer.warmupPromise = (async () => {
+      let reusableTab = await getTab(pdfRenderer.tabId);
+
+      if (!reusableTab) {
+        if (pdfRenderer.debuggerAttached && pdfRenderer.target) {
+          try {
+            await detachDebugger(pdfRenderer.target);
+          } catch (_error) {
+            // Ignore stale detach failures; renderer state is reset below.
+          }
+        }
+
+        resetPdfRendererState();
+
+        const createdTab = await createInactiveTab("about:blank");
+        await waitForTabComplete(createdTab.id);
+        reusableTab = createdTab;
+        pdfRenderer.tabId = createdTab.id;
+        pdfRenderer.target = { tabId: createdTab.id };
+      } else {
+        pdfRenderer.tabId = reusableTab.id;
+        if (!pdfRenderer.target || pdfRenderer.target.tabId !== reusableTab.id) {
+          pdfRenderer.target = { tabId: reusableTab.id };
+        }
+      }
+
+      if (!pdfRenderer.debuggerAttached) {
+        await attachDebugger(pdfRenderer.target);
+        pdfRenderer.debuggerAttached = true;
+
+        await sendDebuggerCommand(pdfRenderer.target, "Page.enable");
+        await sendDebuggerCommand(pdfRenderer.target, "Runtime.enable");
+        await sendDebuggerCommand(pdfRenderer.target, "Emulation.setEmulatedMedia", { media: "print" });
+      }
+
+      const frameId = await getMainFrameId(pdfRenderer.target);
+      if (!frameId) {
+        throw new Error("Could not resolve the PDF frame.");
+      }
+
+      pdfRenderer.frameId = frameId;
+    })();
+
+    try {
+      await withTimeout(
+        pdfRenderer.warmupPromise,
+        timeoutMs,
+        "Timed out while preparing the shared PDF renderer."
+      );
+    } finally {
+      pdfRenderer.warmupPromise = null;
+    }
+  }
+
   async function waitForPdfDocumentReady(target) {
-    await sendDebuggerCommand(target, "Emulation.setEmulatedMedia", { media: "print" });
     await sendDebuggerCommand(target, "Runtime.evaluate", {
       expression: `(
         async () => {
+          if (document.readyState !== "complete") {
+            try {
+              await Promise.race([
+                new Promise((resolve) => window.addEventListener("load", () => resolve(), { once: true })),
+                new Promise((resolve) => setTimeout(resolve, 350))
+              ]);
+            } catch (_error) {
+              // Continue; print pipeline can still complete on partial load.
+            }
+          }
+
           if (document.fonts?.ready instanceof Promise) {
             try {
               await Promise.race([
                 document.fonts.ready.catch(() => null),
-                new Promise((resolve) => setTimeout(resolve, 1200))
+                new Promise((resolve) => setTimeout(resolve, 350))
               ]);
             } catch (_error) {
               // Ignore font readiness errors and keep rendering.
@@ -318,98 +470,112 @@
     });
   }
 
-  async function renderHtmlToPdf(payload) {
+  function enqueuePdfTask(task) {
+    const queued = pdfRenderQueue.then(task, task);
+    pdfRenderQueue = queued.catch(() => {});
+    return queued;
+  }
+
+  async function renderHtmlToPdfOnce(payload) {
     if (!payload || !payload.filename || !payload.html) {
       throw new Error("Missing HTML or filename for PDF rendering.");
     }
 
     const timeoutMs = normalizeTimeoutMs(payload.timeoutMs);
-    const tab = await createInactiveTab("about:blank");
-    const target = { tabId: tab.id };
-    let debuggerAttached = false;
+    await withTimeout(
+      ensurePdfRenderer(timeoutMs),
+      timeoutMs,
+      "Timed out while preparing the shared PDF renderer."
+    );
 
-    try {
-      await withTimeout(
-        waitForTabComplete(tab.id),
-        timeoutMs,
-        "Timed out while opening the temporary PDF tab."
-      );
-
-      await withTimeout(
-        attachDebugger(target),
-        timeoutMs,
-        "Timed out while attaching the PDF renderer."
-      );
-      debuggerAttached = true;
-
-      await withTimeout(
-        sendDebuggerCommand(target, "Page.enable"),
-        timeoutMs,
-        "Timed out while preparing the PDF page."
-      );
-
-      await withTimeout(
-        sendDebuggerCommand(target, "Runtime.enable"),
-        timeoutMs,
-        "Timed out while enabling the PDF runtime."
-      );
-
-      const frameId = await withTimeout(
-        getMainFrameId(target),
-        timeoutMs,
-        "Timed out while locating the PDF frame."
-      );
-
-      if (!frameId) {
-        throw new Error("Could not resolve the PDF frame.");
-      }
-
-      await withTimeout(
-        sendDebuggerCommand(target, "Page.setDocumentContent", {
-          frameId,
-          html: String(payload.html || "")
-        }),
-        timeoutMs,
-        "Timed out while setting the PDF document content."
-      );
-
-      await withTimeout(
-        waitForPdfDocumentReady(target),
-        timeoutMs,
-        "Timed out while waiting for the PDF document to be ready."
-      );
-
-      const result = await withTimeout(
-        sendDebuggerCommand(target, "Page.printToPDF", {
-          printBackground: true,
-          preferCSSPageSize: true,
-          displayHeaderFooter: false
-        }),
-        timeoutMs,
-        "Timed out while rendering the PDF."
-      );
-
-      if (!result?.data) {
-        throw new Error("Chrome did not return PDF data.");
-      }
-
-      return withTimeout(
-        downloadPdfData(
-          result.data,
-          payload.filename,
-          payload.saveAs,
-          payload.conflictAction
-        ),
-        timeoutMs,
-        "Timed out while saving the PDF download."
-      );
-    } finally {
-      if (debuggerAttached) {
-        await detachDebugger(target);
-      }
-
-      await removeTab(tab.id);
+    const target = pdfRenderer.target;
+    if (!target) {
+      throw new Error("Could not prepare a PDF target.");
     }
+
+    const frameId = await withTimeout(
+      getMainFrameId(target),
+      timeoutMs,
+      "Timed out while locating the PDF frame."
+    );
+
+    if (!frameId) {
+      throw new Error("Could not resolve the PDF frame.");
+    }
+    pdfRenderer.frameId = frameId;
+
+    await withTimeout(
+      sendDebuggerCommand(target, "Page.setDocumentContent", {
+        frameId,
+        html: String(payload.html || "")
+      }),
+      timeoutMs,
+      "Timed out while setting the PDF document content."
+    );
+
+    await withTimeout(
+      waitForPdfDocumentReady(target),
+      timeoutMs,
+      "Timed out while waiting for the PDF document to be ready."
+    );
+
+    const result = await withTimeout(
+      sendDebuggerCommand(target, "Page.printToPDF", {
+        printBackground: true,
+        preferCSSPageSize: true,
+        displayHeaderFooter: false
+      }),
+      timeoutMs,
+      "Timed out while rendering the PDF."
+    );
+
+    if (!result?.data) {
+      throw new Error("Chrome did not return PDF data.");
+    }
+
+    const downloadResult = await withTimeout(
+      downloadPdfData(
+        result.data,
+        payload.filename,
+        payload.saveAs,
+        payload.conflictAction
+      ),
+      timeoutMs,
+      "Timed out while saving the PDF download."
+    );
+
+    schedulePdfRendererIdleClose();
+    return downloadResult;
+  }
+
+  async function renderHtmlToPdf(payload) {
+    return enqueuePdfTask(async () => {
+      try {
+        return await renderHtmlToPdfOnce(payload);
+      } catch (error) {
+        const message = String(error?.message || "");
+        const isRecoverable = /no tab with id|target closed|target not found|detached|cannot access|inspected target navigated/i.test(message);
+        if (!isRecoverable) {
+          throw error;
+        }
+
+        await disposePdfRenderer();
+        return renderHtmlToPdfOnce(payload);
+      }
+    });
+  }
+
+  async function warmupPdfRenderer(payload) {
+    const timeoutMs = normalizeTimeoutMs(payload?.timeoutMs);
+    return enqueuePdfTask(async () => {
+      await withTimeout(
+        ensurePdfRenderer(timeoutMs),
+        timeoutMs,
+        "Timed out while warming up the PDF renderer."
+      );
+      schedulePdfRendererIdleClose();
+      return { ok: true };
+    });
   }
 
   function downloadBlobContent(payload) {
@@ -510,6 +676,14 @@
 
     if (message.type === MSG_RENDER_HTML_TO_PDF) {
       renderHtmlToPdf(message.payload)
+        .then((result) => sendResponse(result))
+        .catch((error) => sendResponse({ ok: false, error: error.message }));
+
+      return true;
+    }
+
+    if (message.type === MSG_WARMUP_PDF_RENDERER) {
+      warmupPdfRenderer(message.payload)
         .then((result) => sendResponse(result))
         .catch((error) => sendResponse({ ok: false, error: error.message }));
 

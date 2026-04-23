@@ -123,6 +123,7 @@ The TXT export is designed as a readable chat log:
 - Guarded runtime/storage listeners and caught inline refresh failures to avoid uncaught extension-context errors
 - PDF rendering now injects HTML directly into the debug target instead of navigating to a `data:` URL, to reduce renderer failures
 - PDF download now uses direct base64 data URLs from the background worker to avoid blob URL lifecycle failures
+- PDF exports now use a warmed shared background renderer (queued + reused) so tab/debugger startup is not repeated on every export, reducing latency while staying off-screen
 - Reset defaults now asks for confirmation before overwriting the current settings
 - Shared Chrome API helpers no longer throw path-based missing-API errors
 - Current builds load a dedicated `extension-bridge.js` wrapper for Chrome APIs, while the legacy helper path is kept as a harmless shim for stale tabs

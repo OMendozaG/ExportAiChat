@@ -8,6 +8,7 @@
   const {
     MSG_DOWNLOAD_FILE,
     MSG_RENDER_HTML_TO_PDF,
+    MSG_WARMUP_PDF_RENDERER,
     MSG_GET_CHAT_STATUS,
     MSG_EXPORT_CHAT,
     EXPORT_FORMATS,
@@ -633,6 +634,15 @@
         throw new Error("Multi export requires at least one target format selected in Settings.");
       }
 
+      // Pre-warm the background PDF renderer as soon as we know PDF is needed.
+      // This overlaps tab/debugger setup with extraction/hydration work.
+      const pdfWarmupPromise = targetFormats.includes(EXPORT_FORMATS.PDF)
+        ? root.chromeHelpers.runtimeSendMessage({
+            type: MSG_WARMUP_PDF_RENDERER,
+            payload: { timeoutMs }
+          }).catch(() => null)
+        : null;
+
       const processedConversationByMode = new Map();
       let counterSnapshot = null;
       let maxMessageCount = 0;
@@ -738,6 +748,10 @@
         }
 
         if (targetFormat === EXPORT_FORMATS.PDF) {
+          if (pdfWarmupPromise) {
+            await Promise.resolve(pdfWarmupPromise).catch(() => null);
+          }
+
           const response = await withTimeout(
             root.chromeHelpers.runtimeSendMessage({
               type: MSG_RENDER_HTML_TO_PDF,

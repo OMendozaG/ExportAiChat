@@ -775,6 +775,9 @@
     const escapeHtml = root.sanitize.escapeHtml;
     const roleClass = `role-${escapeHtml(message.role || "unknown")}`;
     const showAttachedPrefix = message.role === root.constants.ROLES.HUMAN;
+    const richClassName = message.role === root.constants.ROLES.HUMAN
+      ? "ceai-rich ceai-rich--preserve-breaks"
+      : "ceai-rich";
     const headerMarkup = buildMessageHeader(message, settings);
     const leadingReferencesMarkup = buildReferenceBlockHtml(
       message.leadingReferenceLines,
@@ -787,7 +790,7 @@
       { showAttachedPrefix }
     );
     const plainTextMarkup = message.text ? `  <pre>${escapeHtml(message.text || "")}</pre>` : "";
-    const richMarkup = message.safeHtml ? `  <div class="ceai-rich">${message.safeHtml || ""}</div>` : "";
+    const richMarkup = message.safeHtml ? `  <div class="${richClassName}">${message.safeHtml || ""}</div>` : "";
 
     if (settings.textFormatting === root.constants.TEXT_FORMATTING.CLEAN) {
       return [
@@ -815,6 +818,9 @@
     const roleClass = `role-${escapeHtml(message.role || "unknown")}`;
     const text = escapeHtml(message.text || "");
     const showAttachedPrefix = message.role === root.constants.ROLES.HUMAN;
+    const richClassName = message.role === root.constants.ROLES.HUMAN
+      ? "ceai-rich ceai-rich--preserve-breaks"
+      : "ceai-rich";
     const leadingReferencesMarkup = buildReferenceBlockHtml(
       message.leadingReferenceLines,
       "ceai-reference-block--leading ceai-reference-block--pdf",
@@ -826,7 +832,7 @@
       { showAttachedPrefix }
     );
     const textMarkup = message.text ? `  <pre>${text}</pre>` : "";
-    const richMarkup = message.safeHtml ? `  <div class="ceai-rich">${message.safeHtml || ""}</div>` : "";
+    const richMarkup = message.safeHtml ? `  <div class="${richClassName}">${message.safeHtml || ""}</div>` : "";
     const bodyMarkup = settings.textFormatting === root.constants.TEXT_FORMATTING.CLEAN
       ? textMarkup
       : (richMarkup || textMarkup);
@@ -879,6 +885,7 @@
       `.ceai-message.role-system { border-left: 6px solid ${roleColors.system}; }`,
       ".ceai-message pre { white-space: pre-wrap; margin: 0; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }",
       ".ceai-rich p { margin: 0 0 0.9em; }",
+      ".ceai-rich--preserve-breaks { white-space: pre-wrap; }",
       ".ceai-rich figure, .ceai-rich picture { display: block; max-width: 100%; margin: 0 0 0.9em; }",
       ".ceai-rich img, .ceai-rich video, .ceai-rich canvas, .ceai-rich svg { display: block; max-width: 100%; width: auto !important; height: auto !important; max-height: 70vh; object-fit: contain; border-radius: 12px; }",
       ".ceai-rich iframe { max-width: 100%; width: 100%; }",
@@ -931,6 +938,7 @@
       ".ceai-message p, .ceai-message li, .ceai-message pre, .ceai-message blockquote, .ceai-reference-block p, .ceai-thinking-note { break-inside: avoid; page-break-inside: avoid; orphans: 2; widows: 2; }",
       ".ceai-rich ul, .ceai-rich ol, .ceai-rich table, .ceai-rich pre, .ceai-rich blockquote, .ceai-rich figure { break-inside: avoid; page-break-inside: avoid; }",
       ".ceai-rich p { margin: 0 0 0.75em; }",
+      ".ceai-rich--preserve-breaks { white-space: pre-wrap; }",
       ".ceai-rich figure, .ceai-rich picture { display: block; max-width: 100%; margin: 0 0 0.75em; }",
       ".ceai-rich img, .ceai-rich video, .ceai-rich canvas, .ceai-rich svg { display: block; max-width: 100%; width: auto !important; height: auto !important; max-height: 58vh; object-fit: contain; border-radius: 10px; }",
       ".ceai-rich iframe { max-width: 100%; width: 100%; }",

@@ -65,6 +65,7 @@ The TXT export is designed as a readable chat log:
 - Attachment references are grouped as `(Attached: [File 1], [File 2], ...)` and rendered consistently across TXT, HTML, MHT, and PDF
 - In HTML/MHT/PDF, Human attachment lines keep the `(Attached: ...)` prefix and render each file as a gray chip
 - Long attachment lines in HTML/MHT/PDF now wrap naturally instead of forcing a single line
+- Human message line breaks are now preserved in HTML/MHT/PDF when providers expose them as literal newline text (for example ChatGPT `whitespace-pre-wrap` bubbles)
 - In HTML/MHT/PDF, assistant reference lines (attachments and links) now render as compact gray chips without the `(Attached: ...)` text prefix
 - ChatGPT inline assistant reference chips embedded inside body text are now preserved as inline gray chips (instead of plain bracket text)
 - Attachment descriptors that include URLs (for example `File.pdf - https://...`) are normalized as attachments so they do not disappear from exports

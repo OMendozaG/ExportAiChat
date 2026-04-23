@@ -349,6 +349,37 @@
     return root.defaults.mergeSettings(normalizeSettingsValueMap(manualValues));
   }
 
+  function isPlainObject(value) {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  }
+
+  function buildManualOverridesFromSource(rawSource) {
+    const source = isPlainObject(rawSource) ? rawSource : {};
+    const normalizedIncoming = normalizeSettingsValueMap(source);
+    const mergedIncoming = root.defaults.mergeSettings(normalizedIncoming);
+    const defaults = root.defaults.settings || {};
+    const manualValues = {};
+    const manualKeys = [];
+
+    settingKeys().forEach((key) => {
+      if (normalizedIncoming[key] === undefined) {
+        return;
+      }
+
+      if (Object.is(mergedIncoming[key], defaults[key])) {
+        return;
+      }
+
+      manualKeys.push(key);
+      manualValues[key] = mergedIncoming[key];
+    });
+
+    return {
+      manualValues,
+      manualKeys
+    };
+  }
+
   async function saveSettingsState(manualValues, manualKeys) {
     const normalizedManualValues = normalizeSettingsValueMap(manualValues);
     const normalizedManualKeys = normalizeManualSettingKeys(manualKeys);
@@ -428,6 +459,31 @@
   async function getSettings() {
     const state = await loadSettingsState();
     return resolveSettingsFromManualValues(state.manualValues);
+  }
+
+  async function getSettingsBackup() {
+    const state = await loadSettingsState();
+    const backup = {};
+    const sortedKeys = [...state.manualKeys].sort((left, right) => left.localeCompare(right));
+
+    sortedKeys.forEach((key) => {
+      if (state.manualValues[key] !== undefined) {
+        backup[key] = state.manualValues[key];
+      }
+    });
+
+    return backup;
+  }
+
+  async function importSettingsBackup(rawBackup) {
+    const source = isPlainObject(rawBackup?.settings) ? rawBackup.settings : rawBackup;
+    if (!isPlainObject(source)) {
+      throw new Error("Invalid backup format. Expected a JSON object.");
+    }
+
+    const next = buildManualOverridesFromSource(source);
+    await saveSettingsState(next.manualValues, next.manualKeys);
+    return resolveSettingsFromManualValues(next.manualValues);
   }
 
   async function saveSettings(partialSettings) {
@@ -701,6 +757,8 @@
 
   root.storage = {
     getSettings,
+    getSettingsBackup,
+    importSettingsBackup,
     saveSettings,
     resetSettings,
     previewExportCounters,

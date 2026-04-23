@@ -100,6 +100,10 @@
   const resetDayCounterButton = document.getElementById("resetDayCounter");
   const resetAllCountersButton = document.getElementById("resetAllCounters");
   const clearChatNameMappingsButton = document.getElementById("clearChatNameMappings");
+  const backupExportSettingsButton = document.getElementById("backupExportSettingsButton");
+  const backupImportSettingsFileInput = document.getElementById("backupImportSettingsFile");
+  const backupImportSettingsButton = document.getElementById("backupImportSettingsButton");
+  const backupSummaryNode = document.getElementById("backupSummary");
 
   const aiNameModeRadios = Array.from(form.querySelectorAll('input[name="aiNameMode"]'));
   const saveModeRadios = Array.from(form.querySelectorAll('input[name="saveMode"]'));
@@ -110,6 +114,88 @@
   let lastSavedSettingsSnapshot = "";
   let exportButtonOrder = [...EXPORT_BUTTON_ORDER_DEFAULT];
   let draggedExportFormat = "";
+
+  function isAutoSaveIgnoredTarget(target) {
+    if (!(target instanceof Element)) {
+      return false;
+    }
+
+    return Boolean(target.closest("[data-no-autosave]"));
+  }
+
+  function downloadJsonFile(filename, payloadText) {
+    const blob = new Blob([payloadText], { type: "application/json;charset=utf-8" });
+    const objectUrl = URL.createObjectURL(blob);
+
+    try {
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } finally {
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+    }
+  }
+
+  async function refreshBackupSummary() {
+    if (!backupSummaryNode || typeof root.storage?.getSettingsBackup !== "function") {
+      return;
+    }
+
+    try {
+      const backup = await root.storage.getSettingsBackup();
+      const overrideCount = Object.keys(backup || {}).length;
+      backupSummaryNode.textContent = overrideCount
+        ? `Current backup would include ${overrideCount} changed setting${overrideCount === 1 ? "" : "s"}.`
+        : "No changed settings yet. Export would generate an empty JSON object.";
+    } catch (_error) {
+      backupSummaryNode.textContent = "";
+    }
+  }
+
+  async function exportSettingsBackup() {
+    if (typeof root.storage?.getSettingsBackup !== "function") {
+      throw new Error("Settings backup export is not available.");
+    }
+
+    const backup = await root.storage.getSettingsBackup();
+    const jsonText = `${JSON.stringify(backup, null, 2)}\n`;
+    downloadJsonFile("chat-export-ai-settings-backup.json", jsonText);
+    const overrideCount = Object.keys(backup || {}).length;
+    showStatus(`Settings backup exported (${overrideCount} override${overrideCount === 1 ? "" : "s"}).`, "success");
+    await refreshBackupSummary();
+  }
+
+  async function importSettingsBackupFromFile() {
+    if (typeof root.storage?.importSettingsBackup !== "function") {
+      throw new Error("Settings backup import is not available.");
+    }
+
+    const file = backupImportSettingsFileInput?.files?.[0];
+    if (!file) {
+      throw new Error("Select a backup JSON file first.");
+    }
+
+    const rawText = await file.text();
+    let parsed;
+    try {
+      parsed = JSON.parse(rawText);
+    } catch (_error) {
+      throw new Error("Invalid backup JSON file.");
+    }
+
+    const settings = await root.storage.importSettingsBackup(parsed);
+    root.appTheme.applyThemeDocument(settings.appTheme);
+    applySettingsToForm(settings);
+    lastSavedSettingsSnapshot = JSON.stringify(readSettingsFromForm());
+    if (backupImportSettingsFileInput) {
+      backupImportSettingsFileInput.value = "";
+    }
+    await refreshBackupSummary();
+    showStatus("Settings backup imported.", "success");
+  }
 
   function showStatus(message, tone = "info") {
     statusNode.textContent = message;
@@ -645,8 +731,20 @@
         secondary: true
       });
     }
+    if (backupExportSettingsButton) {
+      root.buttonSystem.decorateButton(backupExportSettingsButton, {
+        label: "Export settings backup (.json)"
+      });
+    }
+    if (backupImportSettingsButton) {
+      root.buttonSystem.decorateButton(backupImportSettingsButton, {
+        label: "Import settings backup",
+        secondary: true
+      });
+    }
     lastSavedSettingsSnapshot = JSON.stringify(readSettingsFromForm());
     await loadCounterSummary();
+    await refreshBackupSummary();
     showStatus("Settings loaded.", "success");
   }
 
@@ -661,6 +759,7 @@
     await root.storage.saveSettings(next);
     root.appTheme.applyThemeDocument(next.appTheme);
     lastSavedSettingsSnapshot = nextSnapshot;
+    await refreshBackupSummary();
     showStatus("Settings auto-saved.", "success");
   }
 
@@ -669,6 +768,7 @@
     root.appTheme.applyThemeDocument(settings.appTheme);
     applySettingsToForm(settings);
     lastSavedSettingsSnapshot = JSON.stringify(readSettingsFromForm());
+    await refreshBackupSummary();
     showStatus("Settings reset to defaults.", "success");
   }
 
@@ -941,14 +1041,43 @@
       });
     });
   }
+
+  if (backupExportSettingsButton) {
+    backupExportSettingsButton.addEventListener("click", () => {
+      exportSettingsBackup().catch((error) => {
+        showStatus(`Error exporting settings backup: ${error.message}`, "error");
+      });
+    });
+  }
+
+  if (backupImportSettingsButton) {
+    backupImportSettingsButton.addEventListener("click", () => {
+      importSettingsBackupFromFile().catch((error) => {
+        showStatus(`Error importing settings backup: ${error.message}`, "error");
+      });
+    });
+  }
+
   tabButtons.forEach((button) => {
     button.addEventListener("click", () => {
       activateTab(button.dataset.tab);
     });
   });
 
-  form.addEventListener("input", scheduleAutoSave);
-  form.addEventListener("change", scheduleAutoSave);
+  form.addEventListener("input", (event) => {
+    if (isAutoSaveIgnoredTarget(event.target)) {
+      return;
+    }
+
+    scheduleAutoSave();
+  });
+  form.addEventListener("change", (event) => {
+    if (isAutoSaveIgnoredTarget(event.target)) {
+      return;
+    }
+
+    scheduleAutoSave();
+  });
   activateTab("general");
 
   loadSettings().catch((error) => {

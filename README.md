@@ -111,6 +111,7 @@ The TXT export is designed as a readable chat log:
 - Inline export menu refresh is now serialized and interaction-aware to avoid missed first clicks during heavy host DOM updates
 - Inline integrated export entry point now stays clickable as soon as it is mounted (it no longer waits on transient live message counters)
 - Inline export interactions now apply a short refresh lock so host DOM mutations do not steal the first integrated click
+- Settings `Backup` tab can export/import JSON overrides (only manually changed keys are exported)
 - Per-format success state stays visible after export and resets to download when the conversation gets new messages
 - Drag-and-drop export button order in Settings is shared by both popup and inline integrated export menus
 - Refined line-art robot export icon with transparent background assets
@@ -192,6 +193,7 @@ The settings page supports:
 - `Counters` tab also supports editing provider and chat name directly in each association row
 - `Counters` tab supports clearing all `ChatNameCount` associations with confirmation
 - New `ChatNameCount` ids are always assigned from the current highest id + 1
+- `Backup` tab exports only manual overrides to JSON and imports overrides from JSON (missing keys fall back to defaults)
 - Only manually changed settings are pinned; untouched fields keep following new version defaults after updates
 - Default-valued overrides are auto-pruned from storage so reverted fields follow future default updates again
 - Settings auto-save skips writes when there are no real field changes

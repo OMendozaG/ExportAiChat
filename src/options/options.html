@@ -21,6 +21,7 @@
         <button type="button" class="tab-button" data-tab="files">Files</button>
         <button type="button" class="tab-button" data-tab="counters">Counters</button>
         <button type="button" class="tab-button" data-tab="integration">Integration</button>
+        <button type="button" class="tab-button" data-tab="backup">Backup</button>
         <button type="button" class="tab-button" data-tab="credits">Credits</button>
         <button id="resetButton" type="button" class="tab-button tab-button--danger tabs-reset-button">Reset defaults</button>
       </nav>
@@ -559,6 +560,33 @@
           <p class="field-help">
             If an export takes too long, it stops and unlocks the buttons again. PDF uses this timeout too.
           </p>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="backup" hidden>
+        <section class="card">
+          <h2>Settings Backup</h2>
+          <p class="field-help">
+            Export saves only manually changed settings as JSON overrides.
+          </p>
+          <p class="field-help">
+            Import replaces current overrides with the JSON content. Any setting missing from the JSON falls back to default.
+          </p>
+
+          <div class="counter-actions">
+            <button id="backupExportSettingsButton" type="button">Export settings backup (.json)</button>
+          </div>
+
+          <label class="field" data-no-autosave="true">
+            <span>Import settings backup file</span>
+            <input id="backupImportSettingsFile" type="file" accept=".json,application/json" data-no-autosave="true">
+          </label>
+
+          <div class="counter-actions">
+            <button id="backupImportSettingsButton" type="button">Import settings backup</button>
+          </div>
+
+          <p id="backupSummary" class="field-help"></p>
         </section>
       </section>
 

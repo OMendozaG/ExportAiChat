@@ -349,18 +349,19 @@
       || section.getAttribute("data-turn-message-id")
       || section.querySelector("[data-turn-message-id]")?.getAttribute("data-turn-message-id")
       || "";
-    const baseFallbackId = explicitTurnId
+    const baseFallbackId = (messageNodeOverride && explicitMessageId)
       || explicitMessageId
+      || explicitTurnId
       || dataTestId
       || `chatgpt-turn-${fallbackIndex + 1}`;
     const splitSuffix = splitCount > 1 ? `::${rawRole}-${splitIndex + 1}` : "";
     const turnId = normalizeText(
       splitCount > 1
         ? `${baseFallbackId}${splitSuffix}`
-        : (explicitTurnId || explicitMessageId || dataTestId || `chatgpt-turn-${fallbackIndex + 1}`)
+        : ((messageNodeOverride && explicitMessageId) || explicitTurnId || explicitMessageId || dataTestId || `chatgpt-turn-${fallbackIndex + 1}`)
     );
     const messageId = normalizeText(
-      (splitCount > 1 ? `${baseFallbackId}${splitSuffix}` : explicitMessageId)
+      (splitCount > 1 ? `${explicitMessageId || baseFallbackId}${splitSuffix}` : explicitMessageId)
       || explicitTurnId
       || dataTestId
       || turnId
@@ -442,13 +443,6 @@
   }
 
   function readEntriesFromTurnSection(section, fallbackIndex) {
-    const rawRole = normalizeRole(
-      section.getAttribute("data-turn")
-      || section.querySelector("[data-message-author-role]")?.getAttribute("data-message-author-role")
-      || inferRoleFromTurnSection(section)
-      || "unknown"
-    );
-
     const splitRoleEntries = collectSplitRoleEntries(section);
     const userEntryCount = splitRoleEntries.filter((entry) => entry.rawRole === "user").length;
     const shouldSplitConcreteRoleNodes = Boolean(userEntryCount);
@@ -470,11 +464,71 @@
     return entry ? [entry] : [];
   }
 
+  function collectExplicitUserEntriesFromTurnSections(turnSections) {
+    const entries = [];
+
+    for (let sectionIndex = 0; sectionIndex < turnSections.length; sectionIndex += 1) {
+      const section = turnSections[sectionIndex];
+      const splitRoleEntries = collectSplitRoleEntries(section);
+      if (!splitRoleEntries.some((entry) => entry.rawRole === "user")) {
+        continue;
+      }
+
+      splitRoleEntries.forEach((entry, splitIndex) => {
+        if (entry.rawRole !== "user") {
+          return;
+        }
+
+        const userEntry = readEntryFromTurnSection(
+          section,
+          sectionIndex,
+          entry.node,
+          splitIndex,
+          splitRoleEntries.length,
+          entry.rawRole
+        );
+
+        if (userEntry) {
+          entries.push(userEntry);
+        }
+      });
+    }
+
+    return entries;
+  }
+
+  function collectExplicitUserEntriesOutsideTurnSections() {
+    return Array.from(document.querySelectorAll("[data-message-author-role='user']"))
+      .filter((node) => !node.closest(TURN_SECTION_SELECTOR))
+      .flatMap((node, index) => {
+        return splitOwnedRoleNodeForExport(node)
+          .filter((entry) => entry.rawRole === "user")
+          .map((entry, splitIndex, splitEntries) => {
+            return {
+              node: entry.node.cloneNode(true),
+              rawRole: entry.rawRole,
+              turnId: normalizeText(node.getAttribute("data-message-id") || `chatgpt-legacy-user-${index + 1}${splitEntries.length > 1 ? `-${splitIndex + 1}` : ""}`),
+              messageId: normalizeText(node.getAttribute("data-message-id") || `chatgpt-legacy-user-${index + 1}${splitEntries.length > 1 ? `-${splitIndex + 1}` : ""}`),
+              dataTestId: normalizeText(node.getAttribute("data-testid")),
+              order: Number.MAX_SAFE_INTEGER - 2000 + index + (splitIndex / 1000),
+              weight: getEntryWeight(entry.node),
+              contentFingerprint: fingerprintEntryNode(entry.node)
+            };
+          });
+      });
+  }
+
   function collectVisibleConversationEntries() {
     const entries = [];
     const turnSections = Array.from(
       document.querySelectorAll(TURN_SECTION_SELECTOR)
     );
+
+    // First pass: collect concrete user nodes directly. This guards against
+    // ChatGPT DOM variants where consecutive user turns are present in the page
+    // but the surrounding turn container is empty, mixed, or later deduped.
+    entries.push(...collectExplicitUserEntriesFromTurnSections(turnSections));
+    entries.push(...collectExplicitUserEntriesOutsideTurnSections());
 
     for (let index = 0; index < turnSections.length; index += 1) {
       const section = turnSections[index];
@@ -680,9 +734,7 @@
   }
 
   async function runRequestedHydrationCycle(scrollContainer, hydrationBudgetExceeded, onCollect, topReachThreshold = 2) {
-    // Use overlapping viewport-sized steps. ChatGPT virtualizes aggressively,
-    // and larger jumps can skip short consecutive user turns between renders.
-    const sweepStepPx = Math.max(420, Math.min(900, Math.floor(clientHeightOf(scrollContainer) * 0.55) || 700));
+    const sweepStepPx = 1700;
     const stepWaitMs = 500;
     const postSweepWaitMs = 2000;
     const postTopWaitMs = 2000;
@@ -697,7 +749,7 @@
     setScrollPosition(scrollContainer, 0, horizontal);
     onCollect();
 
-    // 2) Sweep down in overlapping immediate steps with 0.5s between steps.
+    // 2) Sweep down in 1700px immediate steps with 0.5s between steps.
     let iterations = 0;
     while (!hydrationBudgetExceeded() && iterations < maxSweepIterations) {
       const bottomTop = getBottomTop();

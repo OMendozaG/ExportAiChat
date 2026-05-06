@@ -130,7 +130,18 @@
     }
 
     if (normalizedRole === "user") {
-      const userBubble = messageNode.querySelector(".whitespace-pre-wrap");
+      const userBubbles = Array.from(messageNode.querySelectorAll(".whitespace-pre-wrap"));
+      if (userBubbles.length > 1) {
+        const bubbleGroup = (messageNode.ownerDocument || document).createElement("div");
+        // Keep grouped ChatGPT user bubbles as one clean content root instead
+        // of exporting only the first continuation bubble.
+        userBubbles.forEach((bubble) => {
+          bubbleGroup.appendChild(bubble.cloneNode(true));
+        });
+        return bubbleGroup;
+      }
+
+      const userBubble = userBubbles[0];
       if (userBubble) {
         return userBubble;
       }
@@ -299,7 +310,7 @@
       : `chatgpt-order-${order}::${roleKey}::w${Number(entry?.weight || 0)}`;
   }
 
-  function readEntryFromTurnSection(section, fallbackIndex) {
+  function readEntryFromTurnSection(section, fallbackIndex, messageNodeOverride = null, splitIndex = 0, splitCount = 1) {
     const rawRole = normalizeRole(
       section.getAttribute("data-turn")
       || section.querySelector("[data-message-author-role]")?.getAttribute("data-message-author-role")
@@ -311,7 +322,8 @@
       return null;
     }
 
-    const messageNode = section.querySelector("[data-message-author-role][data-message-id]")
+    const messageNode = messageNodeOverride
+      || section.querySelector("[data-message-author-role][data-message-id]")
       || section.querySelector("[data-message-author-role]")
       || section.querySelector("[data-message-id]")
       || section.querySelector("[data-turn-start-message]")
@@ -329,30 +341,76 @@
       || section.getAttribute("data-turn-message-id")
       || section.querySelector("[data-turn-message-id]")?.getAttribute("data-turn-message-id")
       || "";
-    const turnId = normalizeText(
-      explicitTurnId
+    const baseFallbackId = explicitTurnId
       || explicitMessageId
       || dataTestId
-      || `chatgpt-turn-${fallbackIndex + 1}`
+      || `chatgpt-turn-${fallbackIndex + 1}`;
+    const splitSuffix = splitCount > 1 ? `::${rawRole}-${splitIndex + 1}` : "";
+    const turnId = normalizeText(
+      splitCount > 1
+        ? (explicitMessageId || `${baseFallbackId}${splitSuffix}`)
+        : (explicitTurnId || explicitMessageId || dataTestId || `chatgpt-turn-${fallbackIndex + 1}`)
     );
     const messageId = normalizeText(
       explicitMessageId
-      || explicitTurnId
+      || (splitCount > 1 ? `${baseFallbackId}${splitSuffix}` : explicitTurnId)
       || dataTestId
       || turnId
     );
-    const clonedNode = section.cloneNode(true);
+    const clonedNode = (messageNodeOverride || section).cloneNode(true);
 
     return {
       node: clonedNode,
       rawRole,
       turnId,
       messageId,
-      dataTestId,
-      order: parseTurnOrder(section, fallbackIndex + 1),
+      dataTestId: splitSuffix ? `${dataTestId}${splitSuffix}` : dataTestId,
+      order: parseTurnOrder(section, fallbackIndex + 1) + (splitCount > 1 ? splitIndex / 1000 : 0),
       weight: getEntryWeight(clonedNode),
       contentFingerprint: fingerprintEntryNode(clonedNode)
     };
+  }
+
+  function collectUserMessageNodes(section) {
+    const userNodes = Array.from(section.querySelectorAll("[data-message-author-role='user']"));
+
+    // ChatGPT can now render several user bubbles around empty assistant
+    // placeholders. If a DOM variant groups those bubbles into one turn section,
+    // split them here so each Human entry survives as its own chat-log message.
+    return userNodes.filter((node, index, list) => {
+      if (list.indexOf(node) !== index) {
+        return false;
+      }
+
+      return node.closest(TURN_SECTION_SELECTOR) === section;
+    });
+  }
+
+  function readEntriesFromTurnSection(section, fallbackIndex) {
+    const rawRole = normalizeRole(
+      section.getAttribute("data-turn")
+      || section.querySelector("[data-message-author-role]")?.getAttribute("data-message-author-role")
+      || inferRoleFromTurnSection(section)
+      || "unknown"
+    );
+
+    if (rawRole === "user") {
+      const userMessageNodes = collectUserMessageNodes(section);
+      if (userMessageNodes.length > 1) {
+        return userMessageNodes
+          .map((messageNode, splitIndex) => readEntryFromTurnSection(
+            section,
+            fallbackIndex,
+            messageNode,
+            splitIndex,
+            userMessageNodes.length
+          ))
+          .filter(Boolean);
+      }
+    }
+
+    const entry = readEntryFromTurnSection(section, fallbackIndex);
+    return entry ? [entry] : [];
   }
 
   function collectVisibleConversationEntries() {
@@ -367,12 +425,7 @@
         continue;
       }
 
-      const entry = readEntryFromTurnSection(section, index);
-      if (!entry) {
-        continue;
-      }
-
-      entries.push(entry);
+      entries.push(...readEntriesFromTurnSection(section, index));
     }
 
     const legacyNodes = Array.from(document.querySelectorAll("[data-message-author-role]"));

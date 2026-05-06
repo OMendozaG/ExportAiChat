@@ -348,12 +348,12 @@
     const splitSuffix = splitCount > 1 ? `::${rawRole}-${splitIndex + 1}` : "";
     const turnId = normalizeText(
       splitCount > 1
-        ? (explicitMessageId || `${baseFallbackId}${splitSuffix}`)
+        ? `${baseFallbackId}${splitSuffix}`
         : (explicitTurnId || explicitMessageId || dataTestId || `chatgpt-turn-${fallbackIndex + 1}`)
     );
     const messageId = normalizeText(
-      explicitMessageId
-      || (splitCount > 1 ? `${baseFallbackId}${splitSuffix}` : explicitTurnId)
+      (splitCount > 1 ? `${baseFallbackId}${splitSuffix}` : explicitMessageId)
+      || explicitTurnId
       || dataTestId
       || turnId
     );
@@ -371,19 +371,55 @@
     };
   }
 
-  function collectUserMessageNodes(section) {
-    const userNodes = Array.from(section.querySelectorAll("[data-message-author-role='user']"));
+  function isSectionOwnedUserNode(node, section) {
+    if (!node || node.closest(TURN_SECTION_SELECTOR) !== section) {
+      return false;
+    }
 
-    // ChatGPT can now render several user bubbles around empty assistant
-    // placeholders. If a DOM variant groups those bubbles into one turn section,
-    // split them here so each Human entry survives as its own chat-log message.
-    return userNodes.filter((node, index, list) => {
-      if (list.indexOf(node) !== index) {
-        return false;
+    const parentUserNode = node.parentElement?.closest?.("[data-message-author-role='user']");
+    return !parentUserNode || parentUserNode.closest(TURN_SECTION_SELECTOR) !== section;
+  }
+
+  function cloneUserMessageNodeWithSingleBubble(messageNode, bubbleIndex) {
+    const clonedMessageNode = messageNode.cloneNode(true);
+    const clonedBubbles = Array.from(clonedMessageNode.querySelectorAll(".whitespace-pre-wrap"));
+
+    clonedBubbles.forEach((bubble, index) => {
+      if (index === bubbleIndex) {
+        return;
       }
 
-      return node.closest(TURN_SECTION_SELECTOR) === section;
+      const removableBubble = bubble.closest(".user-message-bubble-color") || bubble;
+      removableBubble.remove();
     });
+
+    return clonedMessageNode;
+  }
+
+  function collectUserMessageNodes(section) {
+    const userNodes = Array.from(section.querySelectorAll("[data-message-author-role='user']"));
+    const splitNodes = [];
+
+    // ChatGPT can now render several user bubbles around empty assistant
+    // placeholders, or several bubbles inside one user message wrapper. Split
+    // each visible bubble into its own Human entry so TXT stays a real chat log.
+    for (const userNode of userNodes) {
+      if (!isSectionOwnedUserNode(userNode, section)) {
+        continue;
+      }
+
+      const bubbles = Array.from(userNode.querySelectorAll(".whitespace-pre-wrap"));
+      if (bubbles.length <= 1) {
+        splitNodes.push(userNode);
+        continue;
+      }
+
+      bubbles.forEach((_bubble, bubbleIndex) => {
+        splitNodes.push(cloneUserMessageNodeWithSingleBubble(userNode, bubbleIndex));
+      });
+    }
+
+    return splitNodes;
   }
 
   function readEntriesFromTurnSection(section, fallbackIndex) {

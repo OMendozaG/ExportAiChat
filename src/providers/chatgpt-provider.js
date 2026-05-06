@@ -451,11 +451,7 @@
 
     const splitRoleEntries = collectSplitRoleEntries(section);
     const userEntryCount = splitRoleEntries.filter((entry) => entry.rawRole === "user").length;
-    const shouldSplitConcreteRoleNodes = Boolean(userEntryCount) && (
-      rawRole !== "user"
-      || splitRoleEntries.length > 1
-      || userEntryCount > 1
-    );
+    const shouldSplitConcreteRoleNodes = Boolean(userEntryCount);
 
     if (shouldSplitConcreteRoleNodes) {
       return splitRoleEntries
@@ -684,7 +680,9 @@
   }
 
   async function runRequestedHydrationCycle(scrollContainer, hydrationBudgetExceeded, onCollect, topReachThreshold = 2) {
-    const sweepStepPx = 1700;
+    // Use overlapping viewport-sized steps. ChatGPT virtualizes aggressively,
+    // and larger jumps can skip short consecutive user turns between renders.
+    const sweepStepPx = Math.max(420, Math.min(900, Math.floor(clientHeightOf(scrollContainer) * 0.55) || 700));
     const stepWaitMs = 500;
     const postSweepWaitMs = 2000;
     const postTopWaitMs = 2000;
@@ -699,7 +697,7 @@
     setScrollPosition(scrollContainer, 0, horizontal);
     onCollect();
 
-    // 2) Sweep down in 1700px immediate steps with 0.5s between steps.
+    // 2) Sweep down in overlapping immediate steps with 0.5s between steps.
     let iterations = 0;
     while (!hydrationBudgetExceeded() && iterations < maxSweepIterations) {
       const bottomTop = getBottomTop();

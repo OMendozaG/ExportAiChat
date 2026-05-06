@@ -310,9 +310,17 @@
       : `chatgpt-order-${order}::${roleKey}::w${Number(entry?.weight || 0)}`;
   }
 
-  function readEntryFromTurnSection(section, fallbackIndex, messageNodeOverride = null, splitIndex = 0, splitCount = 1) {
+  function readEntryFromTurnSection(
+    section,
+    fallbackIndex,
+    messageNodeOverride = null,
+    splitIndex = 0,
+    splitCount = 1,
+    rawRoleOverride = ""
+  ) {
     const rawRole = normalizeRole(
-      section.getAttribute("data-turn")
+      rawRoleOverride
+      || section.getAttribute("data-turn")
       || section.querySelector("[data-message-author-role]")?.getAttribute("data-message-author-role")
       || inferRoleFromTurnSection(section)
       || "unknown"
@@ -371,13 +379,18 @@
     };
   }
 
-  function isSectionOwnedUserNode(node, section) {
+  function isSectionOwnedRoleNode(node, section) {
     if (!node || node.closest(TURN_SECTION_SELECTOR) !== section) {
       return false;
     }
 
-    const parentUserNode = node.parentElement?.closest?.("[data-message-author-role='user']");
-    return !parentUserNode || parentUserNode.closest(TURN_SECTION_SELECTOR) !== section;
+    const parentRoleNode = node.parentElement?.closest?.("[data-message-author-role]");
+    return !parentRoleNode || parentRoleNode.closest(TURN_SECTION_SELECTOR) !== section;
+  }
+
+  function collectOwnedRoleMessageNodes(section) {
+    return Array.from(section.querySelectorAll("[data-message-author-role]"))
+      .filter((node) => isSectionOwnedRoleNode(node, section));
   }
 
   function cloneUserMessageNodeWithSingleBubble(messageNode, bubbleIndex) {
@@ -396,27 +409,33 @@
     return clonedMessageNode;
   }
 
-  function collectUserMessageNodes(section) {
-    const userNodes = Array.from(section.querySelectorAll("[data-message-author-role='user']"));
+  function splitOwnedRoleNodeForExport(messageNode) {
+    const rawRole = normalizeRole(messageNode.getAttribute("data-message-author-role"));
+    if (rawRole !== "user") {
+      return [{ node: messageNode, rawRole }];
+    }
+
+    const bubbles = Array.from(messageNode.querySelectorAll(".whitespace-pre-wrap"));
+    if (bubbles.length <= 1) {
+      return [{ node: messageNode, rawRole }];
+    }
+
+    return bubbles.map((_bubble, bubbleIndex) => ({
+      node: cloneUserMessageNodeWithSingleBubble(messageNode, bubbleIndex),
+      rawRole
+    }));
+  }
+
+  function collectSplitRoleEntries(section) {
+    const roleNodes = collectOwnedRoleMessageNodes(section);
     const splitNodes = [];
 
-    // ChatGPT can now render several user bubbles around empty assistant
-    // placeholders, or several bubbles inside one user message wrapper. Split
-    // each visible bubble into its own Human entry so TXT stays a real chat log.
-    for (const userNode of userNodes) {
-      if (!isSectionOwnedUserNode(userNode, section)) {
-        continue;
-      }
-
-      const bubbles = Array.from(userNode.querySelectorAll(".whitespace-pre-wrap"));
-      if (bubbles.length <= 1) {
-        splitNodes.push(userNode);
-        continue;
-      }
-
-      bubbles.forEach((_bubble, bubbleIndex) => {
-        splitNodes.push(cloneUserMessageNodeWithSingleBubble(userNode, bubbleIndex));
-      });
+    // ChatGPT can render several user bubbles around empty assistant
+    // placeholders, several bubbles inside one user wrapper, or user nodes under
+    // a section whose outer data-turn is not "user". Split those concrete role
+    // nodes before dedupe so consecutive Human messages cannot collapse.
+    for (const roleNode of roleNodes) {
+      splitNodes.push(...splitOwnedRoleNodeForExport(roleNode));
     }
 
     return splitNodes;
@@ -430,19 +449,25 @@
       || "unknown"
     );
 
-    if (rawRole === "user") {
-      const userMessageNodes = collectUserMessageNodes(section);
-      if (userMessageNodes.length > 1) {
-        return userMessageNodes
-          .map((messageNode, splitIndex) => readEntryFromTurnSection(
-            section,
-            fallbackIndex,
-            messageNode,
-            splitIndex,
-            userMessageNodes.length
-          ))
-          .filter(Boolean);
-      }
+    const splitRoleEntries = collectSplitRoleEntries(section);
+    const userEntryCount = splitRoleEntries.filter((entry) => entry.rawRole === "user").length;
+    const shouldSplitConcreteRoleNodes = Boolean(userEntryCount) && (
+      rawRole !== "user"
+      || splitRoleEntries.length > 1
+      || userEntryCount > 1
+    );
+
+    if (shouldSplitConcreteRoleNodes) {
+      return splitRoleEntries
+        .map((entry, splitIndex) => readEntryFromTurnSection(
+          section,
+          fallbackIndex,
+          entry.node,
+          splitIndex,
+          splitRoleEntries.length,
+          entry.rawRole
+        ))
+        .filter(Boolean);
     }
 
     const entry = readEntryFromTurnSection(section, fallbackIndex);

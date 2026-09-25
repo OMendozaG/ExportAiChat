@@ -52,6 +52,9 @@ The TXT export is designed as a readable chat log:
 - Broader ChatGPT thinking/reasoning block detection, including localized labels and timing extraction
 - ChatGPT thought blocks are now detected structurally from assistant turn DOM (pre-message block in `agent-turn`) and stripped from assistant body text before sanitize
 - ChatGPT extraction now supports modern `conversation-turn` sections, including assistant image-only turns
+- ChatGPT also supports the redesigned `data-turn-key` chat layout on regular and project conversation URLs (`/g/.../c/...`), separating Human and AI messages within each paired turn and preserving rich answer text
+- ChatGPT reads the current sidebar chat name and project label in the redesigned layout, and respects the assistant web-link toggle for its new citation chips and source cards (without exporting decorative favicons)
+- ChatGPT history loading handles both normal scroll containers and the reverse-scrolling container used by the redesigned chat layout
 - ChatGPT now preserves user turns even when they are attachment-only (and attachment names are hidden) or rendered in alternate user DOM wrappers, reducing dropped Human entries
 - ChatGPT user extraction now runs a dedicated user-node pass before section extraction, preserving consecutive Human messages even when ChatGPT interleaves empty assistant placeholders or nests user nodes under a non-user turn section
 - Virtualized hydration now uses the same cycle across ChatGPT, Claude, Gemini, Grok, and DeepSeek: scroll to top, move down in 1700px immediate steps (0.5s between steps), wait 2s, move to top and wait 2s, force top every 1s until confirmed, then force bottom every 1s until confirmed
@@ -298,6 +301,8 @@ The current extension uses these permissions:
    - `https://grok.com/`
 6. Use the extension popup or the inline `EXPORT...` action if enabled
 
+After updating an unpacked installation, click **Reload** for Chat Export AI in `chrome://extensions`, then reload any open chat tabs so they receive the updated parser.
+
 ## Project Structure
 
 - `manifest.json`: Chrome extension manifest
@@ -309,6 +314,12 @@ The current extension uses these permissions:
 - `src/options/`: settings UI
 - `src/assets/`: extension icons and static assets
 - `src/vendor/`: bundled third-party client-side libraries used by the extension
+
+## Parser Regression Checks
+
+With Node.js 22+ and Chrome/Chromium installed, run `node tests/chatgpt-provider.test.mjs`. Set `CHROME_PATH` if the browser is installed outside a standard location. The checks cover current and legacy ChatGPT layouts in a temporary headless browser, including message order, formatting, metadata, citations, and history scrolling.
+
+To check a locally saved chat as well, set `CHATGPT_SNAPSHOT_PATH` to its HTML path and `CHATGPT_SNAPSHOT_URL` to the original chat URL before running the command. Snapshot scripts are removed and page network requests are blocked; private HTML is not added to the repository.
 
 ## Adding New Providers
 

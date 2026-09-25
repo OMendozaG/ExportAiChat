@@ -16,7 +16,10 @@
   const TIME_TEXT_REGEX = /\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|A\.M\.|P\.M\.)?\b/i;
   const CONVERSATION_PATH_REGEX = /\/c\/([^/?#]+)/i;
   const PROJECT_PATH_REGEX = /(\/g\/[^/]+)\/c\/[^/?#]+/i;
-  const TURN_SECTION_SELECTOR = "section[data-testid^='conversation-turn-']";
+  // Both layouts are still in use. New turns group a Human and an AI message
+  // under one key, so their search units must be extracted separately.
+  const TURN_SECTION_SELECTOR = "[data-testid^='conversation-turn-'], [data-turn-key]";
+  const SEARCH_MESSAGE_SELECTOR = "[data-chatgpt-search-unit-key$=':user'], [data-chatgpt-search-unit-key$=':assistant']";
 
   function hostnameFromUrl(url) {
     try {
@@ -33,6 +36,7 @@
   function isChatPage() {
     return Boolean(
       document.querySelector('[data-message-author-role="user"], [data-message-author-role="assistant"], [data-testid^="conversation-turn-"]')
+      || document.querySelector(`[data-turn-key] :is(${SEARCH_MESSAGE_SELECTOR})`)
     );
   }
 
@@ -113,6 +117,16 @@
     const normalizedRole = normalizeRole(rawRole);
 
     if (normalizedRole === "assistant") {
+      const messageBodies = Array.from(messageNode.querySelectorAll("[data-markdown-text-style='assistant-message']"));
+      if (messageBodies.length) {
+        // The new message wrapper also contains a screen-reader role heading
+        // and action buttons. Only collect its actual answer bodies.
+        const bodyGroup = (messageNode.ownerDocument || document).createElement("div");
+        messageBodies.filter((body) => !body.parentElement?.closest("[data-markdown-text-style='assistant-message']"))
+          .forEach((body) => bodyGroup.appendChild(body.cloneNode(true)));
+        return bodyGroup;
+      }
+
       const agentTurn = messageNode.querySelector(".agent-turn");
       if (agentTurn) {
         return agentTurn;
@@ -164,6 +178,7 @@
         [
           "[data-message-author-role='user']",
           "[data-testid='user-message']",
+          "[data-user-message-bubble]",
           ".user-message-bubble-color",
           ".whitespace-pre-wrap",
           "[data-turn='user']"
@@ -177,6 +192,16 @@
     const orderMatch = dataTestId.match(/conversation-turn-(\d+)/i);
     if (orderMatch) {
       return Number(orderMatch[1]);
+    }
+
+    // Unlike the currently mounted DOM index, this index survives virtualized
+    // turns being unmounted while the export hydration sweep scrolls the chat.
+    const searchKey = section.querySelector("[data-content-search-turn-key]")?.getAttribute("data-content-search-turn-key")
+      || section.querySelector(SEARCH_MESSAGE_SELECTOR)?.getAttribute("data-chatgpt-search-unit-key")
+      || "";
+    const searchOrder = searchKey.match(/^fallback-turn-(\d+)(?::|$)/);
+    if (searchOrder) {
+      return Number(searchOrder[1]);
     }
 
     return Number(fallback || 0);
@@ -212,10 +237,13 @@
       return false;
     }
 
-    return Boolean(
-      section.querySelector(
+    // Nested turn wrappers are containers, not extra messages. Only content
+    // owned by this turn can make it eligible for the legacy fallback.
+    return Array.from(
+      section.querySelectorAll(
         [
           "[data-message-author-role]",
+          SEARCH_MESSAGE_SELECTOR,
           ".agent-turn",
           ".markdown",
           ".prose",
@@ -230,7 +258,7 @@
           "video"
         ].join(", ")
       )
-    );
+    ).some((node) => node.closest(TURN_SECTION_SELECTOR) === section);
   }
 
   function getEntryWeight(entryNode) {
@@ -385,6 +413,12 @@
       return false;
     }
 
+    // During layout rollouts a search unit can retain the old role attribute.
+    // Its modern entry already owns that message, including grouped bubbles.
+    if (node.closest(SEARCH_MESSAGE_SELECTOR)) {
+      return false;
+    }
+
     const parentRoleNode = node.parentElement?.closest?.("[data-message-author-role]");
     return !parentRoleNode || parentRoleNode.closest(TURN_SECTION_SELECTOR) !== section;
   }
@@ -443,6 +477,39 @@
   }
 
   function readEntriesFromTurnSection(section, fallbackIndex) {
+    const searchUnits = Array.from(section.querySelectorAll(SEARCH_MESSAGE_SELECTOR))
+      .filter((unit) => unit.closest(TURN_SECTION_SELECTOR) === section);
+    if (searchUnits.length) {
+      return searchUnits.flatMap((unit, unitIndex) => {
+        const unitKey = unit.getAttribute("data-chatgpt-search-unit-key") || "";
+        const rawRole = unitKey.endsWith(":user") ? "user" : "assistant";
+        const messageId = normalizeText(
+          unit.querySelector("[data-chatgpt-selection-message-id]")?.getAttribute("data-chatgpt-selection-message-id")
+          || unit.getAttribute("data-chatgpt-search-message-ids")
+        ).split(/\s+/)[0];
+        const turnKey = section.getAttribute("data-turn-key") || unitKey;
+        const bubbles = rawRole === "user" ? unit.querySelectorAll(".whitespace-pre-wrap") : [];
+        const splitCount = Math.max(1, bubbles.length);
+
+        return Array.from({ length: splitCount }, (_, splitIndex) => {
+          const node = splitCount > 1 ? cloneUserMessageNodeWithSingleBubble(unit, splitIndex) : unit.cloneNode(true);
+          // Search metadata sometimes repeats a message UUID. Use the first
+          // UUID and the concrete role, never the paired turn key by itself.
+          const id = `${messageId || `${turnKey}::${unitKey}`}${splitCount > 1 ? `::bubble-${splitIndex + 1}` : ""}`;
+          return {
+            node,
+            rawRole,
+            turnId: id,
+            messageId: id,
+            dataTestId: unitKey,
+            order: parseTurnOrder(section, fallbackIndex + 1) + unitIndex / 1000 + splitIndex / 1000000,
+            weight: getEntryWeight(node),
+            contentFingerprint: fingerprintEntryNode(node)
+          };
+        });
+      });
+    }
+
     const splitRoleEntries = collectSplitRoleEntries(section);
     const userEntryCount = splitRoleEntries.filter((entry) => entry.rawRole === "user").length;
     const shouldSplitConcreteRoleNodes = Boolean(userEntryCount);
@@ -604,7 +671,15 @@
   }
 
   function scrollTopOf(container) {
-    return Number(container?.scrollTop || 0);
+    const physicalTop = Number(container?.scrollTop || 0);
+    if (!isReverseScrollContainer(container)) {
+      return physicalTop;
+    }
+
+    // ChatGPT's column-reverse timeline uses zero at the bottom and negative
+    // offsets toward the top. Keep the hydration sweep in top-to-bottom units.
+    const range = Math.max(0, scrollHeightOf(container) - clientHeightOf(container));
+    return Math.max(0, Math.min(range, range + physicalTop));
   }
 
   function scrollLeftOf(container) {
@@ -624,7 +699,7 @@
       return;
     }
 
-    container.scrollTop = Number(value || 0);
+    container.scrollTop = physicalScrollTopOf(container, value);
   }
 
   function isDocumentScrollContainer(container) {
@@ -632,12 +707,29 @@
     return container === root || container === document.documentElement || container === document.body;
   }
 
+  function isReverseScrollContainer(container) {
+    return Boolean(container && !isDocumentScrollContainer(container)
+      && window.getComputedStyle(container).flexDirection === "column-reverse");
+  }
+
+  function physicalScrollTopOf(container, top) {
+    const logicalTop = Number(top || 0);
+    if (!isReverseScrollContainer(container)) {
+      return logicalTop;
+    }
+
+    // Recalculate the range for each write because virtualized content can
+    // change the scroll height while messages mount during hydration.
+    const range = Math.max(0, scrollHeightOf(container) - clientHeightOf(container));
+    return Math.max(0, Math.min(range, logicalTop)) - range;
+  }
+
   function setScrollPosition(container, top, left) {
     if (!container) {
       return;
     }
 
-    const safeTop = Number(top || 0);
+    const safeTop = physicalScrollTopOf(container, top);
     const safeLeft = Number(left || 0);
 
     if (isDocumentScrollContainer(container)) {
@@ -661,35 +753,7 @@
   }
 
   function scrollToTopAnimated(container) {
-    if (!container) {
-      return;
-    }
-
-    const safeLeft = scrollLeftOf(container);
-
-    try {
-      if (isDocumentScrollContainer(container)) {
-        window.scrollTo({
-          top: 0,
-          left: safeLeft,
-          behavior: "smooth"
-        });
-        return;
-      }
-
-      if (typeof container.scrollTo === "function") {
-        container.scrollTo({
-          top: 0,
-          left: safeLeft,
-          behavior: "smooth"
-        });
-        return;
-      }
-    } catch (_error) {
-      // Fall back to immediate positioning for hosts that reject smooth scroll.
-    }
-
-    setScrollPosition(container, 0, safeLeft);
+    scrollToPositionAnimated(container, 0, scrollLeftOf(container));
   }
 
   function scrollToPositionAnimated(container, top, left) {
@@ -699,11 +763,12 @@
 
     const safeTop = Math.max(0, Number(top || 0));
     const safeLeft = Number(left || 0);
+    const physicalTop = physicalScrollTopOf(container, safeTop);
 
     try {
       if (isDocumentScrollContainer(container)) {
         window.scrollTo({
-          top: safeTop,
+          top: physicalTop,
           left: safeLeft,
           behavior: "smooth"
         });
@@ -712,7 +777,7 @@
 
       if (typeof container.scrollTo === "function") {
         container.scrollTo({
-          top: safeTop,
+          top: physicalTop,
           left: safeLeft,
           behavior: "smooth"
         });
@@ -955,6 +1020,10 @@
       return;
     }
 
+    // Related-source cards are web references too; removing only their anchors
+    // would leave preview images and source titles behind in the answer body.
+    node.querySelectorAll("[data-testid='chatgpt-nav-list']").forEach((list) => list.remove());
+
     const anchors = Array.from(node.querySelectorAll("a[href]"));
     for (const anchor of anchors) {
       const href = normalizeText(anchor.getAttribute("href"));
@@ -965,6 +1034,13 @@
       );
 
       if (!href) {
+        continue;
+      }
+
+      // The redesigned citation pill has a dedicated hook; its domain label
+      // must not be mistaken for a filename by the attachment heuristics.
+      if (anchor.matches("[data-testid='chatgpt-citation']")) {
+        anchor.remove();
         continue;
       }
 
@@ -1060,7 +1136,7 @@
       }
 
       // Keep only content-bearing reference labels (file/url/internal-doc) to avoid UI action text.
-      if (isLikelyAttachmentLabel(label) || isLikelyUrlLabel(label) || isLikelyInternalDocumentLabel(label)) {
+      if (node.matches("[data-testid='chatgpt-library-file-citation']") || isLikelyAttachmentLabel(label) || isLikelyUrlLabel(label) || isLikelyInternalDocumentLabel(label)) {
         return label;
       }
     }
@@ -1145,7 +1221,7 @@
       }
 
       return {
-        kind: (isLikelyAttachmentHref(href) || isLikelyAttachmentLabel(label) || isLikelyInternalDocumentLabel(label))
+        kind: !node.closest("[data-testid='chatgpt-citation'], [data-testid='chatgpt-nav-list']") && (isLikelyAttachmentHref(href) || isLikelyAttachmentLabel(label) || isLikelyInternalDocumentLabel(label))
           ? "attachment"
           : "url",
         label,
@@ -1162,6 +1238,7 @@
       scope.querySelectorAll(
         [
           'button[aria-haspopup="dialog"]',
+          'button[data-testid="chatgpt-library-file-citation"]',
           'button .truncate',
           'button .not-prose',
           'button [class*="truncate"]',
@@ -1329,6 +1406,11 @@
     // Remove assistant web links from message body when web references are disabled.
     stripAssistantWebLinksFromNode(clone, settings);
 
+    // Citation favicons are interface decoration, not images in the answer.
+    // Keep the source label/link without producing media placeholders.
+    clone.querySelectorAll("[data-testid='chatgpt-citation'] img, [data-testid='chatgpt-citation'] svg, [data-testid='chatgpt-nav-list'] img[alt=''], [data-testid='chatgpt-nav-list'] svg")
+      .forEach((icon) => icon.remove());
+
     // Remove UI-only action surfaces that are not part of the assistant content.
     const uiOnlyNodes = Array.from(clone.querySelectorAll(
       [
@@ -1393,7 +1475,8 @@
   }
 
   function isExcludedTitleElement(element) {
-    return Boolean(element?.closest("nav, aside, [role='navigation'], dialog"));
+    // Message headings are answer content, never the visible conversation name.
+    return Boolean(element?.closest(`nav, aside, [role='navigation'], dialog, [data-message-author-role], ${TURN_SECTION_SELECTOR}`));
   }
 
   function getCurrentConversationId() {
@@ -1474,6 +1557,13 @@
   }
 
   function extractConversationNameFromSidebar() {
+    // Current sidebars use buttons instead of /c/ links. Read only the active
+    // item's explicit title, keeping the project label and tab title separate.
+    const selectedTitle = normalizeText(document.querySelector("[aria-current='page'] [data-thread-title]")?.textContent);
+    if (selectedTitle) {
+      return selectedTitle;
+    }
+
     const link = findConversationSidebarLink(getCurrentConversationId());
 
     if (!link) {
@@ -1560,6 +1650,20 @@
 
     if (!projectPath) {
       return "";
+    }
+
+    // Project routes may append a readable slug to the stable project ID.
+    // The new sidebar exposes that ID and the visible label independently.
+    const projectSegment = projectPath.split("/")[2];
+    const projectItems = document.querySelectorAll("[data-app-action-sidebar-project-id][data-app-action-sidebar-project-label]");
+    for (const item of projectItems) {
+      const id = item.getAttribute("data-app-action-sidebar-project-id");
+      if (id && (projectSegment === id || projectSegment.startsWith(`${id}-`))) {
+        const label = normalizeText(item.getAttribute("data-app-action-sidebar-project-label"));
+        if (label) {
+          return label;
+        }
+      }
     }
 
     // The project folder sits on its own /project entry, separate from the chat item.
@@ -1854,10 +1958,11 @@
 
   function getLiveStatus() {
     const roleCount = document.querySelectorAll("[data-message-author-role]").length;
+    const searchMessageCount = document.querySelectorAll(`[data-turn-key] :is(${SEARCH_MESSAGE_SELECTOR})`).length;
     const turnCount = document.querySelectorAll(TURN_SECTION_SELECTOR).length;
     return {
       isChatPage: isChatPage(),
-      messageCount: Math.max(roleCount, turnCount)
+      messageCount: Math.max(roleCount, turnCount, searchMessageCount)
     };
   }
 
